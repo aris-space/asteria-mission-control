@@ -1,15 +1,12 @@
-use actix_web::{App, HttpServer, middleware};
+use actix_cors::Cors;
+use actix_web::{App, HttpServer, middleware, web::Data};
 use clap::Parser;
 use env_logger::Env;
 
-use crate::{
-    broadcast::{Broadcast, BroadcastInstance},
-    cli::Cli,
-};
+use crate::{cli::Cli, web::broadcast::Broadcast};
 
-mod broadcast;
 mod cli;
-mod endpoints;
+mod web;
 
 #[tokio::main]
 async fn main() {
@@ -19,10 +16,13 @@ async fn main() {
     let broadcast = Broadcast::new();
 
     HttpServer::new(move || {
+        let cors = Cors::default().allow_any_header().allow_any_method().allow_any_origin();
         App::new()
-            .app_data::<BroadcastInstance>(broadcast.clone())
+            .wrap(cors)
+            .app_data(Data::from(broadcast.clone()))
             .wrap(middleware::Logger::default())
-            .service(endpoints::info)
+            .service(web::info)
+            .service(web::subscribe_events)
     })
     .bind((cli.address, cli.port))
     .expect("should be able to bind to address and port")

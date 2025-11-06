@@ -1,5 +1,8 @@
 import React from "react";
+import { useEvent } from "./hooks/EventContext";
 
 export function Layout() {
-  return <React.Fragment>layout works!</React.Fragment>;
+  const { latency } = useEvent();
+
+  return <React.Fragment>latency: {latency}ms</React.Fragment>;
 }

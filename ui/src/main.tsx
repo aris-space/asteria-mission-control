@@ -4,13 +4,16 @@ import { BrowserRouter } from "react-router";
 import '@mantine/core/styles.css';
 import { MantineProvider } from "@mantine/core";
 import { Layout } from "./layout";
+import { EventProvider } from "./hooks/EventContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <MantineProvider>
-      <BrowserRouter>
-          <Layout />
-      </BrowserRouter>
+      <EventProvider>
+        <BrowserRouter>
+            <Layout />
+        </BrowserRouter>
+      </EventProvider>
     </MantineProvider>
   </StrictMode>,
 );

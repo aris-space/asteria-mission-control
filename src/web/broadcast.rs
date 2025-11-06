@@ -12,8 +12,6 @@ use tokio_stream::wrappers::ReceiverStream;
 /// Interval in seconds at which all subscriptions should be pinged
 const PING_INTERVAL: u64 = 10;
 
-pub type BroadcastInstance = Arc<Broadcast>;
-
 pub struct Broadcast {
     subscriptions: Mutex<Vec<tokio::sync::mpsc::Sender<Event>>>,
 }
