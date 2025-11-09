@@ -14,12 +14,12 @@ fn set_git_version() {
                 format!("{}-r{}-{}", &split[0][1..], split[1], split[2])
             } else {
                 println!("cargo::warning=Unable to get git version: {}", String::from_utf8_lossy(&output.stderr));
-                String::from("unknown")
+                String::from("v?.?.?")
             }
         }
         Err(err) => {
             println!("cargo::warning=Unable to get git version: {err:#}");
-            String::from("unknown")
+            String::from("v?.?.?")
         }
     };
 
