@@ -1,0 +1,11 @@
+{
+  "name": "@asteria/mission-control-client",
+  "version": "0.0.0",
+  "description": "API client for using the ASTERIA mission control api",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.7",
+    "axios": "^1.13.2"
+  }
+}
