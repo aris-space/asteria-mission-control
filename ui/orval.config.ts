@@ -11,8 +11,12 @@ export default defineConfig({
       client: "react-query",
       mode: "split",
       override: {
+        mutator: {
+          path: "./api/mutator/custom-axios-instance.ts",
+          name: "customAxiosInstance"
+        },
         header: false
-      }
+      },
     }
   }
 })
