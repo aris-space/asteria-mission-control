@@ -7,6 +7,12 @@
     <title>ASTERIA Mission Control</title>
   </head>
   <body>
+    <script>
+      // Set the `VITE_API_URL` into the `API_URL` global variable
+      // before loading any other scripts according to
+      // https://vite.dev/guide/env-and-mode#html-constant-replacement
+      var API_URL = "%VITE_API_URL%";
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

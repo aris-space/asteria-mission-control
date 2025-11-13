@@ -20,25 +20,14 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 /**
  * Get basic information about the running API server
  */
-export type infoResponse200 = {
-  data: Info;
-  status: 200;
-};
-
-export type infoResponseSuccess = infoResponse200 & {
-  headers: Headers;
-};
-export type infoResponse = infoResponseSuccess;
-
-export const getInfoUrl = () => {
-  return `/api/`;
-};
-
-export const info = async (options?: RequestInit): Promise<infoResponse> => {
-  return customAxiosInstance<infoResponse>(getInfoUrl(), {
-    ...options,
-    method: "GET",
-  });
+export const info = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<Info>(
+    { url: `/api/`, method: "GET", signal },
+    options,
+  );
 };
 
 export const getInfoQueryKey = () => {
@@ -60,7 +49,7 @@ export const getInfoQueryOptions = <
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof info>>> = ({
     signal,
-  }) => info({ signal, ...requestOptions });
+  }) => info(requestOptions, signal);
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof info>>,
@@ -160,27 +149,14 @@ export function useInfo<
 /**
  * Subscribe to API event stream using SSE
  */
-export type subscribeEventsResponseDefault = {
-  data: unknown;
-  status: number;
-};
-export type subscribeEventsResponseError = subscribeEventsResponseDefault & {
-  headers: Headers;
-};
-
-export type subscribeEventsResponse = subscribeEventsResponseError;
-
-export const getSubscribeEventsUrl = () => {
-  return `/api/events`;
-};
-
-export const subscribeEvents = async (
-  options?: RequestInit,
-): Promise<subscribeEventsResponse> => {
-  return customAxiosInstance<subscribeEventsResponse>(getSubscribeEventsUrl(), {
-    ...options,
-    method: "GET",
-  });
+export const subscribeEvents = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<unknown>(
+    { url: `/api/events`, method: "GET", signal },
+    options,
+  );
 };
 
 export const getSubscribeEventsQueryKey = () => {
@@ -202,7 +178,7 @@ export const getSubscribeEventsQueryOptions = <
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof subscribeEvents>>> = ({
     signal,
-  }) => subscribeEvents({ signal, ...requestOptions });
+  }) => subscribeEvents(requestOptions, signal);
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof subscribeEvents>>,

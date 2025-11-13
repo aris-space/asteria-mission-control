@@ -1,7 +1,8 @@
 import Axios, { AxiosRequestConfig } from "axios";
 
 export const AXIOS_INSTANCE = Axios.create({
-  baseURL: "http://localhost:8899",
+  // @ts-expect-error: Window is not typed but we have a global API_URL constant guaranteed to be loaded
+  baseURL: window.API_URL ?? "http://localhost:8899/asdf",
 });
 
 export const customAxiosInstance = <T>(
@@ -16,7 +17,10 @@ export const customAxiosInstance = <T>(
     cancelToken: source.token,
   }).then(({ data }) => data);
 
+  // @ts-expect-error: The `cancel` field on the promise is not well-typed
+  promise.cancel = () => {
+    source.cancel("Query was cancelled");
+  };
+
   return promise;
 };
-
-export type BodyType<BodyData> = BodyData;

@@ -17,7 +17,7 @@ export function EventProvider(props: PropsWithChildren) {
   const [latency, setLatency] = useState<number>(Infinity);
 
   useEffect(() => {
-    const eventSource = new EventSource(`${apiUrl}/events`);
+    const eventSource = new EventSource(`${apiUrl}/api/events`);
     setSource(eventSource);
 
     eventSource.addEventListener("open", () => {
