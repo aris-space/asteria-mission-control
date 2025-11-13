@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 
-const apiUrl = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface EventContext {
   latency: number;
@@ -17,12 +17,12 @@ export function EventProvider(props: PropsWithChildren) {
   const [latency, setLatency] = useState<number>(Infinity);
 
   useEffect(() => {
-    const eventSource = new EventSource(`${apiUrl}/api/events`);
+    const eventSource = new EventSource(`${API_URL}/api/events`);
     setSource(eventSource);
 
     eventSource.addEventListener("open", () => {
-      console.log("connected to events!")
-    })
+      console.log("Successfulyl connected to events!")
+    });
 
     eventSource.addEventListener("ping", (data) => {
       const timestamp = new Date(parseInt(data.data));
@@ -44,10 +44,12 @@ export function EventProvider(props: PropsWithChildren) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
-export function useEvent(): EventContext {
+/**
+ * Get the lantecy to the backend server
+ * @returns latency in milliseconds or Infinity should the client not yet have received a ping
+ */
+export function useLatency(): number {
   const context = useContext(EventContext);
-  if (!context)
-    throw new Error("useEvent must only be used within a EventProvider");
-  return context;
+  if (!context) throw new Error("useLatency must only be used within a EventProvider");
+  return context.latency;
 }

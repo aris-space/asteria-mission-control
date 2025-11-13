@@ -6,13 +6,12 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', "packages"]),
   {
     files: ['**/*.{ts,tsx}'],
-    ignores: ['packages/**/**'],
     extends: [
       js.configs.recommended,
-      tseslint.configs.recommended,
+      tseslint.configs.base,
       reactHooks.configs['recommended-latest'],
       reactRefresh.configs.vite,
     ],
@@ -20,5 +19,10 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      "react-refresh/only-export-components": [
+        "off"
+      ]
+    }
   },
 ])

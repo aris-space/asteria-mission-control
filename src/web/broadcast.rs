@@ -55,6 +55,9 @@ impl Broadcast {
     pub async fn subscribe(&self) -> actix_web::Result<Sse<InfallibleStream<ReceiverStream<Event>>>> {
         let (tx, rx) = tokio::sync::mpsc::channel::<Event>(10);
         let mut subscriptions = self.subscriptions.lock().await;
+        if let Err(err) = tx.send(BroadcastEvent::Ping.into()).await {
+            log::warn!("unable to send initial ping to new subscription: {err}");
+        }
         subscriptions.push(tx.clone());
 
         Ok(Sse::from_infallible_receiver(rx))
