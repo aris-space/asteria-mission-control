@@ -9,6 +9,7 @@ export function Layout(props: PropsWithChildren) {
   const { data } = useInfo();
 
   const hasLatency = isFinite(latency);
+  const hasVersion = !!data?.version;
 
   return (
     <AppShell padding="xl" header={{ height: "3.5rem" }}>
@@ -37,12 +38,14 @@ export function Layout(props: PropsWithChildren) {
               </Tooltip>
               <Tooltip
                 label={
-                  data?.version
+                  hasVersion
                     ? `Using backend version ${data.version}`
                     : "Unable to get backend version"
                 }
               >
-                <Badge size={"md"}>{data?.version ?? "v?.?.?"}</Badge>
+                <Badge color={hasVersion ? "blue" : "red"} size={"md"}>
+                  {data?.version ?? "v?.?.?"}
+                </Badge>
               </Tooltip>
             </Flex>
           </Flex>
