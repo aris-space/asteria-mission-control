@@ -1,0 +1,3 @@
+[submodule "state-machine"]
+	path = state-machine
+	url = git@github.com:aris-space/hermes-state-machine.git

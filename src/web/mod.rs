@@ -24,3 +24,11 @@ pub async fn info() -> actix_web::Result<impl Responder> {
 pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<impl Responder> {
     broadcast.subscribe().await
 }
+
+// TODO: It should be possible to retrieve different state machines without needing to recompile the backend
+//       this is for testing/illustration purposes only
+#[utoipa::path(responses((status = OK, body = String, content_type = "image/svg+xml")), description = "Get the active state-machine")]
+#[get("/state-machine")]
+pub async fn get_state_machine() -> actix_web::Result<impl Responder> {
+    Ok(String::from_utf8_lossy(include_bytes!("../../state-machine/flight-state-machine.drawio.svg")))
+}

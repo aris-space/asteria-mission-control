@@ -1,0 +1,5 @@
+.svgContainer {
+    rect:hover {
+        fill: red !important;
+    }
+}
