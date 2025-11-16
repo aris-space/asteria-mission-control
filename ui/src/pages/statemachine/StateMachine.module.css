@@ -1,5 +1,7 @@
 .svgContainer {
-    rect:hover {
-        fill: red !important;
+    div {
+        font-family: monospace !important;
+        line-height: 0.95;
+        font-size: 85%;
     }
 }
