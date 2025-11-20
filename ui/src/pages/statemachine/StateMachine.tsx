@@ -1,7 +1,7 @@
 import { useGetStateMachine } from "@asteria/mission-control-client";
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { ActionIcon, Affix, Flex, Tooltip } from "@mantine/core";
+import { ActionIcon, Affix, Box, Flex, Tooltip } from "@mantine/core";
 import classes from "./StateMachine.module.css";
 import { IconZoomReset } from "@tabler/icons-react";
 
@@ -9,7 +9,7 @@ import { IconZoomReset } from "@tabler/icons-react";
 const STATE_KIND_ATTR: string = "data-state-kind";
 
 function StateMachine() {
-  const { data: stateMachine = "" } = useGetStateMachine();
+  const { data: stateMachine } = useGetStateMachine();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
@@ -23,7 +23,7 @@ function StateMachine() {
 
   function setupSvg() {
     if (!stateMachine || !containerRef.current) return;
-    containerRef.current.innerHTML = stateMachine;
+    containerRef.current.innerHTML = stateMachine.diagram;
     const svg = containerRef.current.querySelector("svg");
     if (!svg) {
       console.warn("Received non-svg state machine from API");
@@ -42,6 +42,9 @@ function StateMachine() {
       svg.innerHTML = "";
       svg.appendChild(wrapper);
     }
+
+    svg.setAttribute("width", "100%");
+    svg.setAttribute("height", "100%");
   }
 
   function setupZoom() {
@@ -108,7 +111,9 @@ function StateMachine() {
           </Tooltip>
         </Affix>
       )}
-      <section className={classes.svgContainer} ref={containerRef} />
+      <Box w={"100%"}>
+        <section className={classes.svgContainer} ref={containerRef} />
+      </Box>
     </Flex>
   );
 }

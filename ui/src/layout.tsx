@@ -1,6 +1,6 @@
 import { type PropsWithChildren } from "react";
 import { useLatency } from "./hooks/EventContext";
-import { AppShell, Badge, Flex, SimpleGrid, Tooltip } from "@mantine/core";
+import { AppShell, Badge, Flex, Image, SimpleGrid, Tooltip } from "@mantine/core";
 import { useInfo } from "@asteria/mission-control-client";
 import { IconPlug, IconPlugX } from "@tabler/icons-react";
 
@@ -12,10 +12,12 @@ export function Layout(props: PropsWithChildren) {
   const hasVersion = !!data?.version;
 
   return (
-    <AppShell padding="xl" header={{ height: "3.5rem" }}>
+    <AppShell padding="0" header={{ height: "4rem" }}>
       <AppShell.Header>
-        <SimpleGrid p={"md"} cols={2}>
-          <Flex align={"center"} justify={"start"}></Flex>
+        <SimpleGrid py={"xs"} px={"sm"} cols={2}>
+          <Flex align={"center"} justify={"start"}>
+            <Image src={"/logo.png"} h={"3rem"} mt={"-0.25rem"} w={"3rem"} />
+          </Flex>
           <Flex align={"center"} justify={"end"}>
             <Flex gap={"md"}>
               <Tooltip
@@ -51,7 +53,7 @@ export function Layout(props: PropsWithChildren) {
           </Flex>
         </SimpleGrid>
       </AppShell.Header>
-      <AppShell.Main bg={"dark"}>{props.children}</AppShell.Main>
+      <AppShell.Main >{props.children}</AppShell.Main>
     </AppShell>
   );
 }

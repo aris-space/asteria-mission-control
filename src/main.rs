@@ -10,6 +10,10 @@ use crate::{cli::Cli, web::broadcast::Broadcast};
 
 mod cli;
 mod web;
+mod statemachine;
+
+/// Static path to the state machine drawio svg+xml (used for development only, will be removed at some point)
+pub const STATE_MACHINE_PATH: &str = "state-machine.svg";
 
 #[derive(utoipa::OpenApi)]
 #[openapi(

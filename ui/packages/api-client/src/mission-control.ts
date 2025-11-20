@@ -11,7 +11,7 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { Info } from "./mission-control.schemas";
+import type { Info, StateMachine } from "./mission-control.schemas";
 
 import { customAxiosInstance } from "./api/mutator/custom-axios-instance";
 
@@ -300,7 +300,7 @@ export const getStateMachine = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<string>(
+  return customAxiosInstance<StateMachine>(
     { url: `/api/state-machine`, method: "GET", signal },
     options,
   );

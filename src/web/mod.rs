@@ -1,3 +1,5 @@
+use std::{fs::read_to_string, path::Path};
+
 use actix_web::{
     Responder, get,
     web::{Data, Json},
@@ -5,6 +7,8 @@ use actix_web::{
 use serde::Serialize;
 
 use broadcast::Broadcast;
+
+use crate::{STATE_MACHINE_PATH, statemachine::StateMachine};
 
 pub mod broadcast;
 
@@ -27,8 +31,9 @@ pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<i
 
 // TODO: It should be possible to retrieve different state machines without needing to recompile the backend
 //       this is for testing/illustration purposes only
-#[utoipa::path(responses((status = OK, body = String, content_type = "image/svg+xml")), description = "Get the active state-machine")]
+#[utoipa::path(responses((status = OK, body = StateMachine)), description = "Get the active state-machine")]
 #[get("/state-machine")]
 pub async fn get_state_machine() -> actix_web::Result<impl Responder> {
-    Ok(String::from_utf8_lossy(include_bytes!("../../state-machine.svg")))
+    let state_machine = StateMachine::parse_from(Path::new(STATE_MACHINE_PATH))?;
+    Ok(Json(state_machine))
 }
