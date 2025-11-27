@@ -1,0 +1,13 @@
+default_scenario = "default"
+
+[scenario.default]
+name = "Default"
+[scenario.default.state_machine.fc]
+name = "Flight Computer"
+path = "state-machine.svg"
+
+[scenario.other]
+name = "Other"
+[scenario.other.state_machine.aaaa]
+name = "Remote Fueling Station"
+path = "state-machine.svg"

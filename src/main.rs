@@ -1,19 +1,21 @@
+use std::{path::Path, process::exit, sync::Arc};
+
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
 use clap::Parser;
 use env_logger::Env;
+use tokio::sync::RwLock;
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
 
-use crate::{cli::Cli, web::broadcast::Broadcast};
+use crate::{cli::Cli, config::Config, state::State, web::broadcast::Broadcast};
 
 mod cli;
-mod web;
+mod config;
+mod state;
 mod statemachine;
-
-/// Static path to the state machine drawio svg+xml (used for development only, will be removed at some point)
-pub const STATE_MACHINE_PATH: &str = "state-machine.svg";
+mod web;
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -30,6 +32,18 @@ async fn main() {
     env_logger::init_from_env(Env::new().default_filter_or("info"));
     let cli = Cli::parse();
 
+    let config = match Config::parse(Path::new(&cli.config_path)) {
+        Ok(config) => Arc::new(config),
+        Err(err) => {
+            log::error!("error whilst parsing config: {err}");
+            exit(1);
+        }
+    };
+
+    let state = Arc::new(RwLock::new(State::new(config.clone())));
+
+    log::debug!("using config: {config:?}");
+
     let broadcast = Broadcast::new();
 
     HttpServer::new(move || {
@@ -38,6 +52,8 @@ async fn main() {
             .wrap(cors)
             .wrap(middleware::Logger::default())
             .app_data(Data::from(broadcast.clone()))
+            .app_data(Data::from(config.clone()))
+            .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
             .service(utoipa_actix_web::scope("/api").configure(apply_endpoints))
@@ -53,5 +69,12 @@ async fn main() {
 
 /// Apply all endpoints to the main service config which is exposed under /api/
 fn apply_endpoints(cfg: &mut ServiceConfig) {
-    cfg.service(web::info).service(web::subscribe_events).service(web::get_state_machine);
+    cfg.service(web::info)
+        .service(web::subscribe_events)
+        .service(web::state_machine)
+        .service(web::active_scenario)
+        .service(web::change_scenario)
+        .service(web::all_scenarios)
+        .service(web::state_machine)
+        .service(web::all_state_machines);
 }

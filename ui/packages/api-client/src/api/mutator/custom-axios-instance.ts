@@ -2,7 +2,7 @@ import Axios, { AxiosRequestConfig } from "axios";
 
 export const AXIOS_INSTANCE = Axios.create({
   // @ts-expect-error: Window is not typed but we have a global API_URL constant guaranteed to be loaded
-  baseURL: window.API_URL ?? "http://localhost:8899/asdf",
+  baseURL: window.API_URL ?? "http://localhost:8899/api",
 });
 
 export const customAxiosInstance = <T>(

@@ -64,6 +64,9 @@ When available, the content is a html string. */
 }
 
 export interface Info {
+  /** Default scenario from current configuration file */
+  default_scenario: string;
+  /** Git version of the mission control server */
   version: string;
 }
 
@@ -80,6 +83,13 @@ export interface MxGeometry {
   width?: MxGeometryWidth;
   x?: MxGeometryX;
   y?: MxGeometryY;
+}
+
+export interface ScenarioInfo {
+  /** Identifier of the scenario */
+  id: string;
+  /** Displayname of the scenario */
+  name: string;
 }
 
 /**
@@ -114,4 +124,11 @@ export interface StateMachine {
    * @minimum 0
    */
   width: number;
+}
+
+export interface StateMachineInfo {
+  /** Identifier of the state machine */
+  id: string;
+  /** Displayname of the state machine */
+  name: string;
 }
