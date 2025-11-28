@@ -8,15 +8,15 @@ use serde::Deserialize;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
-    #[error("error whilst reading config: {0}")]
+    #[error("Error whilst reading config: {0}")]
     Read(std::io::Error),
-    #[error("error whilst deserializing config: {0}")]
+    #[error("Error whilst deserializing config: {0}")]
     Deserialize(toml::de::Error),
-    #[error("the config needs at least one scenario")]
+    #[error("The config needs at least one scenario")]
     NoScenarios,
-    #[error("scenario with name '{0}' doesn't exist but is used as the default scenario")]
+    #[error("Scenario with name '{0}' doesn't exist but is used as the default scenario")]
     MissingDefaultScenario(String),
-    #[error("error whilst canonicalizing state diagram for state machine '{0}' at path {1:?}: {2}")]
+    #[error("Error whilst canonicalizing state diagram for state machine '{0}' at path {1:?}: {2}")]
     MissingDiagram(String, PathBuf, std::io::Error),
 }
 

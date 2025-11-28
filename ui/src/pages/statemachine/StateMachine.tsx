@@ -1,7 +1,21 @@
-import { useGetStateMachine } from "@asteria/mission-control-client";
-import { useEffect, useRef, useState } from "react";
+import {
+  StateMachine as StateMachineDefintion,
+  useActiveScenario,
+  useAllStateMachines,
+  useStateMachine,
+} from "@asteria/mission-control-client";
+import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { ActionIcon, Affix, Box, Flex, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Affix,
+  Alert,
+  Box,
+  Flex,
+  Loader,
+  Select,
+  Tooltip,
+} from "@mantine/core";
 import classes from "./StateMachine.module.css";
 import { IconZoomReset } from "@tabler/icons-react";
 
@@ -9,17 +23,25 @@ import { IconZoomReset } from "@tabler/icons-react";
 const STATE_KIND_ATTR: string = "data-state-kind";
 
 function StateMachine() {
-  const { data: stateMachine } = useGetStateMachine();
+  const [stateMachine, setStateMachine] =
+    useState<StateMachineDefintion | null>();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
   const [isDirty, setIsDirty] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!stateMachine) resetSvg();
     setupSvg();
     setupZoom();
     setupStateListeners();
   }, [stateMachine, containerRef]);
+
+  const resetSvg = () => {
+    if (!containerRef.current) return;
+    containerRef.current.innerHTML = "";
+    setIsDirty(false);
+  };
 
   function setupSvg() {
     if (!stateMachine || !containerRef.current) return;
@@ -59,9 +81,7 @@ function StateMachine() {
           .attr("transform", event.transform.toString());
       });
 
-    d3.select(svgRef.current)
-      .call(zoom)
-      .on("dblclick.zoom", null);
+    d3.select(svgRef.current).call(zoom).on("dblclick.zoom", null);
     zoomRef.current = zoom;
   }
 
@@ -111,10 +131,79 @@ function StateMachine() {
           </Tooltip>
         </Affix>
       )}
-      <Box w={"100%"}>
-        <section className={classes.svgContainer} ref={containerRef} />
-      </Box>
+      <Affix position={{ top: "5rem", left: "lg" }}>
+        <StateMachineSelector onChange={setStateMachine} />
+      </Affix>
+      {stateMachine ? (
+        <Box w={"100%"}>
+          <section className={classes.svgContainer} ref={containerRef} />
+        </Box>
+      ) : (
+        <Flex p={"lg"} justify={"center"} align={"center"}>
+          <Alert variant="light" color="blue" title="No state machine selected">
+            You need to select a state machine to start
+          </Alert>
+        </Flex>
+      )}
     </Flex>
+  );
+}
+
+interface StateMachineSelectorProps {
+  onChange: (stateMachine: StateMachineDefintion | null) => void;
+}
+
+function StateMachineSelector(props: StateMachineSelectorProps) {
+  const [selected, setSelected] = useState<string | null>();
+  const { data: activeScenario, ...active } = useActiveScenario();
+  const { data: allStateMachines = [], ...all } = useAllStateMachines(
+    activeScenario?.id ?? "",
+  );
+  const { data: stateMachine, ...machine } = useStateMachine(
+    activeScenario?.id ?? "",
+    selected ?? "",
+  );
+
+  useEffect(() => {
+    if (!selected) props.onChange(null);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!activeScenario) return;
+    setSelected(null);
+  }, [activeScenario]);
+
+  useEffect(() => {
+    if (!stateMachine) return;
+    props.onChange(stateMachine);
+  }, [stateMachine]);
+
+  useEffect(() => {
+    if (!machine.error) return;
+    setSelected(null);
+  }, [machine.error]);
+
+  const handleStateMachineChange = (value: string | null) => {
+    setSelected(value);
+  };
+
+  const loading = active.isPending || all.isPending || machine.isLoading;
+
+  return (
+    <Select
+      placeholder={"Select a state machine"}
+      data={allStateMachines.map(({ id, name }) => ({
+        label: name,
+        value: id,
+      }))}
+      disabled={loading}
+      value={selected}
+      onChange={handleStateMachineChange}
+      clearable
+      allowDeselect
+      rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
+      rightSectionWidth={40}
+    />
   );
 }
 

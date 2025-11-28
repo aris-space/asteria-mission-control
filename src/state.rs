@@ -8,9 +8,9 @@ pub type StateInstance = Arc<RwLock<State>>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StateError {
-    #[error("scenario '{0}' is already active")]
+    #[error("Scenario '{0}' is already active")]
     AlreadyActive(String),
-    #[error("scenario '{0}' does not exist")]
+    #[error("Scenario '{0}' does not exist")]
     NotFound(String)
 }
 
@@ -29,7 +29,7 @@ impl State {
 
     /// Get the active scenario
     pub fn get_scenario(&self) -> &Scenario {
-        self.config.scenarios.get(&self.scenario).expect("state scenario should always exist")
+        self.config.scenarios.get(&self.scenario).expect("State scenario should always exist")
     }
 
     /// Get the id of the active scenario

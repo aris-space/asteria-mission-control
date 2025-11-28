@@ -1,4 +1,4 @@
-import Axios, { AxiosRequestConfig } from "axios";
+import Axios, { AxiosError, AxiosRequestConfig } from "axios";
 
 export const AXIOS_INSTANCE = Axios.create({
   // @ts-expect-error: Window is not typed but we have a global API_URL constant guaranteed to be loaded
@@ -24,3 +24,5 @@ export const customAxiosInstance = <T>(
 
   return promise;
 };
+
+export type ErrorType<Error> = AxiosError<Error>;

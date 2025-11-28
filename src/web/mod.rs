@@ -74,7 +74,7 @@ pub async fn all_scenarios(config: Data<Config>) -> actix_web::Result<Json<Vec<S
 
 #[utoipa::path(
     responses(
-        (status = OK, body = ()),
+        (status = OK, body = String),
         (status = BAD_REQUEST, body = String)
     ),
     description = "Change the active scenario. Emits a `scenario-change` event with the id of the new scenario to all clients"
@@ -84,35 +84,41 @@ pub async fn change_scenario(
     scenario_id: web::Path<String>,
     state: Data<StateInstance>,
     broadcast: Data<Broadcast>,
-) -> actix_web::Result<()> {
+) -> actix_web::Result<String> {
     let scenario_id = scenario_id.into_inner();
     let mut state = state.write().await;
     match state.set_scenario(scenario_id.clone()) {
         Ok(_) => {
-            broadcast.broadcast(Event::ScenarioChange(scenario_id)).await;
-            Ok(())
+            broadcast.broadcast(Event::ScenarioChange(scenario_id.clone())).await;
+            Ok(scenario_id)
         }
         Err(err) => {
-            log::debug!("error whilst changing scenario: {err}");
+            log::debug!("Error whilst changing scenario: {err}");
             Err(ErrorBadRequest(err))
         }
     }
 }
 
-#[utoipa::path(responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)), description = "Get a state machine of the current active scenario")]
-#[get("/statemachine/{id}")]
-pub async fn state_machine(id: web::Path<String>, state: Data<StateInstance>) -> actix_web::Result<Json<StateMachine>> {
-    let id = id.into_inner();
-    let state = state.read().await;
-    match state.get_scenario().state_machines.get(&id) {
-        Some(state_machine) => StateMachine::parse_from(&state_machine.path)
-            .map_err(|err| {
-                log::error!("error whilst parsing state machine file: {err}");
-                ErrorInternalServerError("error whilst parsing state machine file")
-            })
-            .map(Json),
-        None => Err(ErrorNotFound(format!("state machine '{id}' not found on current scenario"))),
-    }
+#[utoipa::path(responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)), description = "Get a specific state machine of a specific scenario")]
+#[get("/statemachine/{scenario_id}/{statemachine_id}")]
+pub async fn state_machine(ids: web::Path<(String, String)>, config: Data<Config>) -> actix_web::Result<Json<StateMachine>> {
+    let (scenario_id, state_machine_id) = ids.into_inner();
+
+    config
+        .scenarios
+        .get(&scenario_id)
+        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))?
+        .state_machines
+        .get(&state_machine_id)
+        .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found on scenario '{scenario_id}'")))
+        .and_then(|state_machine| {
+            StateMachine::parse_from(&state_machine.path)
+                .map_err(|err| {
+                    log::error!("Error whilst parsing state machine file: {err}");
+                    ErrorInternalServerError("Error whilst parsing state machine file")
+                })
+                .map(Json)
+        })
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -123,16 +129,24 @@ struct StateMachineInfo {
     name: String,
 }
 
-#[utoipa::path(responses((status = OK, body = Vec<StateMachineInfo>)), description = "Get all available state machines from the active scenario")]
-#[get("/statemachine")]
-pub async fn all_state_machines(state: Data<StateInstance>) -> actix_web::Result<Json<Vec<StateMachineInfo>>> {
-    let state = state.read().await;
-    let state_machines = state
-        .get_scenario()
-        .state_machines
-        .iter()
-        .map(|(id, machine)| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
-        .collect::<Vec<_>>();
+#[utoipa::path(responses((status = OK, body = Vec<StateMachineInfo>)), description = "Get all available state machines of a specific scenario scenario")]
+#[get("/statemachine/{scenario_id}")]
+pub async fn all_state_machines(
+    scenario_id: web::Path<String>,
+    config: Data<Config>,
+) -> actix_web::Result<Json<Vec<StateMachineInfo>>> {
+    let scenario_id = scenario_id.into_inner();
 
-    Ok(Json(state_machines))
+    config
+        .scenarios
+        .get(&scenario_id)
+        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
+        .map(|scenario| {
+            scenario
+                .state_machines
+                .iter()
+                .map(|(id, machine)| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
+                .collect::<Vec<_>>()
+        })
+        .map(Json)
 }

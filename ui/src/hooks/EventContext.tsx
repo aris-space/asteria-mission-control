@@ -2,15 +2,15 @@ import { createContext, useContext, useEffect, useState, type PropsWithChildren 
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface EventContext {
+interface EventContextDefinition {
   latency: number;
 }
 
-const defaultValue: EventContext = {
+const defaultValue: EventContextDefinition = {
   latency: Infinity,
 };
 
-const EventContext = createContext<EventContext>(defaultValue);
+const EventContext = createContext<EventContextDefinition>(defaultValue);
 
 export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource>()
@@ -29,7 +29,7 @@ export function EventProvider(props: PropsWithChildren) {
       const now = new Date();
       setLatency(now.getTime() - timestamp.getTime());
 
-      console.log(`Received ping with ${now.getTime() - timestamp.getTime()}ms latency`)
+      console.debug(`Received ping with ${now.getTime() - timestamp.getTime()}ms latency`)
     })
 
     return () => {

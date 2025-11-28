@@ -35,14 +35,14 @@ async fn main() {
     let config = match Config::parse(Path::new(&cli.config_path)) {
         Ok(config) => Arc::new(config),
         Err(err) => {
-            log::error!("error whilst parsing config: {err}");
+            log::error!("Error whilst parsing config: {err}");
             exit(1);
         }
     };
 
     let state = Arc::new(RwLock::new(State::new(config.clone())));
 
-    log::debug!("using config: {config:?}");
+    log::debug!("Using config: {config:?}");
 
     let broadcast = Broadcast::new();
 
@@ -61,10 +61,10 @@ async fn main() {
             .into_app()
     })
     .bind((cli.address, cli.port))
-    .expect("should be able to bind to address and port")
+    .expect("Should be able to bind to address and port")
     .run()
     .await
-    .expect("should start web server");
+    .expect("Should start web server");
 }
 
 /// Apply all endpoints to the main service config which is exposed under /api/
