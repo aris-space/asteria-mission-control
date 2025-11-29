@@ -1,3 +1,6 @@
+mavlink_address = "tcpin:127.0.0.1:5760"
+
+
 default_scenario = "default"
 
 [scenario.default]

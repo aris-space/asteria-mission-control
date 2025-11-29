@@ -22,6 +22,9 @@ At the moment, the config file is used to specify the scenarios which are availa
 
 The config is writtein in TOML and follows the following schema:
 ```toml
+# address of the mavlink broadcast
+mavlink_address = "tcpin:127.0.0.1:5760"
+
 # name of the scenario which should be selected by default
 default_scenario = "drop-test-1"
 

@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::Arc,
 };
 
 use schemars::JsonSchema;
@@ -38,11 +38,13 @@ pub struct Config {
     /// All state machines available on the mission control
     #[serde(rename = "state_machine")]
     pub state_machines: HashMap<String, StateMachine>,
+    /// Address under which the mavlink broadcast is available
+    pub mavlink_address: String,
 }
 
 impl Config {
     /// Parse the config at a given path
-    pub fn parse(path: &Path) -> Result<Self, ConfigError> {
+    pub fn parse(path: &Path) -> Result<Arc<Self>, ConfigError> {
         let config_str = fs::read_to_string(path).map_err(ConfigError::Read)?;
         let mut config = toml::from_str::<Self>(&config_str).map_err(ConfigError::Deserialize)?;
         config.validate()?;
@@ -68,7 +70,7 @@ impl Config {
             Ok(())
         })?;
 
-        Ok(config)
+        Ok(Arc::new(config))
     }
 
     /// Validate whether the config satisfies all semantic constraints

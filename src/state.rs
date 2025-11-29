@@ -23,8 +23,9 @@ impl State {
     /// Create a new state instance from the config
     ///
     /// The state uses the default scenario of the config as it's active scenario on creation
-    pub fn new(config: Arc<Config>) -> Self {
-        Self { scenario: config.default_scenario.clone(), config }
+    pub fn new(config: Arc<Config>) -> StateInstance {
+        let instance = Self { scenario: config.default_scenario.clone(), config };
+        Arc::new(RwLock::new(instance))
     }
 
     /// Get the active scenario

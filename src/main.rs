@@ -1,9 +1,8 @@
-use std::{collections::HashMap, path::Path, process::exit, sync::Arc};
-
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
 use clap::Parser;
 use env_logger::Env;
+use std::{collections::HashMap, path::Path, process::exit, sync::Arc};
 use tokio::sync::RwLock;
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
@@ -12,6 +11,7 @@ use utoipa_rapidoc::RapiDoc;
 use crate::{
     cli::Cli,
     config::Config,
+    mavlink::MavlinkRouter,
     state::State,
     statemachine::{StateMachine, StateMachineError},
     web::broadcast::Broadcast,
@@ -19,6 +19,7 @@ use crate::{
 
 mod cli;
 mod config;
+mod mavlink;
 mod state;
 mod statemachine;
 mod web;
@@ -39,12 +40,13 @@ async fn main() {
     let cli = Cli::parse();
 
     let config = match Config::parse(Path::new(&cli.config_path)) {
-        Ok(config) => Arc::new(config),
+        Ok(config) => config,
         Err(err) => {
             log::error!("Error whilst parsing config: {err}");
             exit(1);
         }
     };
+
     log::debug!("Using config: {config:?}");
 
     let state_machines = match config
@@ -63,6 +65,19 @@ async fn main() {
 
     let state = Arc::new(RwLock::new(State::new(config.clone())));
     let broadcast = Broadcast::new();
+    let mavlink_router = match MavlinkRouter::new(config.clone(), broadcast.clone()) {
+        Ok(router) => router,
+        Err(err) => {
+            log::error!("Error whilst setting up mavlink router: {err}");
+            exit(1)
+        }
+    };
+
+    let mavlink_router_clone = mavlink_router.clone();
+    tokio::spawn(async move {
+        // start mavlink server and proxy messages as SSE events
+        mavlink_router_clone.start_message_proxy().await
+    });
 
     HttpServer::new(move || {
         let cors = Cors::default().allow_any_header().allow_any_method().allow_any_origin();
@@ -72,6 +87,7 @@ async fn main() {
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
             .app_data(Data::from(state_machines.clone()))
+            .app_data(Data::from(mavlink_router.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
