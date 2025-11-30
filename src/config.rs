@@ -1,7 +1,8 @@
 use std::{
     collections::HashMap,
     fs,
-    path::{Path, PathBuf}, sync::Arc,
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 
 use schemars::JsonSchema;

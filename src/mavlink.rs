@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use crate::{config::Config, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
-use hermes_mavlink::MavMessage as HermesMavMessage;
 use mavlink_core::{MavConnection, MavHeader};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
+
+pub use hermes_mavlink::MavMessage as HermesMavMessage;
 
 /// Mavlink system ID of the mission control
 const MISSION_CONTROL_SYSTEM_ID: u8 = 111;
@@ -17,30 +18,41 @@ pub enum MavlinkError {
     SendFailed(mavlink_core::error::MessageWriteError),
 }
 
-struct MavlinkData { header: MavHeader, message: HermesMavMessage }
+type MavlinkConnection = Box<dyn MavConnection<HermesMavMessage> + Send + Sync>;
 
-pub struct MavlinkRouter {
-    connection: Box<dyn MavConnection<HermesMavMessage> + Send + Sync>,
+struct MavlinkData {
+    header: MavHeader,
+    message: HermesMavMessage,
+}
+
+pub struct Mavlink {
+    connection: RwLock<Option<Arc<MavlinkConnection>>>,
     broadcast: Arc<Broadcast>,
+    address: String,
     sequence: Mutex<u8>,
 }
 
-impl MavlinkRouter {
-    pub fn new(config: Arc<Config>, broadcast: Arc<Broadcast>) -> Result<Arc<Self>, MavlinkError> {
-        let connection = mavlink_core::connect::<HermesMavMessage>(&config.mavlink_address).map_err(MavlinkError::ConnectionFailed)?;
-        let instance = Self { connection, broadcast, sequence: Mutex::new(0) };
-        Ok(Arc::new(instance))
+impl Mavlink {
+    pub fn new(config: Arc<Config>, broadcast: Arc<Broadcast>) -> Arc<Self> {
+        let instance = Self {
+            connection: RwLock::new(None),
+            address: config.mavlink_address.clone(),
+            broadcast,
+            sequence: Mutex::new(0),
+        };
+        Arc::new(instance)
     }
 
     /// Start listening to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
     /// subscribed clients
-    pub async fn start_message_proxy(&self) {
+    pub async fn start_message_proxy(&self) -> Result<(), MavlinkError> {
+        let connection = self.get_or_setup_connection().await?;
         loop {
-            let data = match self.connection.recv() {
+            let data = match connection.recv() {
                 Ok((header, message)) => MavlinkData { header, message },
                 Err(err) => {
                     log::warn!("Unable to receive mavlink message: {err}");
-                    continue;
+                    break;
                 }
             };
 
@@ -54,14 +66,41 @@ impl MavlinkRouter {
                 }
             }
         }
+        Ok(())
     }
 
+    /// Send a mavlink message out
     pub async fn send(&self, message: HermesMavMessage) -> Result<usize, MavlinkError> {
+        let connection = self.get_or_setup_connection().await?;
         let mut sequence = self.sequence.lock().await;
         let header = MavHeader { system_id: MISSION_CONTROL_SYSTEM_ID, sequence: *sequence, ..Default::default() };
         *sequence = sequence.wrapping_add(1);
         drop(sequence);
-        self.connection.send(&header, &message).map_err(MavlinkError::SendFailed)
+        connection.send(&header, &message).map_err(MavlinkError::SendFailed)
+    }
+
+    /// Get or setup the mavlink connection should it not already exist.
+    ///
+    /// This setup allows us to lazily initialize the mavlink connection upon first usage. This way,
+    /// the setup time of the mavlink connection does not impact the startup time of the total system.
+    async fn get_or_setup_connection(&self) -> Result<Arc<MavlinkConnection>, MavlinkError> {
+        let connection = self.connection.read().await;
+
+        if let Some(connection) = connection.as_ref() {
+            Ok(connection.clone())
+        } else {
+            // drop the read-handle of the lock as RwLock is not upgradable
+            drop(connection);
+            log::debug!("No mavlink connection found. Attempting to connect to {}...", self.address);
+            let new_connection = mavlink_core::connect::<HermesMavMessage>(&self.address)
+                .map(Arc::new)
+                .map_err(MavlinkError::ConnectionFailed)?;
+            log::debug!("Successfully established mavlink connection");
+            let created_connection = new_connection.clone();
+            let mut connection = self.connection.write().await;
+            *connection = Some(new_connection);
+            Ok(created_connection)
+        }
     }
 }
 

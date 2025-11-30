@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-
+use crate::mavlink::HermesMavMessage;
 use actix_web::{
     Responder,
-    error::{ErrorBadRequest, ErrorNotFound},
+    error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound},
     get, put,
     web::{self, Data, Json},
 };
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use serde::Serialize;
+use std::collections::HashMap;
 
 use broadcast::Broadcast;
 
-use crate::{config::Config, state::StateInstance, statemachine::StateMachine};
+use crate::{config::Config, mavlink::Mavlink, state::StateInstance, statemachine::StateMachine};
 
 pub mod broadcast;
 
@@ -161,4 +161,24 @@ pub async fn all_state_machines(
                 .collect::<Vec<_>>()
         })
         .map(Json)
+}
+
+#[utoipa::path(
+    responses((status = OK, body = ())),
+    request_body(description = "JSON representation of HERMES mavlink message", content_type = "application/json"),
+    description = "Send a message which will be proxied by the backend as a mavlink message")
+]
+#[put("/message")]
+pub async fn send_message(message: Json<serde_json::Value>, mavlink: Data<Mavlink>) -> actix_web::Result<()> {
+    let message = serde_json::from_value::<HermesMavMessage>(message.into_inner())
+        .map_err(|err| ErrorBadRequest(format!("Message is not a valid HERMES mavlink message: {err}")))?;
+
+    mavlink
+        .send(message)
+        .await
+        .map_err(|err| {
+            log::error!("Error whilst sending mavlink message: {err}");
+            ErrorInternalServerError("Error whilst sending mavlink message")
+        })
+        .map(|_| ())
 }

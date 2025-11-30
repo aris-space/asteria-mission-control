@@ -1,17 +1,13 @@
-mavlink_address = "tcpin:127.0.0.1:5760"
-
-
+mavlink_address = "tcpout:127.0.0.1:5760"
 default_scenario = "default"
 
 [scenario.default]
 name = "Default"
 state_machines = ["fc", "rfs"]
 
-
 [scenario.other]
 name = "Other"
 state_machines = ["fc"]
-
 
 [state_machine.fc]
 name = "Flight Computer"

@@ -11,7 +11,7 @@ use utoipa_rapidoc::RapiDoc;
 use crate::{
     cli::Cli,
     config::Config,
-    mavlink::MavlinkRouter,
+    mavlink::Mavlink,
     state::State,
     statemachine::{StateMachine, StateMachineError},
     web::broadcast::Broadcast,
@@ -65,35 +65,37 @@ async fn main() {
 
     let state = Arc::new(RwLock::new(State::new(config.clone())));
     let broadcast = Broadcast::new();
-    let mavlink_router = match MavlinkRouter::new(config.clone(), broadcast.clone()) {
-        Ok(router) => router,
-        Err(err) => {
-            log::error!("Error whilst setting up mavlink router: {err}");
-            exit(1)
-        }
-    };
+    let mavlink = Mavlink::new(config.clone(), broadcast.clone());
 
-    let mavlink_router_clone = mavlink_router.clone();
+    let mavlink_clone = mavlink.clone();
     tokio::spawn(async move {
-        // start mavlink server and proxy messages as SSE events
-        mavlink_router_clone.start_message_proxy().await
+        // start mavlink receiver and proxy messages as SSE events
+        if let Err(err) = mavlink_clone.start_message_proxy().await {
+            log::error!("Error whilst starting mavlink message proxy: {err}");
+            exit(1);
+        }
     });
 
     HttpServer::new(move || {
         let cors = Cors::default().allow_any_header().allow_any_method().allow_any_origin();
-        App::new()
+        let app = App::new()
             .wrap(cors)
             .wrap(middleware::Logger::default())
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
             .app_data(Data::from(state_machines.clone()))
-            .app_data(Data::from(mavlink_router.clone()))
+            .app_data(Data::from(mavlink.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
             .service(utoipa_actix_web::scope("/api").configure(apply_endpoints))
             .openapi_service(|api| RapiDoc::with_openapi("/docs/openapi.json", api).path("/docs/ui"))
-            .into_app()
+            .into_app();
+
+        #[cfg(feature = "static-frontend")]
+        return app.service(static_frontend_service(std::path::Path::new(&cli.frontend_path)));
+        #[cfg(not(feature = "static-frontend"))]
+        return app;
     })
     .bind((cli.address, cli.port))
     .expect("Should be able to bind to address and port")
@@ -112,5 +114,43 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::change_scenario)
         .service(web::all_scenarios)
         .service(web::state_machine)
-        .service(web::all_state_machines);
+        .service(web::all_state_machines)
+        .service(web::send_message);
+}
+
+#[cfg(feature = "static-frontend")]
+/// Service which serves a static frontend on the `/` directory
+fn static_frontend_service(frontend_path: &Path) -> actix_files::Files {
+    let frontend_pathbuf = frontend_path.to_path_buf();
+    actix_files::Files::new("/", frontend_path)
+        .use_etag(true)
+        .use_last_modified(true)
+        .index_file("index.html")
+        .default_handler(move |req: actix_web::dev::ServiceRequest| {
+            let (http_req, _) = req.into_parts();
+            let frontend_pathbuf = frontend_pathbuf.clone();
+
+            async move {
+                let path_str = &http_req.uri().path()[1..];
+                if path_str.starts_with("api") {
+                    // this is an actual 404 error
+                    // TODO: Create a default not-found handler
+                    Err(actix_web::error::ErrorNotFound("there is no endpoint at this path :("))?
+                } else {
+                    // this path should be served by the UI
+                    let response = match actix_files::NamedFile::open_async(frontend_pathbuf.join("index.html")).await {
+                        Ok(file) => file.use_last_modified(true).use_etag(true).into_response(&http_req),
+                        Err(err) => {
+                            log::error!("Frontend index file not found: {err}");
+                            Err(actix_web::error::ErrorNotFound(format!(
+                                "UI index file not found at path {}",
+                                frontend_pathbuf.join("index.html").to_string_lossy(),
+                            )))?
+                        }
+                    };
+
+                    Ok(actix_web::dev::ServiceResponse::new(http_req, response))
+                }
+            }
+        })
 }
