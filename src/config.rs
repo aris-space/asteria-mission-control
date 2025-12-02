@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -14,13 +15,15 @@ pub enum ConfigError {
     Deserialize(toml::de::Error),
     #[error("The config needs at least one scenario")]
     NoScenarios,
-    #[error("Scenario with name '{0}' doesn't exist but is used as the default scenario")]
+    #[error("Scenario with id '{0}' doesn't exist but is used as the default scenario")]
     MissingDefaultScenario(String),
     #[error("Error whilst canonicalizing state diagram for state machine '{0}' at path {1:?}: {2}")]
     MissingDiagram(String, PathBuf, std::io::Error),
+    #[error("Scenario with id '{0}' references a state machine with id '{1}' which does not exist")]
+    MissingStateMachine(String, String),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct Config {
     /// All scenarios availalable on the mission control
     ///
@@ -30,6 +33,9 @@ pub struct Config {
     pub scenarios: HashMap<String, Scenario>,
     /// Scenario which should be selected by default on startup
     pub default_scenario: String,
+    /// All state machines available on the mission control
+    #[serde(rename = "state_machine")]
+    pub state_machines: HashMap<String, StateMachine>,
 }
 
 impl Config {
@@ -40,17 +46,15 @@ impl Config {
         config.validate()?;
 
         // for all state machines join the state machine path onto the config path and try to canonicalize it
-        config.scenarios.iter_mut().flat_map(|(_, scenario)| scenario.state_machines.iter_mut()).try_for_each(
-            |(name, state_machine)| {
-                let state_machine_path = path.parent().unwrap_or(Path::new("/")).join(&state_machine.path);
-                state_machine_path
-                    .canonicalize()
-                    .map_err(|err| ConfigError::MissingDiagram(name.clone(), state_machine_path, err))
-                    .map(|path| {
-                        state_machine.path = path;
-                    })
-            },
-        )?;
+        config.state_machines.iter_mut().try_for_each(|(id, state_machine)| {
+            let state_machine_path = path.parent().unwrap_or(Path::new("/")).join(&state_machine.path);
+            state_machine_path
+                .canonicalize()
+                .map_err(|err| ConfigError::MissingDiagram(id.clone(), state_machine_path, err))
+                .map(|path| {
+                    state_machine.path = path;
+                })
+        })?;
 
         Ok(config)
     }
@@ -63,25 +67,35 @@ impl Config {
         if !self.scenarios.contains_key(&self.default_scenario) {
             Err(ConfigError::MissingDefaultScenario(self.default_scenario.clone()))?
         }
+        // ensure that all referenced state machines exist
+        self.scenarios.iter().try_for_each(|(scenario_id, scenario)| {
+            scenario.state_machines.iter().try_for_each(|id| {
+                if !self.state_machines.contains_key(id) {
+                    Err(ConfigError::MissingStateMachine(scenario_id.clone(), id.clone()))
+                } else {
+                    Ok(())
+                }
+            })
+        })?;
 
         Ok(())
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct Scenario {
     /// Displayname of the scenario
     pub name: String,
 
-    /// State machines of the scenario
+    /// Identifiers of the state machines of the scenario. All referenced state machines need to exist, otherwise the config
+    /// will fail to parse.
     ///
     /// Often those are just the flight computer and remote fueling station
     /// state machines
-    #[serde(rename = "state_machine")]
-    pub state_machines: HashMap<String, StateMachine>,
+    pub state_machines: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct StateMachine {
     /// Displayname of the state machine on the UI
     pub name: String,

@@ -40,6 +40,13 @@ pub async fn info(config: Data<Config>) -> actix_web::Result<Json<Info>> {
     Ok(Json(Info { version: env!("GIT_VERSION").to_string(), default_scenario: config.default_scenario.clone() }))
 }
 
+#[utoipa::path(responses((status = OK, content_type = "application/json")), description = "Get the TOML schema for the config")]
+#[get("/config/schema")]
+pub async fn config_schema() -> actix_web::Result<Json<serde_json::Value>> {
+    let schema = schemars::schema_for!(Config);
+    Ok(Json(schema.into()))
+}
+
 #[utoipa::path(responses((status = OK, content_type = "text/event-stream")), description = "Subscribe to API event stream using SSE")]
 #[get("/events")]
 pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<impl Responder> {
@@ -99,18 +106,15 @@ pub async fn change_scenario(
     }
 }
 
-#[utoipa::path(responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)), description = "Get a specific state machine of a specific scenario")]
-#[get("/statemachine/{scenario_id}/{statemachine_id}")]
-pub async fn state_machine(ids: web::Path<(String, String)>, config: Data<Config>) -> actix_web::Result<Json<StateMachine>> {
-    let (scenario_id, state_machine_id) = ids.into_inner();
+#[utoipa::path(responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)), description = "Get a specific state machine")]
+#[get("/statemachine/{statemachine_id}")]
+pub async fn state_machine(ids: web::Path<String>, config: Data<Config>) -> actix_web::Result<Json<StateMachine>> {
+    let state_machine_id = ids.into_inner();
 
     config
-        .scenarios
-        .get(&scenario_id)
-        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))?
         .state_machines
         .get(&state_machine_id)
-        .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found on scenario '{scenario_id}'")))
+        .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found")))
         .and_then(|state_machine| {
             StateMachine::parse_from(&state_machine.path)
                 .map_err(|err| {
@@ -130,7 +134,7 @@ struct StateMachineInfo {
 }
 
 #[utoipa::path(responses((status = OK, body = Vec<StateMachineInfo>)), description = "Get all available state machines of a specific scenario scenario")]
-#[get("/statemachine/{scenario_id}")]
+#[get("/statemachine/scenario/{scenario_id}")]
 pub async fn all_state_machines(
     scenario_id: web::Path<String>,
     config: Data<Config>,
@@ -145,7 +149,12 @@ pub async fn all_state_machines(
             scenario
                 .state_machines
                 .iter()
-                .map(|(id, machine)| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
+                .filter_map(|id| {
+                    config
+                        .state_machines
+                        .get(id)
+                        .map(|machine| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
+                })
                 .collect::<Vec<_>>()
         })
         .map(Json)

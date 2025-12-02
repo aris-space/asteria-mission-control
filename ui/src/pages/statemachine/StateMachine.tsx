@@ -159,10 +159,7 @@ function StateMachineSelector(props: StateMachineSelectorProps) {
   const { data: allStateMachines = [], ...all } = useAllStateMachines(
     activeScenario?.id ?? "",
   );
-  const { data: stateMachine, ...machine } = useStateMachine(
-    activeScenario?.id ?? "",
-    selected ?? "",
-  );
+  const { data: stateMachine, ...machine } = useStateMachine(selected ?? "");
 
   useEffect(() => {
     if (!selected) props.onChange(null);

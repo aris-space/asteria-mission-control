@@ -156,6 +156,137 @@ export function useInfo<
 }
 
 /**
+ * Get the TOML schema for the config
+ */
+export const configSchema = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<unknown>(
+    { url: `/api/config/schema`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getConfigSchemaQueryKey = () => {
+  return [`/api/config/schema`] as const;
+};
+
+export const getConfigSchemaQueryOptions = <
+  TData = Awaited<ReturnType<typeof configSchema>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof configSchema>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getConfigSchemaQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof configSchema>>> = ({
+    signal,
+  }) => configSchema(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof configSchema>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ConfigSchemaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof configSchema>>
+>;
+export type ConfigSchemaQueryError = ErrorType<unknown>;
+
+export function useConfigSchema<
+  TData = Awaited<ReturnType<typeof configSchema>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof configSchema>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof configSchema>>,
+          TError,
+          Awaited<ReturnType<typeof configSchema>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useConfigSchema<
+  TData = Awaited<ReturnType<typeof configSchema>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof configSchema>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof configSchema>>,
+          TError,
+          Awaited<ReturnType<typeof configSchema>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useConfigSchema<
+  TData = Awaited<ReturnType<typeof configSchema>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof configSchema>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useConfigSchema<
+  TData = Awaited<ReturnType<typeof configSchema>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof configSchema>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getConfigSchemaQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
  * Subscribe to API event stream using SSE
  */
 export const subscribeEvents = (
@@ -655,13 +786,13 @@ export const allStateMachines = (
   signal?: AbortSignal,
 ) => {
   return customAxiosInstance<StateMachineInfo[]>(
-    { url: `/api/statemachine/${scenarioId}`, method: "GET", signal },
+    { url: `/api/statemachine/scenario/${scenarioId}`, method: "GET", signal },
     options,
   );
 };
 
 export const getAllStateMachinesQueryKey = (scenarioId?: string) => {
-  return [`/api/statemachine/${scenarioId}`] as const;
+  return [`/api/statemachine/scenario/${scenarioId}`] as const;
 };
 
 export const getAllStateMachinesQueryOptions = <
@@ -812,36 +943,27 @@ export function useAllStateMachines<
 }
 
 /**
- * Get a specific state machine of a specific scenario
+ * Get a specific state machine
  */
 export const stateMachine = (
-  scenarioId: string,
   statemachineId: string,
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
   return customAxiosInstance<StateMachine>(
-    {
-      url: `/api/statemachine/${scenarioId}/${statemachineId}`,
-      method: "GET",
-      signal,
-    },
+    { url: `/api/statemachine/${statemachineId}`, method: "GET", signal },
     options,
   );
 };
 
-export const getStateMachineQueryKey = (
-  scenarioId?: string,
-  statemachineId?: string,
-) => {
-  return [`/api/statemachine/${scenarioId}/${statemachineId}`] as const;
+export const getStateMachineQueryKey = (statemachineId?: string) => {
+  return [`/api/statemachine/${statemachineId}`] as const;
 };
 
 export const getStateMachineQueryOptions = <
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
   statemachineId: string,
   options?: {
     query?: Partial<
@@ -853,17 +975,16 @@ export const getStateMachineQueryOptions = <
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey =
-    queryOptions?.queryKey ??
-    getStateMachineQueryKey(scenarioId, statemachineId);
+    queryOptions?.queryKey ?? getStateMachineQueryKey(statemachineId);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof stateMachine>>> = ({
     signal,
-  }) => stateMachine(scenarioId, statemachineId, requestOptions, signal);
+  }) => stateMachine(statemachineId, requestOptions, signal);
 
   return {
     queryKey,
     queryFn,
-    enabled: !!(scenarioId && statemachineId),
+    enabled: !!statemachineId,
     ...queryOptions,
   } as UseQueryOptions<
     Awaited<ReturnType<typeof stateMachine>>,
@@ -881,7 +1002,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
   statemachineId: string,
   options: {
     query: Partial<
@@ -905,7 +1025,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
   statemachineId: string,
   options?: {
     query?: Partial<
@@ -929,7 +1048,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
   statemachineId: string,
   options?: {
     query?: Partial<
@@ -946,7 +1064,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
   statemachineId: string,
   options?: {
     query?: Partial<
@@ -958,11 +1075,7 @@ export function useStateMachine<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getStateMachineQueryOptions(
-    scenarioId,
-    statemachineId,
-    options,
-  );
+  const queryOptions = getStateMachineQueryOptions(statemachineId, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

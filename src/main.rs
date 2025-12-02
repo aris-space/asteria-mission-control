@@ -70,6 +70,7 @@ async fn main() {
 /// Apply all endpoints to the main service config which is exposed under /api/
 fn apply_endpoints(cfg: &mut ServiceConfig) {
     cfg.service(web::info)
+        .service(web::config_schema)
         .service(web::subscribe_events)
         .service(web::state_machine)
         .service(web::active_scenario)

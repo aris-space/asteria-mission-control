@@ -20,7 +20,7 @@ The backend needs a config file. The path of the config file can be specified as
 
 At the moment, the config file is used to specify the scenarios which are available. You can think of a scenario to be a deployment (e.g. for a drop test or an engine test). At the moment, a scenario just specifies where it's state machine diagrams are found and which state machines it has. 
 
-The config is writtein in TOML and follows the following schema (*hopefully auto generated schema in the future*):
+The config is writtein in TOML and follows the following schema:
 ```toml
 # name of the scenario which should be selected by default
 default_scenario = "drop-test-1"
@@ -29,16 +29,19 @@ default_scenario = "drop-test-1"
 [scenario.drop-test-1]
 # name of the scenario which will be displayed in the UI
 name = "Drop Test #1"
+state_machines = ["fc"]
 
-# similar to how every scenario has an unique identifier, every state machine of a scenario
+# similar to how every scenario has an unique identifier, every state machine
 # also has an unique identifier (in this case `fc`)
-[scenario.drop-test-1.state_machine.fc]
+[state_machine.fc]
 # name of the state machine which will be displayed in the UI
 name = "Flight Computer"
 # path to the state machine drawio svg+xml diagram
 # the path can be a relative path to the location of the config file
 path = "flight-computer.svg"
 ```
+
+A schema for the config file is hosted by the backend on the `/api/config/schema` path.
 
 ## UI
 
