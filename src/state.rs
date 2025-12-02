@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use crate::{config::{Config, Scenario}};
+use crate::config::{Config, Scenario};
 
 pub type StateInstance = Arc<RwLock<State>>;
 
@@ -11,12 +11,12 @@ pub enum StateError {
     #[error("Scenario '{0}' is already active")]
     AlreadyActive(String),
     #[error("Scenario '{0}' does not exist")]
-    NotFound(String)
+    NotFound(String),
 }
 
 pub struct State {
     config: Arc<Config>,
-    scenario: String
+    scenario: String,
 }
 
 impl State {
@@ -40,14 +40,14 @@ impl State {
     /// Set the active scenario
     pub fn set_scenario(&mut self, name: String) -> Result<&Scenario, StateError> {
         if self.scenario == name {
-            return Err(StateError::AlreadyActive(name))
+            return Err(StateError::AlreadyActive(name));
         }
 
         match self.config.scenarios.get(&name) {
             Some(scenario) => {
                 self.scenario = name;
                 Ok(scenario)
-            },
+            }
             None => Err(StateError::NotFound(name)),
         }
     }
