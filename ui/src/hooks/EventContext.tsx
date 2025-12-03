@@ -33,7 +33,7 @@ export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
   // for every mavlink message type we just store the latest received message
-  const mavlinkMessages = useMap<String, HermesMavMessage>();
+  const mavlinkMessages = useMap<HermesMavMessage["type"], HermesMavMessage>();
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -120,12 +120,14 @@ export function useLatency(): number {
  * @param type message type to get
  * @returns latest mavlink message of this type or null if no message of this type was received until now
  */
-export function useMavlinkMessage(type: string): HermesMavMessage | null {
+export function useMavlinkMessage<T extends HermesMavMessage["type"]>(
+  type: T,
+): (HermesMavMessage & { type: T }) | null {
   const context = useContext(EventContext);
   if (!context)
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
 
-  return context.messages[type] ?? null;
+  return (context.messages[type] as HermesMavMessage & { type: T }) ?? null;
 }
