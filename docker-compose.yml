@@ -1,0 +1,12 @@
+services:
+  mission-control:
+    build:
+      context: .
+    ports:
+      # map container port 80 to host port 8888
+      - "8888:80"
+    volumes:
+      # mount development config into container
+      - ./config.toml:/app/config.toml
+      # mount development state machine used by config into container
+      - ./state-machine.svg:/app/state-machine.svg

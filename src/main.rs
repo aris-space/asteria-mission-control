@@ -139,7 +139,7 @@ fn static_frontend_service(frontend_path: &Path) -> actix_files::Files {
 
             async move {
                 let path_str = &http_req.uri().path()[1..];
-                if path_str.starts_with("api") {
+                if path_str.starts_with("api") || path_str.starts_with("docs") {
                     // this is an actual 404 error
                     // TODO: Create a default not-found handler
                     Err(actix_web::error::ErrorNotFound("there is no endpoint at this path :("))?

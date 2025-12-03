@@ -8,6 +8,18 @@ The built binary has some bundled CLI flags which can be used to configure the A
 
 To get an overview of the available flags, run the binary with the `--help` argument.
 
+#### Using Docker
+
+The project contains a `Dockerfile` which builds a full stack version of the ASTERIA mission control. The backend web server is used to serve the statically built frontend.
+
+To start the current development version of the mission control inside docker, you can simply run:
+```bash
+# build new docker image and start it 
+docker compose up
+```
+
+after that you should be able to open the mission control UI on [http://localhost:8888](http://localhost:8888).
+
 ### Documentation
 
 The API is documented using [OpenAPI](https://www.openapis.org/). An interactive playground of the API is available under the `/docs/ui` path and the OpenAPI schema can be found under the `/docs/openapi.json` path.
