@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use crate::{config::Config, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
@@ -45,14 +45,30 @@ impl Mavlink {
 
     /// Start listening to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
     /// subscribed clients
+    ///
+    /// **Important**: This method only returns when an error during the receiving process of a message occurs.
     pub async fn start_message_proxy(&self) -> Result<(), MavlinkError> {
         let connection = self.get_or_setup_connection().await?;
         loop {
             let data = match connection.recv() {
                 Ok((header, message)) => MavlinkData { header, message },
+                // the message is not yet ready, therefore we can just ignore this error and continue until either the message is
+                // ready or a "real" error occurs
+                Err(mavlink_core::error::MessageReadError::Io(err)) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                    // FIXME: The current version of mavlink-core used by hermes-mavlink (and therefore also by this crate) doesn't
+                    // support non-blocking mode using tokio. Once we drop hermes-mavlink, we should update mavlink-core or use
+                    // another crate such that we can use async/await when receiving messages.
+                    // At the moment, we just need to add this sleep in order to prevent constant polling :/
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
                 Err(err) => {
                     log::warn!("Unable to receive mavlink message: {err}");
-                    break;
+                    // close the connection in case something went wrong with the connection
+                    //
+                    // since we have a lazily initialized connection, it will attemt a reconnect upon next usage
+                    self.close_connection().await;
+                    return Ok(());
                 }
             };
 
@@ -66,7 +82,6 @@ impl Mavlink {
                 }
             }
         }
-        Ok(())
     }
 
     /// Send a mavlink message out
@@ -83,6 +98,8 @@ impl Mavlink {
     ///
     /// This setup allows us to lazily initialize the mavlink connection upon first usage. This way,
     /// the setup time of the mavlink connection does not impact the startup time of the total system.
+    /// Additionally, we're able to close the connection and reconnect upon receiving a potential
+    /// connection error.
     async fn get_or_setup_connection(&self) -> Result<Arc<MavlinkConnection>, MavlinkError> {
         let connection = self.connection.read().await;
 
@@ -101,6 +118,13 @@ impl Mavlink {
             *connection = Some(new_connection);
             Ok(created_connection)
         }
+    }
+
+    /// Close the current mavlink connection
+    async fn close_connection(&self) {
+        let mut connection = self.connection.write().await;
+        *connection = None;
+        log::debug!("Successfully closed mavlink connection");
     }
 }
 
