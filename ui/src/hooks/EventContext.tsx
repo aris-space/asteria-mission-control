@@ -1,6 +1,12 @@
 import { createContext, useContext, useEffect, useState, type PropsWithChildren } from "react";
 
+// API url constant which is filled using the `VITE_API_URL` environment variable
+// at build time
 const API_URL = import.meta.env.VITE_API_URL;
+
+// Duration in millseconds after which the event source should try to reconnect to the server upon
+// receiving an error
+const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
@@ -13,15 +19,19 @@ const defaultValue: EventContextDefinition = {
 const EventContext = createContext<EventContextDefinition>(defaultValue);
 
 export function EventProvider(props: PropsWithChildren) {
-  const [source, setSource] = useState<EventSource>()
+  const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
 
-  useEffect(() => {
+  const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
-    setSource(eventSource);
+    setSource((src) => {
+      // close existing event source
+      src?.close();
+      return eventSource;
+    });
 
     eventSource.addEventListener("open", () => {
-      console.log("Successfulyl connected to events!")
+      console.log("Successfully connected to events!");
     });
 
     eventSource.addEventListener("ping", (data) => {
@@ -32,10 +42,36 @@ export function EventProvider(props: PropsWithChildren) {
       console.debug(`Received ping with ${now.getTime() - timestamp.getTime()}ms latency`)
     })
 
+    eventSource.addEventListener("error", (data) => {
+      console.error(
+        "Event source unexpectedly closed. View debug logs to see the full error.",
+      );
+      console.debug(data);
+      setLatency(Infinity);
+      setSource((src) => {
+        src?.close();
+        return null;
+      });
+      reconnectEventSource();
+    });
+  };
+
+  const reconnectEventSource = () => {
+    setTimeout(() => {
+      console.log("Attempting to reconnect to events");
+      setupEventSource();
+    }, EVENTS_RECONNECT_TIMEOUT);
+  };
+
+  useEffect(() => {
+    setupEventSource();
+  }, []);
+
+  useEffect(() => {
     return () => {
-      if (source) source.close()
-    }
-  }, [])
+      source?.close();
+    };
+  }, [source]);
 
   return (
     <EventContext.Provider value={{ latency }}>
