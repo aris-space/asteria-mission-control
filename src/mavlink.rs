@@ -7,9 +7,6 @@ use tokio::sync::{Mutex, RwLock};
 
 pub use hermes_mavlink::MavMessage as HermesMavMessage;
 
-/// Mavlink system ID of the mission control
-const MISSION_CONTROL_SYSTEM_ID: u8 = 111;
-
 #[derive(Debug, thiserror::Error)]
 pub enum MavlinkError {
     #[error("Error whilst connecting to mavlink broadcast: {0}")]
@@ -28,26 +25,21 @@ struct MavlinkData {
 pub struct Mavlink {
     connection: RwLock<Option<Arc<MavlinkConnection>>>,
     broadcast: Arc<Broadcast>,
-    address: String,
+    config: Arc<Config>,
     sequence: Mutex<u8>,
 }
 
 impl Mavlink {
     pub fn new(config: Arc<Config>, broadcast: Arc<Broadcast>) -> Arc<Self> {
-        let instance = Self {
-            connection: RwLock::new(None),
-            address: config.mavlink_address.clone(),
-            broadcast,
-            sequence: Mutex::new(0),
-        };
+        let instance = Self { connection: RwLock::new(None), config, broadcast, sequence: Mutex::new(0) };
         Arc::new(instance)
     }
 
-    /// Start listening to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
+    /// Listen to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
     /// subscribed clients
     ///
     /// **Important**: This method only returns when an error during the receiving process of a message occurs.
-    pub async fn start_message_proxy(&self) -> Result<(), MavlinkError> {
+    pub async fn run_message_proxy(&self) -> Result<(), MavlinkError> {
         let connection = self.get_or_setup_connection().await?;
         loop {
             let data = match connection.recv() {
@@ -88,7 +80,7 @@ impl Mavlink {
     pub async fn send(&self, message: HermesMavMessage) -> Result<usize, MavlinkError> {
         let connection = self.get_or_setup_connection().await?;
         let mut sequence = self.sequence.lock().await;
-        let header = MavHeader { system_id: MISSION_CONTROL_SYSTEM_ID, sequence: *sequence, ..Default::default() };
+        let header = MavHeader { system_id: self.config.mavlink_system_id, sequence: *sequence, ..Default::default() };
         *sequence = sequence.wrapping_add(1);
         drop(sequence);
         connection.send(&header, &message).map_err(MavlinkError::SendFailed)
@@ -108,8 +100,8 @@ impl Mavlink {
         } else {
             // drop the read-handle of the lock as RwLock is not upgradable
             drop(connection);
-            log::debug!("No mavlink connection found. Attempting to connect to {}...", self.address);
-            let new_connection = mavlink_core::connect::<HermesMavMessage>(&self.address)
+            log::debug!("No mavlink connection found. Attempting to connect to {}...", self.config.mavlink_address);
+            let new_connection = mavlink_core::connect::<HermesMavMessage>(&self.config.mavlink_address)
                 .map(Arc::new)
                 .map_err(MavlinkError::ConnectionFailed)?;
             log::debug!("Successfully established mavlink connection");

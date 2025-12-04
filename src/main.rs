@@ -24,9 +24,9 @@ mod state;
 mod statemachine;
 mod web;
 
-/// Duration in milliseconds after which a restart of the mavlink
+/// Duration after which a restart of the mavlink
 /// message proxy should be attempted
-const MAVLINK_PROXY_RESTART_TIMEOUT: u64 = 2500;
+const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -75,11 +75,11 @@ async fn main() {
     tokio::spawn(async move {
         loop {
             // start mavlink receiver and proxy messages as SSE events
-            if let Err(err) = mavlink_clone.start_message_proxy().await {
+            if let Err(err) = mavlink_clone.run_message_proxy().await {
                 log::error!("Error whilst starting mavlink message proxy: {err}");
             }
             // await restart timeout and then attempt restart in next iteration
-            tokio::time::sleep(Duration::from_millis(MAVLINK_PROXY_RESTART_TIMEOUT)).await
+            tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT).await
         }
     });
 

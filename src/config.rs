@@ -41,6 +41,8 @@ pub struct Config {
     pub state_machines: HashMap<String, StateMachine>,
     /// Address under which the mavlink broadcast is available
     pub mavlink_address: String,
+    /// System id which should be used by the backend when sending messages
+    pub mavlink_system_id: u8,
 }
 
 impl Config {

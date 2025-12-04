@@ -37,6 +37,8 @@ The config is writtein in TOML and follows the following schema:
 ```toml
 # address of the mavlink router
 mavlink_address = "tcpout:127.0.0.1:5760"
+# mavlink system id which is used by the backend when sending messages
+mavlink_system_id = 222
 
 # name of the scenario which should be selected by default
 default_scenario = "drop-test-1"
