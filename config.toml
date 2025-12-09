@@ -12,8 +12,10 @@ state_machines = ["fc"]
 
 [state_machine.fc]
 name = "Flight Computer"
-path = "state-machine.svg"
+diagram_path = "state-machine.svg"
+config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
 
 [state_machine.rfs]
 name = "Remote Fueling Station"
-path = "state-machine.svg"
+diagram_path = "state-machine.svg"
+config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"

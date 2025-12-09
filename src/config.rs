@@ -17,8 +17,10 @@ pub enum ConfigError {
     NoScenarios,
     #[error("Scenario with id '{0}' doesn't exist but is used as the default scenario")]
     MissingDefaultScenario(String),
-    #[error("Error whilst canonicalizing state diagram for state machine '{0}' at path {1:?}: {2}")]
+    #[error("Error whilst canonicalizing state diagram path for state machine '{0}' at path {1:?}: {2}")]
     MissingDiagram(String, PathBuf, std::io::Error),
+    #[error("Error whilst canonicalizing state machine config path for state machine '{0}' at path {1:?}: {2}")]
+    MissingConfig(String, PathBuf, std::io::Error),
     #[error("Scenario with id '{0}' references a state machine with id '{1}' which does not exist")]
     MissingStateMachine(String, String),
 }
@@ -45,15 +47,25 @@ impl Config {
         let mut config = toml::from_str::<Self>(&config_str).map_err(ConfigError::Deserialize)?;
         config.validate()?;
 
-        // for all state machines join the state machine path onto the config path and try to canonicalize it
+        let parent_path = path.parent().unwrap_or(Path::new("/"));
+
+        // for all state machines join all paths onto the config path and try to canonicalize it
         config.state_machines.iter_mut().try_for_each(|(id, state_machine)| {
-            let state_machine_path = path.parent().unwrap_or(Path::new("/")).join(&state_machine.path);
-            state_machine_path
-                .canonicalize()
-                .map_err(|err| ConfigError::MissingDiagram(id.clone(), state_machine_path, err))
-                .map(|path| {
-                    state_machine.path = path;
-                })
+            let diagram_path = parent_path.join(&state_machine.diagram_path);
+            diagram_path.canonicalize().map_err(|err| ConfigError::MissingDiagram(id.clone(), diagram_path, err)).map(
+                |path| {
+                    state_machine.diagram_path = path;
+                },
+            )?;
+
+            let config_path = parent_path.join(&state_machine.config_path);
+            config_path.canonicalize().map_err(|err| ConfigError::MissingConfig(id.clone(), config_path, err)).map(
+                |path| {
+                    state_machine.config_path = path;
+                },
+            )?;
+
+            Ok(())
         })?;
 
         Ok(config)
@@ -101,8 +113,17 @@ pub struct StateMachine {
     pub name: String,
     /// Path to the drawio svg+xml file of the state machine
     ///
-    /// **Important**: The path needs to be relative to the location of the config file
-    ///                and will be joined and canonicalized after the path of the config
-    ///                file after parsing
-    pub path: PathBuf,
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined and canonicalized after the
+    ///                path of the config file after parsing
+    #[serde(alias = "diagram")]
+    pub diagram_path: PathBuf,
+    /// Path to the remote computers config which specifies the valid
+    /// state transitions of this state machine
+    ///
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined and canonicalized after the
+    ///                path of the config file after parsing
+    #[serde(alias = "config")]
+    pub config_path: PathBuf,
 }

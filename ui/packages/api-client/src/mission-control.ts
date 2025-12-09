@@ -797,7 +797,7 @@ export const getAllStateMachinesQueryKey = (scenarioId?: string) => {
 
 export const getAllStateMachinesQueryOptions = <
   TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<string>,
 >(
   scenarioId: string,
   options?: {
@@ -835,11 +835,11 @@ export const getAllStateMachinesQueryOptions = <
 export type AllStateMachinesQueryResult = NonNullable<
   Awaited<ReturnType<typeof allStateMachines>>
 >;
-export type AllStateMachinesQueryError = ErrorType<unknown>;
+export type AllStateMachinesQueryError = ErrorType<string>;
 
 export function useAllStateMachines<
   TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<string>,
 >(
   scenarioId: string,
   options: {
@@ -866,7 +866,7 @@ export function useAllStateMachines<
 };
 export function useAllStateMachines<
   TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<string>,
 >(
   scenarioId: string,
   options?: {
@@ -893,7 +893,7 @@ export function useAllStateMachines<
 };
 export function useAllStateMachines<
   TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<string>,
 >(
   scenarioId: string,
   options?: {
@@ -913,7 +913,7 @@ export function useAllStateMachines<
 
 export function useAllStateMachines<
   TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<string>,
 >(
   scenarioId: string,
   options?: {

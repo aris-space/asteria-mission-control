@@ -45,8 +45,6 @@ pub struct Object {
     pub label: String,
     #[serde(rename(deserialize = "@state"))]
     pub state: String,
-    #[serde(rename(deserialize = "@state-kind"), default)]
-    pub state_kind: super::StateKind,
     #[serde(rename(deserialize = "mxCell"))]
     pub cell: MxCell,
 }

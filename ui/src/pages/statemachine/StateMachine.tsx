@@ -18,9 +18,15 @@ import {
 } from "@mantine/core";
 import classes from "./StateMachine.module.css";
 import { IconZoomReset } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 
-// Attribute which is used to store which kind of a state a state is
-const STATE_KIND_ATTR: string = "data-state-kind";
+// Attribute which is used to store which state a diagram node represents
+const STATE_ATTR: string = "data-state";
+// Attribute which is used to indicate whether a state is active
+const ACTIVE_ATTR: string = "data-active-state";
+// Attribute which is used to indicate whether a state is reachable from
+// the current state using a manual transition
+const MANUALLLY_REACHABLE_ATTR: string = "data-manually-reachable-state";
 
 function StateMachine() {
   const [stateMachine, setStateMachine] =
@@ -30,12 +36,35 @@ function StateMachine() {
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
   const [isDirty, setIsDirty] = useState<boolean>(false);
 
+  const [activeState, setActiveState] = useState<string | null>();
+
   useEffect(() => {
     if (!stateMachine) resetSvg();
     setupSvg();
     setupZoom();
-    setupStateListeners();
   }, [stateMachine, containerRef]);
+
+  useEffect(() => {
+    setActiveState(stateMachine?.initial_state ?? null);
+  }, [stateMachine]);
+
+  useEffect(() => {
+    highlightActiveState();
+    highlightManuallyReachableStates();
+    removeStateListeners();
+    setupStateListeners();
+
+    if (activeState) {
+      notifications.show({
+        title: "Transitions from active state",
+        message: `[${(stateMachine?.manual_transitions[activeState] || []).join(", ")}]`,
+      });
+    }
+
+    return () => {
+      removeStateListeners();
+    };
+  }, [activeState, stateMachine]);
 
   const resetSvg = () => {
     if (!containerRef.current) return;
@@ -85,26 +114,66 @@ function StateMachine() {
     zoomRef.current = zoom;
   }
 
+  function removeStateListeners() {
+    if (!svgRef.current) return;
+    d3.select(svgRef.current)
+      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
+      .selectAll("rect")
+      .style("cursor", "default")
+      .each((_, index, nodes) => {
+        const node = nodes[index] as SVGRectElement;
+        node.onclick = null;
+      });
+
+    // enable pointer events for all non-rect nodes in the tree
+    d3.select(svgRef.current)
+      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
+      .selectAll(":not(rect)")
+      .attr("pointer-events", "all")
+      .style("pointer-events", "all");
+  }
+
   function setupStateListeners() {
     if (!svgRef.current) return;
 
     // add click listener to rects representing a state of the state machine
     // and set correct cursor
     d3.select(svgRef.current)
-      .selectAll(`[${STATE_KIND_ATTR}]`)
+      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
       .selectAll("rect")
       .style("cursor", "pointer")
       // use `each` instead of `on` to also get access to the parent node with the attribute
       .each((_, index, nodes) => {
         const node = nodes[index] as SVGRectElement;
-        node.onclick = (event) => {
-          console.log("clicked on state", node, event);
+        node.onclick = () => {
+          const stateNode = node.closest(`[${STATE_ATTR}]`);
+          if (!stateNode) {
+            notifications.show({
+              title: "Invalid diagram",
+              message:
+                "Clicked node does not have a parent node which contains the state information",
+              color: "red",
+            });
+            return;
+          }
+
+          const state = stateNode.getAttribute(STATE_ATTR) as string;
+          notifications.show({
+            title: "Diagram state",
+            message: `Clicked on node for state "${state}"`,
+            color: "blue",
+          });
+
+          // TODO: Here we would need to send the manual transition message
+          //       and only once the message with the new active state
+          //       is received, we update the active state
+          setActiveState(state);
         };
       });
 
     // disable pointer events for all non-rect nodes in the tree
     d3.select(svgRef.current)
-      .selectAll(`[${STATE_KIND_ATTR}]`)
+      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
       .selectAll(":not(rect)")
       .attr("pointer-events", "none")
       .style("pointer-events", "none");
@@ -118,6 +187,35 @@ function StateMachine() {
       );
     }
     setIsDirty(false);
+  }
+
+  function highlightActiveState() {
+    if (!svgRef.current) return;
+    // remove all currently highlighted states
+    d3.select(svgRef.current)
+      .selectAll(`[${ACTIVE_ATTR}`)
+      .attr(ACTIVE_ATTR, null);
+    if (activeState) {
+      d3.select(svgRef.current)
+        .selectAll(`[${STATE_ATTR}="${activeState}"]`)
+        .attr(ACTIVE_ATTR, true);
+    }
+  }
+
+  function highlightManuallyReachableStates() {
+    if (!svgRef.current) return;
+    // remove all currently highlighted states
+    d3.select(svgRef.current)
+      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}`)
+      .attr(MANUALLLY_REACHABLE_ATTR, null);
+    if (stateMachine && activeState) {
+      stateMachine.manual_transitions[activeState].forEach((state) =>
+        d3
+          .select(svgRef.current)
+          .select(`[${STATE_ATTR}="${state}"]`)
+          .attr(MANUALLLY_REACHABLE_ATTR, true),
+      );
+    }
   }
 
   return (

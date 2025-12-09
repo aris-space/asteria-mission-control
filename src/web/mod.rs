@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use actix_web::{
     Responder,
-    error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound},
+    error::{ErrorBadRequest, ErrorNotFound},
     get, put,
     web::{self, Data, Json},
 };
@@ -106,23 +108,21 @@ pub async fn change_scenario(
     }
 }
 
-#[utoipa::path(responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)), description = "Get a specific state machine")]
+#[utoipa::path(
+    responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)),
+    description = "Get a specific state machine"
+)]
 #[get("/statemachine/{statemachine_id}")]
-pub async fn state_machine(ids: web::Path<String>, config: Data<Config>) -> actix_web::Result<Json<StateMachine>> {
+pub async fn state_machine(
+    ids: web::Path<String>,
+    state_machines: Data<HashMap<String, StateMachine>>,
+) -> actix_web::Result<Json<StateMachine>> {
     let state_machine_id = ids.into_inner();
-
-    config
-        .state_machines
+    state_machines
         .get(&state_machine_id)
+        .cloned()
+        .map(Json)
         .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found")))
-        .and_then(|state_machine| {
-            StateMachine::parse_from(&state_machine.path)
-                .map_err(|err| {
-                    log::error!("Error whilst parsing state machine file: {err}");
-                    ErrorInternalServerError("Error whilst parsing state machine file")
-                })
-                .map(Json)
-        })
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -133,7 +133,10 @@ struct StateMachineInfo {
     name: String,
 }
 
-#[utoipa::path(responses((status = OK, body = Vec<StateMachineInfo>)), description = "Get all available state machines of a specific scenario scenario")]
+#[utoipa::path(
+    responses((status = OK, body = Vec<StateMachineInfo>), (status = NOT_FOUND, body = String)),
+    description = "Get all available state machines of a specific scenario scenario"
+)]
 #[get("/statemachine/scenario/{scenario_id}")]
 pub async fn all_state_machines(
     scenario_id: web::Path<String>,

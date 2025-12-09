@@ -38,7 +38,10 @@ state_machines = ["fc"]
 name = "Flight Computer"
 # path to the state machine drawio svg+xml diagram
 # the path can be a relative path to the location of the config file
-path = "flight-computer.svg"
+diagram_path = "flight-computer.svg"
+# path to the remote computer config file for this state machine 
+# the path can be a relative path to the location of the config file
+config_path = "flight-computer.toml"
 ```
 
 A schema for the config file is hosted by the backend on the `/api/config/schema` path.

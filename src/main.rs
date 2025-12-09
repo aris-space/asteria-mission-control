@@ -1,4 +1,8 @@
-use std::{path::Path, process::exit, sync::Arc};
+// enable the unstable `try_collect` feature which allows us to
+// collect iterators of results into a single result
+#![feature(iterator_try_collect)]
+
+use std::{collections::HashMap, path::Path, process::exit, sync::Arc};
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
@@ -9,7 +13,13 @@ use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
 
-use crate::{cli::Cli, config::Config, state::State, web::broadcast::Broadcast};
+use crate::{
+    cli::Cli,
+    config::Config,
+    state::State,
+    statemachine::{StateMachine, StateMachineError},
+    web::broadcast::Broadcast,
+};
 
 mod cli;
 mod config;
@@ -39,11 +49,23 @@ async fn main() {
             exit(1);
         }
     };
-
-    let state = Arc::new(RwLock::new(State::new(config.clone())));
-
     log::debug!("Using config: {config:?}");
 
+    let state_machines = match config
+        .state_machines
+        .iter()
+        .map(|(name, config)| Result::<_, StateMachineError>::Ok((name.clone(), StateMachine::try_from(config)?)))
+        .try_collect::<HashMap<_, _>>()
+    {
+        Ok(state_machines) => Arc::new(state_machines),
+        Err(err) => {
+            log::error!("Error whilst parsing state machines: {err}");
+            exit(1);
+        }
+    };
+    log::info!("Successfully loaded {} state machines", state_machines.len());
+
+    let state = Arc::new(RwLock::new(State::new(config.clone())));
     let broadcast = Broadcast::new();
 
     HttpServer::new(move || {
@@ -53,6 +75,7 @@ async fn main() {
             .wrap(middleware::Logger::default())
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
+            .app_data(Data::from(state_machines.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
