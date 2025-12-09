@@ -1,7 +1,3 @@
-// enable the unstable `try_collect` feature which allows us to
-// collect iterators of results into a single result
-#![feature(iterator_try_collect)]
-
 use std::{collections::HashMap, path::Path, process::exit, sync::Arc};
 
 use actix_cors::Cors;
@@ -55,7 +51,7 @@ async fn main() {
         .state_machines
         .iter()
         .map(|(name, config)| Result::<_, StateMachineError>::Ok((name.clone(), StateMachine::try_from(config)?)))
-        .try_collect::<HashMap<_, _>>()
+        .collect::<Result<HashMap<_, _>, StateMachineError>>()
     {
         Ok(state_machines) => Arc::new(state_machines),
         Err(err) => {
