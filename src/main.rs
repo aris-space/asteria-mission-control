@@ -56,7 +56,12 @@ async fn main() {
     let state_machines = match config
         .state_machines
         .iter()
-        .map(|(name, config)| Result::<_, (String, StateMachineError)>::Ok((name.clone(), StateMachine::try_from(config).map_err(|err| (name.clone(), err))?)))
+        .map(|(name, config)| {
+            Result::<_, (String, StateMachineError)>::Ok((
+                name.clone(),
+                StateMachine::try_from(config).map_err(|err| (name.clone(), err))?,
+            ))
+        })
         .collect::<Result<HashMap<_, _>, (String, StateMachineError)>>()
     {
         Ok(state_machines) => Arc::new(state_machines),
