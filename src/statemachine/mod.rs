@@ -26,6 +26,8 @@ pub enum StateMachineError {
     DiagramParse(quick_xml::de::DeError),
     #[error("Error whilst parsing state machine diagram nodes: {0}")]
     DiagramNodeParse(html_parser::Error),
+    // TODO: Remove this once the duplicate state detection is enabled
+    #[allow(unused)]
     #[error("State machine diagram contains duplicate state definitions for the following states: {0:?}")]
     DiagramDuplicateStates(Vec<String>),
     // TODO: Remove this once we enabled the check for missing diagram states
@@ -89,6 +91,8 @@ impl TryFrom<&crate::config::StateMachine> for StateMachine {
             })
             .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
+        // TODO: Remove this once the duplicate state detection is enabled
+        #[allow(unused_mut)]
         let mut unique_state_labels = HashSet::<String>::from_iter(state_node_labels.iter().cloned());
 
         // check whether there are duplicate labels in the diagram
@@ -96,13 +100,14 @@ impl TryFrom<&crate::config::StateMachine> for StateMachine {
         // config since we match all text boxes as possible state boxes and text boxes
         // are allowed to have duplicate string values
         if unique_state_labels.len() < state_node_labels.len() {
-            let mut duplicates = Vec::new();
-            state_node_labels.iter().for_each(|label| {
-                if !unique_state_labels.remove(label) && config.state_machine.states.contains_key(label) {
-                    duplicates.push(label.clone());
-                }
-            });
-            Err(StateMachineError::DiagramDuplicateStates(duplicates))?;
+            // TODO: Enable this once we have a state machine diagram which does not contain any duplicate states
+            // let mut duplicates = Vec::new();
+            // state_node_labels.iter().for_each(|label| {
+            //     if !unique_state_labels.remove(label) && config.state_machine.states.contains_key(label) {
+            //         duplicates.push(label.clone());
+            //     }
+            // });
+            // Err(StateMachineError::DiagramDuplicateStates(duplicates))?;
         }
 
         let mut state_nodes = HashMap::from_iter(state_node_labels.into_iter().zip(state_node_ids));
