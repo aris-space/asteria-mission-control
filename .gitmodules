@@ -1,3 +1,6 @@
 [submodule "remote-computers"]
 	path = remote-computers
-	url = git@github.com:aris-space/asteria-remote-computers.git
+	url = ../asteria-remote-computers.git
+[submodule "mavlink"]
+	path = mavlink
+	url = ../hermes-mavlink
