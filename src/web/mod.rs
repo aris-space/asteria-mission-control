@@ -135,7 +135,7 @@ struct StateMachineInfo {
 
 #[utoipa::path(
     responses((status = OK, body = Vec<StateMachineInfo>), (status = NOT_FOUND, body = String)),
-    description = "Get all available state machines of a specific scenario scenario"
+    description = "Get all available state machines of a specific scenario"
 )]
 #[get("/statemachine/scenario/{scenario_id}")]
 pub async fn all_state_machines(

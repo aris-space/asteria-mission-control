@@ -778,7 +778,7 @@ export const useChangeScenario = <
 };
 
 /**
- * Get all available state machines of a specific scenario scenario
+ * Get all available state machines of a specific scenario
  */
 export const allStateMachines = (
   scenarioId: string,

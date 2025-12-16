@@ -50,12 +50,12 @@ async fn main() {
     let state_machines = match config
         .state_machines
         .iter()
-        .map(|(name, config)| Result::<_, StateMachineError>::Ok((name.clone(), StateMachine::try_from(config)?)))
-        .collect::<Result<HashMap<_, _>, StateMachineError>>()
+        .map(|(name, config)| Result::<_, (String, StateMachineError)>::Ok((name.clone(), StateMachine::try_from(config).map_err(|err| (name.clone(), err))?)))
+        .collect::<Result<HashMap<_, _>, (String, StateMachineError)>>()
     {
         Ok(state_machines) => Arc::new(state_machines),
-        Err(err) => {
-            log::error!("Error whilst parsing state machines: {err}");
+        Err((state_machine, err)) => {
+            log::error!("Error whilst parsing state machine '{state_machine}': {err}");
             exit(1);
         }
     };

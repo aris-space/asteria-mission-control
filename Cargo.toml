@@ -11,6 +11,8 @@ chrono = "0.4.42"
 clap = { version = "4.5.51", features = ["derive", "env"] }
 env_logger = "0.11.8"
 futures = "0.3.31"
+html-escape = "0.2.13"
+html_parser = "0.7.0"
 log = "0.4.28"
 quick-xml = { version = "0.38.4", features = ["serialize"] }
 schemars = "1.1.0"

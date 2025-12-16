@@ -17,11 +17,15 @@ import {
   Tooltip,
 } from "@mantine/core";
 import classes from "./StateMachine.module.css";
-import { IconZoomReset } from "@tabler/icons-react";
+import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 
 // Attribute which is used to store which state a diagram node represents
-const STATE_ATTR: string = "data-state";
+const CELL_ID_ATTR: string = "data-cell-id";
+/// Attribute which is used to annotate a state cell with it's corresponding state
+const CELL_STATE_ATTR: string = "data-state";
+// Attribute which is used to indicate whether a state is clickable
+const CLICKABLE_ATTR: string = "data-clickable-state";
 // Attribute which is used to indicate whether a state is active
 const ACTIVE_ATTR: string = "data-active-state";
 // Attribute which is used to indicate whether a state is reachable from
@@ -35,6 +39,7 @@ function StateMachine() {
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
   const [isDirty, setIsDirty] = useState<boolean>(false);
+  const [highlightStates, setHighlightStates] = useState<boolean>(false);
 
   const [activeState, setActiveState] = useState<string | null>();
 
@@ -45,25 +50,25 @@ function StateMachine() {
   }, [stateMachine, containerRef]);
 
   useEffect(() => {
-    setActiveState(stateMachine?.initial_state ?? null);
+    setActiveState(stateMachine?.initialState ?? null);
+    setHighlightStates(false);
   }, [stateMachine]);
 
   useEffect(() => {
     highlightActiveState();
     highlightManuallyReachableStates();
+    highlightAvailableStates();
     removeStateListeners();
     setupStateListeners();
 
-    if (activeState) {
+    if (activeState && stateMachine) {
       notifications.show({
         title: "Transitions from active state",
-        message: `[${(stateMachine?.manual_transitions[activeState] || []).join(", ")}]`,
+        message: `[${(stateMachine?.manualTransitions[activeState] || []).join(", ")}]`,
       });
     }
 
-    return () => {
-      removeStateListeners();
-    };
+    return () => {};
   }, [activeState, stateMachine]);
 
   const resetSvg = () => {
@@ -117,20 +122,13 @@ function StateMachine() {
   function removeStateListeners() {
     if (!svgRef.current) return;
     d3.select(svgRef.current)
-      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
-      .selectAll("rect")
+      .selectAll(`[${CLICKABLE_ATTR}]`)
+      // .selectAll("rect")
       .style("cursor", "default")
       .each((_, index, nodes) => {
         const node = nodes[index] as SVGRectElement;
         node.onclick = null;
       });
-
-    // enable pointer events for all non-rect nodes in the tree
-    d3.select(svgRef.current)
-      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
-      .selectAll(":not(rect)")
-      .attr("pointer-events", "all")
-      .style("pointer-events", "all");
   }
 
   function setupStateListeners() {
@@ -140,13 +138,12 @@ function StateMachine() {
     // and set correct cursor
     d3.select(svgRef.current)
       .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
-      .selectAll("rect")
+      .attr(CLICKABLE_ATTR, "true")
       .style("cursor", "pointer")
-      // use `each` instead of `on` to also get access to the parent node with the attribute
       .each((_, index, nodes) => {
-        const node = nodes[index] as SVGRectElement;
+        const node = nodes[index] as SVGElement;
         node.onclick = () => {
-          const stateNode = node.closest(`[${STATE_ATTR}]`);
+          const stateNode = node.closest(`[${CELL_ID_ATTR}]`);
           if (!stateNode) {
             notifications.show({
               title: "Invalid diagram",
@@ -157,26 +154,37 @@ function StateMachine() {
             return;
           }
 
-          const state = stateNode.getAttribute(STATE_ATTR) as string;
-          notifications.show({
-            title: "Diagram state",
-            message: `Clicked on node for state "${state}"`,
-            color: "blue",
-          });
+          const stateId = stateNode.getAttribute(CELL_ID_ATTR) as string;
 
-          // TODO: Here we would need to send the manual transition message
-          //       and only once the message with the new active state
-          //       is received, we update the active state
-          setActiveState(state);
+          if (stateMachine) {
+            const [state] =
+              Object.entries(stateMachine.stateNodes).find(
+                ([, id]) => id == stateId,
+              ) ?? [];
+
+            if (state) {
+              notifications.show({
+                title: "Diagram state",
+                message: `Clicked on node for state "${state}"`,
+                color: "blue",
+              });
+
+              // TODO: Here we would need to send the manual transition message
+              //       and only once the message with the new active state
+              //       is received, we update the active state
+              setActiveState(state);
+            } else {
+              console.warn(
+                `Found no state->node mapping in state machine for node ${stateId}`,
+              );
+            }
+          } else {
+            console.warn(
+              `Clicked on state machine node ${stateId} but no state machine is active`,
+            );
+          }
         };
       });
-
-    // disable pointer events for all non-rect nodes in the tree
-    d3.select(svgRef.current)
-      .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
-      .selectAll(":not(rect)")
-      .attr("pointer-events", "none")
-      .style("pointer-events", "none");
   }
 
   function resetZoomAndPan() {
@@ -189,15 +197,20 @@ function StateMachine() {
     setIsDirty(false);
   }
 
+  function toggleStateHighlight() {
+    setHighlightStates((highlight) => !highlight);
+  }
+
   function highlightActiveState() {
     if (!svgRef.current) return;
     // remove all currently highlighted states
     d3.select(svgRef.current)
       .selectAll(`[${ACTIVE_ATTR}`)
       .attr(ACTIVE_ATTR, null);
-    if (activeState) {
+    if (activeState && stateMachine) {
+      const activeStateId = stateMachine.stateNodes[activeState];
       d3.select(svgRef.current)
-        .selectAll(`[${STATE_ATTR}="${activeState}"]`)
+        .selectAll(`[${CELL_ID_ATTR}="${activeStateId}"]`)
         .attr(ACTIVE_ATTR, true);
     }
   }
@@ -209,24 +222,47 @@ function StateMachine() {
       .selectAll(`[${MANUALLLY_REACHABLE_ATTR}`)
       .attr(MANUALLLY_REACHABLE_ATTR, null);
     if (stateMachine && activeState) {
-      stateMachine.manual_transitions[activeState].forEach((state) =>
-        d3
-          .select(svgRef.current)
-          .select(`[${STATE_ATTR}="${state}"]`)
-          .attr(MANUALLLY_REACHABLE_ATTR, true),
-      );
+      stateMachine.manualTransitions[activeState].forEach((state) => {
+        const stateId = stateMachine.stateNodes[state];
+        d3.select(svgRef.current)
+          .select(`[${CELL_ID_ATTR}="${stateId}"]`)
+          .attr(MANUALLLY_REACHABLE_ATTR, true);
+      });
+    }
+  }
+
+  function highlightAvailableStates() {
+    if (!containerRef.current) return;
+    // remove all currently highlighted cells
+    d3.select(svgRef.current)
+      .selectAll(`[${CELL_STATE_ATTR}`)
+      .attr(CELL_STATE_ATTR, null);
+
+    if (stateMachine) {
+      Object.entries(stateMachine.stateNodes).forEach(([label, id]) => {
+        d3.select(`[${CELL_ID_ATTR}="${id}"]`).attr(CELL_STATE_ATTR, label);
+      });
     }
   }
 
   return (
     <Flex direction={"column"} justify={"center"} align={"center"}>
-      {isDirty && (
+      {stateMachine && (
         <Affix position={{ top: "5rem", right: "lg" }}>
-          <Tooltip label={"Reset zoom and pan"}>
-            <ActionIcon onClick={resetZoomAndPan}>
-              <IconZoomReset />
-            </ActionIcon>
-          </Tooltip>
+          <Flex gap={"xs"}>
+            <Tooltip label={"Toggle node highlight"}>
+              <ActionIcon onClick={toggleStateHighlight}>
+                {highlightStates ? <IconEyeOff /> : <IconEye />}
+              </ActionIcon>
+            </Tooltip>
+            {isDirty && (
+              <Tooltip label={"Reset zoom and pan"}>
+                <ActionIcon onClick={resetZoomAndPan}>
+                  <IconZoomReset />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </Flex>
         </Affix>
       )}
       <Affix position={{ top: "5rem", left: "lg" }}>
@@ -234,7 +270,11 @@ function StateMachine() {
       </Affix>
       {stateMachine ? (
         <Box w={"100%"}>
-          <section className={classes.svgContainer} ref={containerRef} />
+          <section
+            data-highlight-states={highlightStates}
+            className={classes.svgContainer}
+            ref={containerRef}
+          />
         </Box>
       ) : (
         <Flex p={"lg"} justify={"center"} align={"center"}>

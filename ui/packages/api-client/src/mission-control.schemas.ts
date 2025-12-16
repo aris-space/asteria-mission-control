@@ -18,15 +18,22 @@ export interface ScenarioInfo {
 export type StateMachineManualTransitions = { [key: string]: string[] };
 
 /**
+ * Mapping of state names to diagram cell ids
+ */
+export type StateMachineStateNodes = { [key: string]: string };
+
+/**
  * Representation of a state machine diagram
  */
 export interface StateMachine {
   /** State machine diagram svg without the drawio xml content */
   diagram: string;
   /** Initial state of the state machine */
-  initial_state: string;
+  initialState: string;
   /** Allowed manual transitions for every state */
-  manual_transitions: StateMachineManualTransitions;
+  manualTransitions: StateMachineManualTransitions;
+  /** Mapping of state names to diagram cell ids */
+  stateNodes: StateMachineStateNodes;
 }
 
 export interface StateMachineInfo {
