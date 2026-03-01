@@ -111,7 +111,7 @@ pub enum MavlinkAddress {
     /// IP address and port used for UDP communication
     Udp { local: String, remote: String },
     /// IP address and port used for TCP communication
-    Tcp { remote: String }
+    Tcp { remote: String },
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
