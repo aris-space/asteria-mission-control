@@ -39,10 +39,8 @@ pub struct Config {
     /// All state machines available on the mission control
     #[serde(rename = "state_machine")]
     pub state_machines: HashMap<String, StateMachine>,
-    /// Address under which the mavlink broadcast is available
-    pub mavlink_address: String,
-    /// System id which should be used by the backend when sending messages
-    pub mavlink_system_id: u8,
+    /// MavLink related configuration
+    pub mavlink: MavlinkConfig,
 }
 
 impl Config {
@@ -97,6 +95,23 @@ impl Config {
 
         Ok(())
     }
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct MavlinkConfig {
+    /// Address under which the mavlink broadcast is available
+    pub address: MavlinkAddress,
+    /// System id which should be used by the backend when sending messages
+    pub system_id: u8,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(tag = "protocol", rename_all = "lowercase")]
+pub enum MavlinkAddress {
+    /// IP address and port used for UDP communication
+    Udp { local: String, remote: String },
+    /// IP address and port used for TCP communication
+    Tcp { remote: String }
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

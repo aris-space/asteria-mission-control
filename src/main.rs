@@ -34,7 +34,7 @@ const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
         title = "ASTERIA mission control",
         description = "Documentation for the ASTERIA mission control API",
         version = env!("GIT_VERSION")
-    )
+    ),
 )]
 struct ApiDoc;
 
@@ -89,9 +89,8 @@ async fn main() {
     });
 
     HttpServer::new(move || {
-        let cors = Cors::default().allow_any_header().allow_any_method().allow_any_origin();
         let app = App::new()
-            .wrap(cors)
+            .wrap(Cors::permissive())
             .wrap(middleware::Logger::default())
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
