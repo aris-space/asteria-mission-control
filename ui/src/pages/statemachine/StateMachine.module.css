@@ -1,0 +1,29 @@
+.svgContainer {
+  div {
+    font-family: monospace !important;
+    line-height: 0.95;
+    font-size: 85%;
+  }
+
+  [data-active-state] rect {
+    stroke: red !important;
+    stroke-width: 2px;
+  }
+
+  [data-manually-reachable-state] rect {
+      stroke: green !important;
+      stroke-width: 2px;
+  }
+
+  overflow: hidden;
+  max-height: calc(100vh - 4rem);
+
+  background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.svgContainer[data-highlight-states="true"] {
+    [data-state] rect {
+        fill: orange !important;
+    }
+}
