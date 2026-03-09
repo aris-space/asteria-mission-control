@@ -112,6 +112,8 @@ pub enum MavlinkAddress {
     Udp { local: String, remote: String },
     /// IP address and port used for TCP communication
     Tcp { remote: String },
+    /// Path to a serial device together with the baud rate used
+    Serial { path: String, baud_rate: u32 },
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

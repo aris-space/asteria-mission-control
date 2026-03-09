@@ -7,7 +7,15 @@ use mavio::{
     io::{TokioReader, TokioWriter},
     prelude::V2,
 };
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
+
+/// Amount of receive-errors we tolerate before aborting the
+/// reception of messages.
+///
+/// When a fatal receive-error occurs, the error count raises
+/// quickly and thus it should be safe to not already exit
+/// on the I/O error.
+const MAX_RECV_ERROR_COUNT: u32 = 16;
 
 #[derive(Debug, thiserror::Error)]
 pub enum MavlinkError {
@@ -28,17 +36,18 @@ pub struct Mavlink {
     broadcast: Arc<Broadcast>,
     config: Arc<Config>,
     endpoint: Endpoint<V2>,
+    recv_errors: Mutex<u32>,
 }
 
 impl Mavlink {
     pub fn new(config: Arc<Config>, broadcast: Arc<Broadcast>) -> Arc<Self> {
         let endpoint = Endpoint::v2(mavio::MavLinkId { system: config.mavlink.system_id, component: 0 });
-        let instance = Self { sender: RwLock::new(None), config, broadcast, endpoint };
+        let instance = Self { sender: RwLock::new(None), config, broadcast, endpoint, recv_errors: Mutex::new(0) };
         Arc::new(instance)
     }
 
     /// Listen to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
-    /// subscribed clients
+    /// subscribed clients.
     ///
     /// **Important**: This method only returns when an error during the receiving process of a message occurs.
     pub async fn run_message_proxy(&self) -> Result<(), MavlinkError> {
@@ -50,9 +59,16 @@ impl Mavlink {
             let frame = match receiver.recv().await {
                 Ok(frame) => frame,
                 Err(mavio::Error::Io(io_error)) => {
-                    // when we have IO errors we stop receiving as the connection
-                    // is most likely broken
-                    return Err(MavlinkError::Mavio(mavio::Error::Io(io_error)));
+                    // When we have IO errors we stop receiving as the connection
+                    // is most likely broken.
+                    let mut error_count = self.recv_errors.lock().await;
+                    if *error_count == MAX_RECV_ERROR_COUNT {
+                        return Err(MavlinkError::Mavio(mavio::Error::Io(io_error)));
+                    } else {
+                        *error_count += 1;
+                    }
+                    log::warn!("Unable to receive mavlink message due to I/O error: {}", mavio::Error::Io(io_error));
+                    continue;
                 }
                 Err(err) => {
                     log::warn!("Unable to receive mavlink message: {err}");
@@ -86,15 +102,19 @@ impl Mavlink {
         }
     }
 
-    /// Send a mavlink message out
+    /// Send a mavlink message out.
+    ///
+    /// If no sender already exists, this lazily initializes a new sender.
     pub async fn send(&self, message: Message) -> Result<usize, MavlinkError> {
         let frame = self.endpoint.next_frame(&message).map_err(MavlinkError::Mavio)?;
         let mut sender_guard = self.sender.write().await;
 
         if let Some(sender) = sender_guard.as_mut() {
+            // There is an already initialized sender which we can use.
             let bytes = sender.send(&frame).await.map_err(MavlinkError::Mavio)?;
             Ok(bytes)
         } else {
+            // We need to initialize a new sender and then store it for later reuse.
             let transport =
                 AsyncTransportStream::new(&self.config.mavlink.address).await.map_err(MavlinkError::Connection)?;
             let writer = TokioWriter::new(transport);
