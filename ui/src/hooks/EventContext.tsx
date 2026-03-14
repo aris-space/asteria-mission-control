@@ -1,3 +1,4 @@
+import { Message as MavlinkMessage } from "@asteria/mission-control-client";
 import { useMap } from "@mantine/hooks";
 import {
   createContext,
@@ -6,8 +7,6 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
-
-import type { HermesMavMessage } from "../../hermes-mavlink.d.ts";
 
 // API url constant which is filled using the `VITE_API_URL` environment variable
 // at build time
@@ -19,12 +18,12 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
-  messages: Record<string, HermesMavMessage>;
+  messages: Map<[string, string], MavlinkMessage>;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
-  messages: {},
+  messages: new Map(),
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -33,7 +32,10 @@ export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
   // for every mavlink message type we just store the latest received message
-  const mavlinkMessages = useMap<HermesMavMessage["type"], HermesMavMessage>();
+  const mavlinkMessages = useMap<
+    [MavlinkMessage["board"], MavlinkMessage["message"]["type"]],
+    MavlinkMessage
+  >();
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -60,8 +62,11 @@ export function EventProvider(props: PropsWithChildren) {
     eventSource.addEventListener("mavlink-message", (data) => {
       console.log("Received mavlink message");
 
-      const mavlinkMessage = data.data as HermesMavMessage;
-      mavlinkMessages.set(mavlinkMessage.type, mavlinkMessage);
+      const mavlinkMessage = data.data as MavlinkMessage;
+      mavlinkMessages.set(
+        [mavlinkMessage.board, mavlinkMessage.message.type],
+        mavlinkMessage,
+      );
     });
 
     eventSource.addEventListener("error", (data) => {
@@ -96,9 +101,7 @@ export function EventProvider(props: PropsWithChildren) {
   }, [source]);
 
   return (
-    <EventContext.Provider
-      value={{ latency, messages: Object.fromEntries(mavlinkMessages) }}
-    >
+    <EventContext.Provider value={{ latency, messages: mavlinkMessages }}>
       {props.children}
     </EventContext.Provider>
   );
@@ -120,14 +123,23 @@ export function useLatency(): number {
  * @param type message type to get
  * @returns latest mavlink message of this type or null if no message of this type was received until now
  */
-export function useMavlinkMessage<T extends HermesMavMessage["type"]>(
+export function useMavlinkMessage<
+  B extends MavlinkMessage["board"],
+  T extends Extract<MavlinkMessage, { board: B }>["message"]["type"],
+>(
+  board: B,
   type: T,
-): (HermesMavMessage & { type: T }) | null {
+): (MavlinkMessage & { board: B; message: { type: T } }) | null {
   const context = useContext(EventContext);
   if (!context)
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
 
-  return (context.messages[type] as HermesMavMessage & { type: T }) ?? null;
+  return (
+    (context.messages.get([board, type]) as MavlinkMessage & {
+      board: B;
+      message: { type: T };
+    }) ?? null
+  );
 }

@@ -1,7 +1,8 @@
-mavlink_address = "tcpout:127.0.0.1:5760"
-mavlink_system_id = 222
-
 default_scenario = "default"
+
+[mavlink]
+system_id = 222
+address = { protocol = "tcp", remote = "127.0.0.1:5760" }
 
 [scenario.default]
 name = "Default"

@@ -1,6 +1,6 @@
 [submodule "remote-computers"]
 	path = remote-computers
 	url = ../asteria-remote-computers.git
-[submodule "mavlink"]
-	path = mavlink
-	url = ../hermes-mavlink
+[submodule "data-definitions"]
+	path = data-definitions
+	url = ../asteria-data-definitions
