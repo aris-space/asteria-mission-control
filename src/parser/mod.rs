@@ -12,7 +12,7 @@ pub mod statemachine;
 
 /// A drawio diagram with all its cells and it's dimensions.
 #[allow(unused)]
-pub struct Diagram<T>
+struct Diagram<T>
 where
     T: Debug,
 {
@@ -30,7 +30,7 @@ where
 /// However, elements of the state machine diagram like the legend are also represented as a [`Cell`].
 #[derive(Debug)]
 #[allow(unused)]
-pub struct Cell<T>
+struct Cell<T>
 where
     T: Debug,
 {
