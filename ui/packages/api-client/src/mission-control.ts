@@ -17,6 +17,7 @@ import type {
 import type {
   Info,
   Message,
+  Pss,
   ScenarioInfo,
   StateMachine,
   StateMachineInfo,
@@ -517,6 +518,137 @@ export const useSendMessage = <TError = ErrorType<unknown>, TContext = unknown>(
 
   return useMutation(mutationOptions, queryClient);
 };
+
+/**
+ * Get the PSS information
+ */
+export const pssInformation = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<Pss>(
+    { url: `/api/pss`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getPssInformationQueryKey = () => {
+  return [`/api/pss`] as const;
+};
+
+export const getPssInformationQueryOptions = <
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getPssInformationQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof pssInformation>>> = ({
+    signal,
+  }) => pssInformation(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof pssInformation>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type PssInformationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof pssInformation>>
+>;
+export type PssInformationQueryError = ErrorType<unknown>;
+
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pssInformation>>,
+          TError,
+          Awaited<ReturnType<typeof pssInformation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pssInformation>>,
+          TError,
+          Awaited<ReturnType<typeof pssInformation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getPssInformationQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
 
 /**
  * Get the active scenario

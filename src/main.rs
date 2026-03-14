@@ -3,7 +3,6 @@ use actix_web::{App, HttpServer, middleware, web::Data};
 use clap::Parser;
 use env_logger::Env;
 use std::{collections::HashMap, path::Path, process::exit, sync::Arc, time::Duration};
-use tokio::sync::RwLock;
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
@@ -12,16 +11,19 @@ use crate::{
     cli::Cli,
     config::Config,
     mavlink::Mavlink,
+    parser::{
+        pss::Pss,
+        statemachine::{StateMachine, StateMachineError},
+    },
     state::State,
-    statemachine::{StateMachine, StateMachineError},
     web::broadcast::Broadcast,
 };
 
 mod cli;
 mod config;
 mod mavlink;
+mod parser;
 mod state;
-mod statemachine;
 mod web;
 
 /// Duration after which a restart of the mavlink
@@ -72,7 +74,15 @@ async fn main() {
     };
     log::info!("Successfully loaded {} state machines", state_machines.len());
 
-    let state = Arc::new(RwLock::new(State::new(config.clone())));
+    let pss_diagram = match Pss::try_from(&config.pss) {
+        Ok(diagram) => Arc::new(diagram),
+        Err(err) => {
+            log::error!("Error whilst parsing PSS diagram: {err}");
+            exit(1)
+        }
+    };
+
+    let state = State::new(config.clone());
     let broadcast = Broadcast::new();
     let mavlink = Mavlink::new(config.clone(), broadcast.clone());
 
@@ -95,6 +105,7 @@ async fn main() {
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
             .app_data(Data::from(state_machines.clone()))
+            .app_data(Data::from(pss_diagram.clone()))
             .app_data(Data::from(mavlink.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
@@ -126,6 +137,7 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::all_scenarios)
         .service(web::state_machine)
         .service(web::all_state_machines)
+        .service(web::pss_information)
         .service(web::send_message);
 }
 

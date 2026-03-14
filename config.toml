@@ -21,3 +21,6 @@ config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_m
 name = "Remote Fueling Station"
 diagram_path = "state-machine.svg"
 config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
+
+[pss]
+diagram_path = "pss.svg"

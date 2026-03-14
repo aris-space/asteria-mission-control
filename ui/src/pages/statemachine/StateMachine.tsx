@@ -246,7 +246,7 @@ function StateMachine() {
   }
 
   return (
-    <Flex direction={"column"} justify={"center"} align={"center"}>
+    <Flex direction={"column"} justify={"center"} align={"center"} w={"100%"} h={"100%"}>
       {stateMachine && (
         <Affix position={{ top: "5rem", right: "lg" }}>
           <Flex gap={"xs"}>
@@ -288,6 +288,7 @@ function StateMachine() {
 }
 
 interface StateMachineSelectorProps {
+  // eslint-disable-next-line no-unused-vars
   onChange: (stateMachine: StateMachineDefintion | null) => void;
 }
 

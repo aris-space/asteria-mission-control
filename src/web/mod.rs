@@ -1,3 +1,5 @@
+use crate::parser::pss::Pss;
+use crate::{config::Config, mavlink::Mavlink, parser::statemachine::StateMachine, state::StateInstance};
 use actix_web::{
     Responder,
     error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound},
@@ -6,12 +8,9 @@ use actix_web::{
 };
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use asteria_messages::Message;
+use broadcast::Broadcast;
 use serde::Serialize;
 use std::collections::HashMap;
-
-use broadcast::Broadcast;
-
-use crate::{config::Config, mavlink::Mavlink, state::StateInstance, statemachine::StateMachine};
 
 pub mod broadcast;
 
@@ -30,9 +29,9 @@ impl From<Event> for SseEvent {
 
 #[derive(Serialize, utoipa::ToSchema)]
 struct Info {
-    /// Git version of the mission control server
+    /// Git version of the mission control server.
     version: String,
-    /// Default scenario from current configuration file
+    /// Default scenario from current configuration file.
     default_scenario: String,
 }
 
@@ -57,9 +56,9 @@ pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<i
 
 #[derive(Serialize, utoipa::ToSchema)]
 struct ScenarioInfo {
-    /// Identifier of the scenario
+    /// Identifier of the scenario.
     id: String,
-    /// Displayname of the scenario
+    /// Display name of the scenario.
     name: String,
 }
 
@@ -127,9 +126,9 @@ pub async fn state_machine(
 
 #[derive(Serialize, utoipa::ToSchema)]
 struct StateMachineInfo {
-    /// Identifier of the state machine
+    /// Identifier of the state machine.
     id: String,
-    /// Displayname of the state machine
+    /// Display name of the state machine.
     name: String,
 }
 
@@ -161,6 +160,15 @@ pub async fn all_state_machines(
                 .collect::<Vec<_>>()
         })
         .map(Json)
+}
+
+#[utoipa::path(
+    responses((status = OK, body = Pss)),
+    description = "Get the PSS information"
+)]
+#[get("/pss")]
+pub async fn pss_information(pss: Data<Pss>) -> actix_web::Result<Json<Pss>> {
+    Ok(Json(pss.as_ref().clone()))
 }
 
 #[utoipa::path(

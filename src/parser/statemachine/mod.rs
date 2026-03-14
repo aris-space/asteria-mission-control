@@ -1,16 +1,13 @@
+use crate::parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig};
+use html_parser::Dom;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     fs,
 };
-
-use html_parser::Dom;
-use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::statemachine::config::RemoteComputerConfig;
-
-mod config;
-mod parser;
+pub mod config;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineError {
@@ -26,38 +23,39 @@ pub enum StateMachineError {
     DiagramParse(quick_xml::de::DeError),
     #[error("Error whilst parsing state machine diagram nodes: {0}")]
     DiagramNodeParse(html_parser::Error),
-    // TODO: Remove this once the duplicate state detection is enabled
-    #[allow(unused)]
+    #[expect(unused)]
     #[error("State machine diagram contains duplicate state definitions for the following states: {0:?}")]
     DiagramDuplicateStates(Vec<String>),
-    // TODO: Remove this once we enabled the check for missing diagram states
-    #[allow(unused)]
+    #[expect(unused)]
     #[error("State machine diagram config references the following states which are missing in the diagram: {0:?}")]
     DiagramMissingStates(Vec<String>),
 }
 
-/// Representation of a state machine diagram
+/// Representation of a state machine diagram.
 #[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StateMachine {
-    /// State machine diagram svg without the drawio xml content
+    /// State machine diagram SVG without the drawio XML content.
     pub diagram: String,
-    /// Allowed manual transitions for every state
+    /// Allowed manual transitions for every state.
     pub manual_transitions: HashMap<String, Vec<String>>,
-    /// Initial state of the state machine
+    /// Initial state of the state machine.
     pub initial_state: String,
-    /// Mapping of state names to diagram cell ids
+    /// Mapping of state names to diagram cell ids.
     pub state_nodes: HashMap<String, String>,
 }
 
-impl TryFrom<&crate::config::StateMachine> for StateMachine {
+impl TryFrom<&crate::config::StateMachineConfig> for StateMachine {
     type Error = StateMachineError;
 
-    fn try_from(value: &crate::config::StateMachine) -> Result<Self, Self::Error> {
+    fn try_from(value: &crate::config::StateMachineConfig) -> Result<Self, Self::Error> {
         let config_str = fs::read_to_string(&value.config_path).map_err(StateMachineError::ConfigRead)?;
         let diagram_str = fs::read_to_string(&value.diagram_path).map_err(StateMachineError::DiagramRead)?;
 
         let config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
+        // Read the state machine config and ensure that all manual transitions are valid.
+        // This means that the source and the target of a transition need to be defined in
+        // the config.
         let (missing_states, manual_transitions) = config.state_machine.states.iter().fold(
             (Vec::new(), HashMap::new()),
             |(mut missing, mut manual), (state, state_config)| {
@@ -74,15 +72,16 @@ impl TryFrom<&crate::config::StateMachine> for StateMachine {
             },
         );
 
-        // check whether any transitions reference undefined states
+        // Check whether any transitions reference undefined states.
         if !missing_states.is_empty() {
             Err(StateMachineError::ConfigMissingStates(missing_states))?;
         }
 
-        let (xml, svg) = parser::extract_diagram_xml(&diagram_str).map_err(StateMachineError::DiagramParse)?;
-        let (cells, _) = parser::parse_state_machine_xml(&xml).map_err(StateMachineError::DiagramParse)?;
+        let (xml, svg) = cut_diagram_xml(&diagram_str).map_err(StateMachineError::DiagramParse)?;
+        let diagram = parse_diagram_xml::<()>(&xml).map_err(StateMachineError::DiagramParse)?;
 
-        let (state_node_labels, state_node_ids) = cells
+        let (state_node_labels, state_node_ids) = diagram
+            .cells
             .into_iter()
             .filter_map(|cell| cell.vertex.then_some(cell.value).flatten().map(|value| (cell.id, value)))
             .filter_map(|(id, value)| match Dom::parse(&value) {
@@ -91,27 +90,29 @@ impl TryFrom<&crate::config::StateMachine> for StateMachine {
             })
             .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
-        // TODO: Remove this once the duplicate state detection is enabled
-        #[allow(unused_mut)]
+        #[expect(unused_mut)]
+        // All unique labels we have in the diagram. Note that we always use the first
+        // string of a cell's value as it's state name.
         let mut unique_state_labels = HashSet::<String>::from_iter(state_node_labels.iter().cloned());
 
-        // check whether there are duplicate labels in the diagram
-        // we can only check for duplicate labels which are also defined in the state machine
+        // Check whether there are duplicate labels in the diagram.
+        // We can only check for duplicate labels which are also defined in the state machine
         // config since we match all text boxes as possible state boxes and text boxes
-        // are allowed to have duplicate string values
+        // are allowed to have duplicate string values.
         if unique_state_labels.len() < state_node_labels.len() {
             // TODO: Enable this once we have a state machine diagram which does not contain any duplicate states
             // let mut duplicates = Vec::new();
             // state_node_labels.iter().for_each(|label| {
-            //     if !unique_state_labels.remove(label) && config.state_machine.states.contains_key(label) {
-            //         duplicates.push(label.clone());
-            //     }
+            // if !unique_state_labels.remove(label) && config.state_machine.states.contains_key(label) {
+            // duplicates.push(label.clone());
+            // }
             // });
             // Err(StateMachineError::DiagramDuplicateStates(duplicates))?;
         }
 
         let mut state_nodes = HashMap::from_iter(state_node_labels.into_iter().zip(state_node_ids));
 
+        // States from the config which are not defined in the diagram.
         let missing_states = config
             .state_machine
             .states
@@ -120,25 +121,24 @@ impl TryFrom<&crate::config::StateMachine> for StateMachine {
             .cloned()
             .collect::<Vec<_>>();
 
-        // check whether there are any states which are defined in the config but not
-        // available in the diagram
+        // Check whether there are any states which are defined in the config but not
+        // available in the diagram.
         if !missing_states.is_empty() {
             // TODO: Enable this once we have a config which only specifies states which are
             //       also part of the state machine
             // Err(StateMachineError::DiagramMissingStates(missing_states))?;
         }
 
-        // only keep all nodes which are declared in config
-        // this is needed as we also text boxes as possible nodes
+        // Only keep all nodes which are declared in config
+        // this is needed as we also treat text boxes as possible nodes.
         state_nodes.retain(|label, _| config.state_machine.states.contains_key(label));
 
         Ok(Self { diagram: svg, manual_transitions, initial_state: config.state_machine.initial_state, state_nodes })
     }
 }
 
-/// Recursive method used to find the first child node which has a text node as it's first child
-///
-/// Returns [`None`] should no such child node exist
+/// Recursive method used to find the first child node which has a text node as it's first child.
+/// Returns [`None`] should no such child node exist.
 fn child_text(children: &[html_parser::Node]) -> Option<String> {
     match children.first() {
         Some(html_parser::Node::Text(label)) => Some(label.clone()),

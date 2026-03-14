@@ -19,26 +19,31 @@ pub enum ConfigError {
     #[error("Scenario with id '{0}' doesn't exist but is used as the default scenario")]
     MissingDefaultScenario(String),
     #[error("Error whilst canonicalizing state diagram path for state machine '{0}' at path {1:?}: {2}")]
-    MissingDiagram(String, PathBuf, std::io::Error),
+    MissingStateMachineDiagram(String, PathBuf, std::io::Error),
     #[error("Error whilst canonicalizing state machine config path for state machine '{0}' at path {1:?}: {2}")]
-    MissingConfig(String, PathBuf, std::io::Error),
+    MissingStateMachineConfig(String, PathBuf, std::io::Error),
     #[error("Scenario with id '{0}' references a state machine with id '{1}' which does not exist")]
     MissingStateMachine(String, String),
+    #[error("Error whilst canonicalizing the PSS diagram path at {0:?}: {1}")]
+    MissingPssDiagram(PathBuf, std::io::Error),
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct Config {
-    /// All scenarios availalable on the mission control
+    /// All scenarios available on the mission control.
     ///
     /// To run the mission control successfully, at least one scenario needs
-    /// to be specified
+    /// to be specified.
     #[serde(rename = "scenario")]
-    pub scenarios: HashMap<String, Scenario>,
-    /// Scenario which should be selected by default on startup
+    pub scenarios: HashMap<String, ScenarioConfig>,
+    /// Scenario which should be selected by default on startup.
     pub default_scenario: String,
-    /// All state machines available on the mission control
+    /// All state machines available on the mission control.
     #[serde(rename = "state_machine")]
-    pub state_machines: HashMap<String, StateMachine>,
+    pub state_machines: HashMap<String, StateMachineConfig>,
+    /// PSS related config.
+    /// FIXME: Do we support having multiple PSS views like we have with the state machines?
+    pub pss: PssConfig,
     /// MavLink related configuration
     pub mavlink: MavlinkConfig,
 }
@@ -52,29 +57,39 @@ impl Config {
 
         let parent_path = path.parent().unwrap_or(Path::new("/"));
 
-        // for all state machines join all paths onto the config path and try to canonicalize it
+        // For all state machines, join all paths onto the config path and try to canonicalize it.
         config.state_machines.iter_mut().try_for_each(|(id, state_machine)| {
             let diagram_path = parent_path.join(&state_machine.diagram_path);
-            diagram_path.canonicalize().map_err(|err| ConfigError::MissingDiagram(id.clone(), diagram_path, err)).map(
-                |path| {
+            diagram_path
+                .canonicalize()
+                .map_err(|err| ConfigError::MissingStateMachineDiagram(id.clone(), diagram_path, err))
+                .map(|path| {
                     state_machine.diagram_path = path;
-                },
-            )?;
+                })?;
 
             let config_path = parent_path.join(&state_machine.config_path);
-            config_path.canonicalize().map_err(|err| ConfigError::MissingConfig(id.clone(), config_path, err)).map(
-                |path| {
-                    state_machine.config_path = path;
-                },
-            )?;
+            config_path
+                .canonicalize()
+                .map_err(|err| ConfigError::MissingStateMachineConfig(id.clone(), config_path, err))
+                .map(|path| {
+                state_machine.config_path = path;
+            })?;
 
             Ok(())
         })?;
 
+        // For the PSS diagram, join the path onto the config path and try to canonicalize it.
+        let pss_diagram_path = parent_path.join(&config.pss.diagram_path);
+        pss_diagram_path.canonicalize().map_err(|err| ConfigError::MissingPssDiagram(pss_diagram_path, err)).map(
+            |path| {
+                config.pss.diagram_path = path;
+            },
+        )?;
+
         Ok(Arc::new(config))
     }
 
-    /// Validate whether the config satisfies all semantic constraints
+    /// Validate whether the config satisfies all semantic constraints.
     fn validate(&self) -> Result<(), ConfigError> {
         if self.scenarios.is_empty() {
             Err(ConfigError::NoScenarios)?
@@ -82,7 +97,7 @@ impl Config {
         if !self.scenarios.contains_key(&self.default_scenario) {
             Err(ConfigError::MissingDefaultScenario(self.default_scenario.clone()))?
         }
-        // ensure that all referenced state machines exist
+        // Ensure that all referenced state machines exist.
         self.scenarios.iter().try_for_each(|(scenario_id, scenario)| {
             scenario.state_machines.iter().try_for_each(|id| {
                 if !self.state_machines.contains_key(id) {
@@ -117,35 +132,46 @@ pub enum MavlinkAddress {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct Scenario {
-    /// Displayname of the scenario
+pub struct ScenarioConfig {
+    /// Display name of the scenario.
     pub name: String,
 
     /// Identifiers of the state machines of the scenario. All referenced state machines need to exist, otherwise the config
     /// will fail to parse.
     ///
     /// Often those are just the flight computer and remote fueling station
-    /// state machines
+    /// state machines.
     pub state_machines: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct StateMachine {
-    /// Displayname of the state machine on the UI
+pub struct StateMachineConfig {
+    /// Display name of the state machine on the UI.
     pub name: String,
-    /// Path to the drawio svg+xml file of the state machine
+    /// Path to the drawio SVG+XML file of the state machine.
     ///
     /// **Important**: If this path is relative, it needs to be relative to the location
     ///                of the config file and will be joined and canonicalized after the
-    ///                path of the config file after parsing
+    ///                path of the config file after parsing.
     #[serde(alias = "diagram")]
     pub diagram_path: PathBuf,
     /// Path to the remote computers config which specifies the valid
-    /// state transitions of this state machine
+    /// state transitions of this state machine.
     ///
     /// **Important**: If this path is relative, it needs to be relative to the location
     ///                of the config file and will be joined and canonicalized after the
-    ///                path of the config file after parsing
+    ///                path of the config file after parsing.
     #[serde(alias = "config")]
     pub config_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct PssConfig {
+    /// Path to the drawio SVG+XML file of the PSS diagram.
+    ///
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined and canonicalized after the
+    ///                path of the config file after parsing.
+    #[serde(alias = "diagram")]
+    pub diagram_path: PathBuf,
 }

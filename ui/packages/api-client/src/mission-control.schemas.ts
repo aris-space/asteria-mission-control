@@ -1745,9 +1745,9 @@ export interface ImuData {
 }
 
 export interface Info {
-  /** Default scenario from current configuration file */
+  /** Default scenario from current configuration file. */
   default_scenario: string;
-  /** Git version of the mission control server */
+  /** Git version of the mission control server. */
   version: string;
 }
 
@@ -2801,6 +2801,23 @@ opening_time = kp * (target_pressure - current_pressure), in milliseconds
 export type PressurizationGain = number;
 
 /**
+ * List of all datapoints defined in the diagram together with the
+cell id they're mapped to.
+ */
+export type PssDatapointNodes = { [key: string]: string };
+
+/**
+ * Representation of a PSS diagram.
+ */
+export interface Pss {
+  /** List of all datapoints defined in the diagram together with the
+cell id they're mapped to. */
+  datapointNodes: PssDatapointNodes;
+  /** PSS diagram SVG without the drawio XML content. */
+  diagram: string;
+}
+
+/**
  * Shared rail status structure for both 5V and 24V power rails.
  */
 export interface RailStatus {
@@ -3570,9 +3587,9 @@ export interface RfsComputerValveStates {
 }
 
 export interface ScenarioInfo {
-  /** Identifier of the scenario */
+  /** Identifier of the scenario. */
   id: string;
-  /** Displayname of the scenario */
+  /** Display name of the scenario. */
   name: string;
 }
 
@@ -4258,33 +4275,33 @@ export interface SensorsHealth {
 }
 
 /**
- * Allowed manual transitions for every state
+ * Allowed manual transitions for every state.
  */
 export type StateMachineManualTransitions = { [key: string]: string[] };
 
 /**
- * Mapping of state names to diagram cell ids
+ * Mapping of state names to diagram cell ids.
  */
 export type StateMachineStateNodes = { [key: string]: string };
 
 /**
- * Representation of a state machine diagram
+ * Representation of a state machine diagram.
  */
 export interface StateMachine {
-  /** State machine diagram svg without the drawio xml content */
+  /** State machine diagram SVG without the drawio XML content. */
   diagram: string;
-  /** Initial state of the state machine */
+  /** Initial state of the state machine. */
   initialState: string;
-  /** Allowed manual transitions for every state */
+  /** Allowed manual transitions for every state. */
   manualTransitions: StateMachineManualTransitions;
-  /** Mapping of state names to diagram cell ids */
+  /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
 }
 
 export interface StateMachineInfo {
-  /** Identifier of the state machine */
+  /** Identifier of the state machine. */
   id: string;
-  /** Displayname of the state machine */
+  /** Display name of the state machine. */
   name: string;
 }
 
