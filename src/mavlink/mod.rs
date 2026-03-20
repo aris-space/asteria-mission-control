@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use crate::{config::Config, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
+use asteria_datapoint_information::datapoint::DatapointHolder;
+use futures::stream::FuturesUnordered;
 use mavio::{
     AsyncReceiver, AsyncSender, Endpoint,
     io::{TokioReader, TokioWriter},
@@ -28,6 +30,7 @@ pub enum MavlinkError {
 mod transport;
 
 use asteria_messages::Message;
+use tokio_stream::StreamExt;
 
 type MavlinkSender = AsyncSender<tokio::io::Error, TokioWriter<AsyncTransportStream>, V2>;
 
@@ -88,6 +91,26 @@ impl Mavlink {
                     continue;
                 }
             };
+
+            let datapoint_result = message
+                .get_datapoint_values()
+                .iter()
+                .map(|value| {
+                    let data = Data::new_json(value)?;
+                    let event = Event::Data(data.event("pss-data"));
+                    Ok(self.broadcast.broadcast(event))
+                })
+                .collect::<Result<Vec<_>, serde_json::Error>>();
+            match datapoint_result {
+                Ok(futures) => {
+                    // Wait until all pss-data events are sent.
+                    FuturesUnordered::from_iter(futures).collect::<Vec<_>>().await;
+                }
+                Err(err) => {
+                    log::warn!("Unable to serialize at least one PSS datapoint value: {err}")
+                    // We don't continue here to also try broadcasting the MavLink message.
+                }
+            }
 
             match Data::new_json(message) {
                 Ok(data) => {

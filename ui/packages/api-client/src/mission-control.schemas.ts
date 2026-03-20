@@ -15,6 +15,36 @@ export const ActuatorStatus = {
   powerOn: "powerOn",
 } as const;
 
+export type ActuatorValueOneOfDigital = {
+  active: boolean;
+};
+
+export type ActuatorValueOneOf = {
+  digital: ActuatorValueOneOfDigital;
+};
+
+export type ActuatorValueOneOfThreeDpr = {
+  enabled: boolean;
+  setpoint: number;
+};
+
+export type ActuatorValueOneOfThree = {
+  dpr: ActuatorValueOneOfThreeDpr;
+};
+
+export type ActuatorValueOneOfFiveFractional = {
+  precent: number;
+};
+
+export type ActuatorValueOneOfFive = {
+  fractional: ActuatorValueOneOfFiveFractional;
+};
+
+export type ActuatorValue =
+  | ActuatorValueOneOf
+  | ActuatorValueOneOfThree
+  | ActuatorValueOneOfFive;
+
 /**
  * Represents the current arming state of the subsystem
  */
@@ -107,6 +137,37 @@ export type DPRValveOneOf = {
 };
 
 export type DPRValve = DPRValveOneOf | "disabled";
+
+export type DatapointValueOneOfAllOfType =
+  (typeof DatapointValueOneOfAllOfType)[keyof typeof DatapointValueOneOfAllOfType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DatapointValueOneOfAllOfType = {
+  actuator: "actuator",
+} as const;
+
+export type DatapointValueOneOfAllOf = {
+  type: DatapointValueOneOfAllOfType;
+};
+
+export type DatapointValueOneOf = ActuatorValue & DatapointValueOneOfAllOf;
+
+export type DatapointValueOneOfFourAllOfType =
+  (typeof DatapointValueOneOfFourAllOfType)[keyof typeof DatapointValueOneOfFourAllOfType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DatapointValueOneOfFourAllOfType = {
+  sensor: "sensor",
+} as const;
+
+export type DatapointValueOneOfFourAllOf = {
+  type: DatapointValueOneOfFourAllOfType;
+};
+
+export type DatapointValueOneOfFour = SensorValue &
+  DatapointValueOneOfFourAllOf;
+
+export type DatapointValue = DatapointValueOneOf | DatapointValueOneOfFour;
 
 export interface EngineBayTemperature {
   /** Oxidizer Runline temperature in °C. */
@@ -1904,6 +1965,13 @@ export type Message =
   | MessageOneOfOnethree
   | MessageOneOfOnefive
   | MessageOneOfOneseven;
+
+export interface NamedDatapointValue {
+  /** Unique name of the datapoint */
+  name: string;
+  /** Value of the datapoint */
+  value: DatapointValue;
+}
 
 export interface OrientationData {
   /** Normalised quaternion scalar component of the rotation from inertial NED to body-fixed frame. */
@@ -4246,6 +4314,24 @@ export const SensorStatus = {
   offline: "offline",
   online: "online",
 } as const;
+
+export type SensorValueOneOfAnalog = {
+  value: number;
+};
+
+export type SensorValueOneOf = {
+  analog: SensorValueOneOfAnalog;
+};
+
+export type SensorValueOneOfThreeDigital = {
+  enabled: boolean;
+};
+
+export type SensorValueOneOfThree = {
+  digital: SensorValueOneOfThreeDigital;
+};
+
+export type SensorValue = SensorValueOneOf | SensorValueOneOfThree;
 
 /**
  * Represents the online/offline status of all sensors on the Sensor Carrier board.

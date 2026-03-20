@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt::Debug;
 use utoipa::ToSchema;
 
 // This file contains the types for constructing an "abstract node tree" of a drawio diagram.
@@ -44,7 +44,7 @@ pub enum RootChild<T> {
     #[serde(rename(deserialize = "object"))]
     Object(Object<T>),
     #[serde(rename(deserialize = "UserObject"))]
-    UserObject(Object<T>)
+    UserObject(Object<T>),
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,7 +58,6 @@ pub struct Object<T> {
     pub data: T,
     #[serde(rename(deserialize = "mxCell"))]
     pub cell: MxCell,
-
 }
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]

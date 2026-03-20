@@ -1,5 +1,6 @@
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
+use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use clap::Parser;
 use env_logger::Env;
 use std::{collections::HashMap, path::Path, process::exit, sync::Arc, time::Duration};
@@ -26,8 +27,8 @@ mod parser;
 mod state;
 mod web;
 
-/// Duration after which a restart of the mavlink
-/// message proxy should be attempted
+/// Duration after which a restart of the MavLink
+/// message proxy should be attempted.
 const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 
 #[derive(utoipa::OpenApi)]
@@ -37,6 +38,11 @@ const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
         description = "Documentation for the ASTERIA mission control API",
         version = env!("GIT_VERSION")
     ),
+    components(
+        // Manually add this type to the OpenAPI schema since we have no endpoint
+        // using/returning this type. It's only broadcast through SSE.
+        schemas(NamedDatapointValue)
+    )
 )]
 struct ApiDoc;
 
@@ -89,11 +95,11 @@ async fn main() {
     let mavlink_clone = mavlink.clone();
     tokio::spawn(async move {
         loop {
-            // start mavlink receiver and proxy messages as SSE events
+            // Start MavLink receiver and proxy messages as SSE events.
             if let Err(err) = mavlink_clone.run_message_proxy().await {
                 log::error!("Error whilst starting mavlink message proxy: {err}");
             }
-            // await restart timeout and then attempt restart in next iteration
+            // Await restart timeout and then attempt restart in next iteration.
             tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT).await
         }
     });
@@ -126,7 +132,7 @@ async fn main() {
     .expect("Should start web server");
 }
 
-/// Apply all endpoints to the main service config which is exposed under /api/
+/// Apply all endpoints to the main service config which is exposed under `/api/`.
 fn apply_endpoints(cfg: &mut ServiceConfig) {
     cfg.service(web::info)
         .service(web::config_schema)
@@ -142,7 +148,7 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
 }
 
 #[cfg(feature = "static-frontend")]
-/// Service which serves a static frontend on the `/` directory
+/// Service which serves a static frontend on the `/` directory.
 fn static_frontend_service(frontend_path: &Path) -> actix_files::Files {
     let frontend_pathbuf = frontend_path.to_path_buf();
     actix_files::Files::new("/", frontend_path)

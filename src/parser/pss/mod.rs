@@ -1,10 +1,11 @@
-use std::{collections::HashMap, fs};
-
 use crate::{
     config::PssConfig,
     parser::{cut_diagram_xml, parse_diagram_xml},
 };
+use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_messages::Message;
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, fs, ops::Not};
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]
@@ -51,6 +52,25 @@ impl TryFrom<&PssConfig> for Pss {
             .filter_map(|cell| cell.data.map(|data| (data, cell.id)))
             .filter_map(|(data, id)| data.datapoint.map(|name| (name, id)))
             .collect::<HashMap<_, _>>();
+
+        // List of all datapoint names which are defined in the diagram but aren't present
+        // in the [`Message::DATAPOINTS`].
+        #[expect(unused)]
+        let diagram_extra_datapoints = datapoint_nodes
+            .keys()
+            .filter(|name| Message::DATAPOINTS.iter().find(|dp| dp.name == name.as_str()).is_none())
+            .collect::<Vec<_>>();
+
+        // List of all datapoint names which are present in [`Message::DATAPOINTS`] but which aren't
+        // present in the diagram.
+        #[expect(unused)]
+        let config_extra_datapoints = Message::DATAPOINTS
+            .iter()
+            .filter_map(|dp| datapoint_nodes.contains_key(dp.name).not().then_some(dp.name))
+            .collect::<Vec<_>>();
+
+        // let datapoints = Message::DATAPOINTS;
+        // println!("datapoints = {datapoints:#?}");
 
         // TODO: This should be the datapoint information returned from the PSS macro.
         #[expect(unused)]

@@ -416,6 +416,7 @@ dependencies = [
  "actix-web-lab",
  "chrono",
  "clap",
+ "datapoint-information",
  "env_logger",
  "futures",
  "html-escape",
@@ -797,6 +798,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "data-macros",
+ "datapoint-information",
  "mavio",
  "mavlink-hal",
 ]
@@ -813,11 +815,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "datapoint-information"
+version = "0.1.0"
+dependencies = [
+ "gated-derive",
+ "serde",
+ "utoipa",
+]
+
+[[package]]
 name = "datatypes"
 version = "0.1.0"
 dependencies = [
  "bincode",
  "data-core",
+ "datapoint-information",
  "gated-derive",
  "serde",
  "thiserror 2.0.17",
