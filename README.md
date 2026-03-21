@@ -67,3 +67,18 @@ A schema for the config file is hosted by the backend on the `/api/config/schema
 ## UI
 
 The code for the mission control UI is located in [the ui subdirectory](./ui/)
+
+## Diagrams
+
+For the statemachine and PSS views we use draw.io diagrams exported as SVG.
+There are some things which need to be followed whilst exporting the diagram as a SVG such that the SVGs can successfully be used by the Mission Control:
+- The SVG background needs to be set to **transparent**
+- The SVG appearance needs to be set to **light**
+- The "Include a copy of my diagram" option needs to be **enabled**. For multi-page diagrams, only include the current page of the diagram.
+- **Don't export from a selection**, always select **document** as size (or **page** when exporting from a multi-page diagram)
+- The [**svgdata** plugin](https://www.drawio.com/doc/faq/plugins) needs to be enabled, this can either be done by having the `?p=svgdata` URL query parameter or by explicitly adding the plugin inside your editor
+
+> [!IMPORTANT]
+> The draw.io plugins are not stored inside the diagram file. They need to be enabled on every editor with which you want to edit the diagram!
+
+![Screenshot of SVG export on draw.io](./docs/svg-export.png)

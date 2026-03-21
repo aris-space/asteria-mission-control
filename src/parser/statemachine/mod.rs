@@ -1,6 +1,6 @@
 use crate::parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig};
 use html_parser::Dom;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fs,
@@ -32,7 +32,7 @@ pub enum StateMachineError {
 }
 
 /// Representation of a state machine diagram.
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StateMachine {
     /// State machine diagram SVG without the drawio XML content.

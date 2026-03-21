@@ -2,7 +2,7 @@ use crate::{
     config::PssConfig,
     parser::{cut_diagram_xml, parse_diagram_xml},
 };
-use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_datapoint_information::datapoint::{DatapointHolder, DatapointInformation};
 use asteria_messages::Message;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, ops::Not};
@@ -26,14 +26,16 @@ struct PssVertexData {
 }
 
 /// Representation of a PSS diagram.
-#[derive(Debug, Serialize, Deserialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Pss {
     /// PSS diagram SVG without the drawio XML content.
     pub diagram: String,
-    /// List of all datapoints defined in the diagram together with the
+    /// Map of all datapoints defined in the diagram together with the
     /// cell id they're mapped to.
     pub datapoint_nodes: HashMap<String, String>,
+    /// Map of compile-time information about the available PSS datapoints.
+    pub datapoint_info: HashMap<String, DatapointInformation>,
 }
 
 impl TryFrom<&PssConfig> for Pss {
@@ -83,6 +85,9 @@ impl TryFrom<&PssConfig> for Pss {
 
         // TODO: Ensure that the datapoints referenced in the diagram are valid (to the definition above).
 
-        Ok(Self { diagram: svg, datapoint_nodes })
+        let datapoint_info =
+            HashMap::from_iter(Message::DATAPOINTS.iter().map(|datapoint| (datapoint.name.to_string(), *datapoint)));
+
+        Ok(Self { diagram: svg, datapoint_nodes, datapoint_info })
     }
 }

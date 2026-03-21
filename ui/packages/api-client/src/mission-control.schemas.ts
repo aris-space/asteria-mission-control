@@ -1,3 +1,44 @@
+export type ActuatorKindOneOfKind =
+  (typeof ActuatorKindOneOfKind)[keyof typeof ActuatorKindOneOfKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorKindOneOfKind = {
+  digital: "digital",
+} as const;
+
+export type ActuatorKindOneOf = {
+  kind: ActuatorKindOneOfKind;
+};
+
+export type ActuatorKindOneOfThreeKind =
+  (typeof ActuatorKindOneOfThreeKind)[keyof typeof ActuatorKindOneOfThreeKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorKindOneOfThreeKind = {
+  dpr: "dpr",
+} as const;
+
+export type ActuatorKindOneOfThree = {
+  kind: ActuatorKindOneOfThreeKind;
+};
+
+export type ActuatorKindOneOfFiveKind =
+  (typeof ActuatorKindOneOfFiveKind)[keyof typeof ActuatorKindOneOfFiveKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorKindOneOfFiveKind = {
+  fractional: "fractional",
+} as const;
+
+export type ActuatorKindOneOfFive = {
+  kind: ActuatorKindOneOfFiveKind;
+};
+
+export type ActuatorKind =
+  | ActuatorKindOneOf
+  | ActuatorKindOneOfThree
+  | ActuatorKindOneOfFive;
+
 /**
  * Represents the current state of an actuator as detected by a board.
 
@@ -137,6 +178,48 @@ export type DPRValveOneOf = {
 };
 
 export type DPRValve = DPRValveOneOf | "disabled";
+
+/**
+ * Compile time information about a PSS datapoint
+ */
+export interface DatapointInformation {
+  /** Kind of the datapoint (e.g. DPR actuator, digital sensor, ...) */
+  kind: DatapointKind;
+  /** User-facing label of the datapoint */
+  label: string;
+  /** Unique name of the datapoint */
+  name: string;
+}
+
+export type DatapointKindOneOfAllOfComponent =
+  (typeof DatapointKindOneOfAllOfComponent)[keyof typeof DatapointKindOneOfAllOfComponent];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DatapointKindOneOfAllOfComponent = {
+  actuator: "actuator",
+} as const;
+
+export type DatapointKindOneOfAllOf = {
+  component: DatapointKindOneOfAllOfComponent;
+};
+
+export type DatapointKindOneOf = ActuatorKind & DatapointKindOneOfAllOf;
+
+export type DatapointKindOneOfFourAllOfComponent =
+  (typeof DatapointKindOneOfFourAllOfComponent)[keyof typeof DatapointKindOneOfFourAllOfComponent];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DatapointKindOneOfFourAllOfComponent = {
+  sensor: "sensor",
+} as const;
+
+export type DatapointKindOneOfFourAllOf = {
+  component: DatapointKindOneOfFourAllOfComponent;
+};
+
+export type DatapointKindOneOfFour = SensorKind & DatapointKindOneOfFourAllOf;
+
+export type DatapointKind = DatapointKindOneOf | DatapointKindOneOfFour;
 
 export type DatapointValueOneOfAllOfType =
   (typeof DatapointValueOneOfAllOfType)[keyof typeof DatapointValueOneOfAllOfType];
@@ -2869,7 +2952,12 @@ opening_time = kp * (target_pressure - current_pressure), in milliseconds
 export type PressurizationGain = number;
 
 /**
- * List of all datapoints defined in the diagram together with the
+ * Map of compile-time information about the available PSS datapoints.
+ */
+export type PssDatapointInfo = { [key: string]: DatapointInformation };
+
+/**
+ * Map of all datapoints defined in the diagram together with the
 cell id they're mapped to.
  */
 export type PssDatapointNodes = { [key: string]: string };
@@ -2878,7 +2966,9 @@ export type PssDatapointNodes = { [key: string]: string };
  * Representation of a PSS diagram.
  */
 export interface Pss {
-  /** List of all datapoints defined in the diagram together with the
+  /** Map of compile-time information about the available PSS datapoints. */
+  datapointInfo: PssDatapointInfo;
+  /** Map of all datapoints defined in the diagram together with the
 cell id they're mapped to. */
   datapointNodes: PssDatapointNodes;
   /** PSS diagram SVG without the drawio XML content. */
@@ -4303,6 +4393,37 @@ export interface SensorCarrierStatus {
   common: StatusCommonMessage;
   sensorHealth: SensorsHealth;
 }
+
+export type SensorKindOneOfKind =
+  (typeof SensorKindOneOfKind)[keyof typeof SensorKindOneOfKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SensorKindOneOfKind = {
+  analog: "analog",
+} as const;
+
+export type SensorKindOneOfValue = {
+  unit: string;
+};
+
+export type SensorKindOneOf = {
+  kind: SensorKindOneOfKind;
+  value: SensorKindOneOfValue;
+};
+
+export type SensorKindOneOfFourKind =
+  (typeof SensorKindOneOfFourKind)[keyof typeof SensorKindOneOfFourKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SensorKindOneOfFourKind = {
+  digital: "digital",
+} as const;
+
+export type SensorKindOneOfFour = {
+  kind: SensorKindOneOfFourKind;
+};
+
+export type SensorKind = SensorKindOneOf | SensorKindOneOfFour;
 
 /**
  * Enum representing the status of a sensor.
