@@ -56,35 +56,70 @@ export const ActuatorStatus = {
   powerOn: "powerOn",
 } as const;
 
-export type ActuatorValueOneOfDigital = {
+export type ActuatorValueOneOfKind =
+  (typeof ActuatorValueOneOfKind)[keyof typeof ActuatorValueOneOfKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorValueOneOfKind = {
+  digital: "digital",
+} as const;
+
+export type ActuatorValueOneOfValue = {
   active: boolean;
 };
 
 export type ActuatorValueOneOf = {
-  digital: ActuatorValueOneOfDigital;
+  kind: ActuatorValueOneOfKind;
+  value: ActuatorValueOneOfValue;
 };
 
-export type ActuatorValueOneOfThreeDpr = {
+export type ActuatorValueOneOfFourKind =
+  (typeof ActuatorValueOneOfFourKind)[keyof typeof ActuatorValueOneOfFourKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorValueOneOfFourKind = {
+  dpr: "dpr",
+} as const;
+
+export type ActuatorValueOneOfFourValue = {
   enabled: boolean;
   setpoint: number;
 };
 
-export type ActuatorValueOneOfThree = {
-  dpr: ActuatorValueOneOfThreeDpr;
+export type ActuatorValueOneOfFour = {
+  kind: ActuatorValueOneOfFourKind;
+  value: ActuatorValueOneOfFourValue;
 };
 
-export type ActuatorValueOneOfFiveFractional = {
+export type ActuatorValueOneOfSevenKind =
+  (typeof ActuatorValueOneOfSevenKind)[keyof typeof ActuatorValueOneOfSevenKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorValueOneOfSevenKind = {
+  fractional: "fractional",
+} as const;
+
+export type ActuatorValueOneOfSevenValue = {
   precent: number;
 };
 
-export type ActuatorValueOneOfFive = {
-  fractional: ActuatorValueOneOfFiveFractional;
+export type ActuatorValueOneOfSeven = {
+  kind: ActuatorValueOneOfSevenKind;
+  value: ActuatorValueOneOfSevenValue;
 };
 
 export type ActuatorValue =
   | ActuatorValueOneOf
-  | ActuatorValueOneOfThree
-  | ActuatorValueOneOfFive;
+  | ActuatorValueOneOfFour
+  | ActuatorValueOneOfSeven;
+
+export type Alignment = (typeof Alignment)[keyof typeof Alignment];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const Alignment = {
+  left: "left",
+  right: "right",
+} as const;
 
 /**
  * Represents the current arming state of the subsystem
@@ -221,30 +256,30 @@ export type DatapointKindOneOfFour = SensorKind & DatapointKindOneOfFourAllOf;
 
 export type DatapointKind = DatapointKindOneOf | DatapointKindOneOfFour;
 
-export type DatapointValueOneOfAllOfType =
-  (typeof DatapointValueOneOfAllOfType)[keyof typeof DatapointValueOneOfAllOfType];
+export type DatapointValueOneOfAllOfComponent =
+  (typeof DatapointValueOneOfAllOfComponent)[keyof typeof DatapointValueOneOfAllOfComponent];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DatapointValueOneOfAllOfType = {
+export const DatapointValueOneOfAllOfComponent = {
   actuator: "actuator",
 } as const;
 
 export type DatapointValueOneOfAllOf = {
-  type: DatapointValueOneOfAllOfType;
+  component: DatapointValueOneOfAllOfComponent;
 };
 
 export type DatapointValueOneOf = ActuatorValue & DatapointValueOneOfAllOf;
 
-export type DatapointValueOneOfFourAllOfType =
-  (typeof DatapointValueOneOfFourAllOfType)[keyof typeof DatapointValueOneOfFourAllOfType];
+export type DatapointValueOneOfFourAllOfComponent =
+  (typeof DatapointValueOneOfFourAllOfComponent)[keyof typeof DatapointValueOneOfFourAllOfComponent];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DatapointValueOneOfFourAllOfType = {
+export const DatapointValueOneOfFourAllOfComponent = {
   sensor: "sensor",
 } as const;
 
 export type DatapointValueOneOfFourAllOf = {
-  type: DatapointValueOneOfFourAllOfType;
+  component: DatapointValueOneOfFourAllOfComponent;
 };
 
 export type DatapointValueOneOfFour = SensorValue &
@@ -1020,6 +1055,17 @@ This data point should only be used for low-frequency applications. */
   /** Temperature in Celsius. */
   temperature: Celsius;
 }
+
+export type ExtendedDatapointInformationAllOf = {
+  /** Alignment of the replacement element. */
+  align: Alignment;
+  /** Id of the diagram cell which should be replaced by the
+replacement element. */
+  cell: string;
+};
+
+export type ExtendedDatapointInformation = DatapointInformation &
+  ExtendedDatapointInformationAllOf;
 
 export type FlightComputerMessageOneOfType =
   (typeof FlightComputerMessageOneOfType)[keyof typeof FlightComputerMessageOneOfType];
@@ -2952,25 +2998,18 @@ opening_time = kp * (target_pressure - current_pressure), in milliseconds
 export type PressurizationGain = number;
 
 /**
- * Map of compile-time information about the available PSS datapoints.
+ * Map of all datapoints defined in the diagram together with information
+collected at compile time and from the diagram about the datapoint.
  */
-export type PssDatapointInfo = { [key: string]: DatapointInformation };
-
-/**
- * Map of all datapoints defined in the diagram together with the
-cell id they're mapped to.
- */
-export type PssDatapointNodes = { [key: string]: string };
+export type PssDatapointInfo = { [key: string]: ExtendedDatapointInformation };
 
 /**
  * Representation of a PSS diagram.
  */
 export interface Pss {
-  /** Map of compile-time information about the available PSS datapoints. */
+  /** Map of all datapoints defined in the diagram together with information
+collected at compile time and from the diagram about the datapoint. */
   datapointInfo: PssDatapointInfo;
-  /** Map of all datapoints defined in the diagram together with the
-cell id they're mapped to. */
-  datapointNodes: PssDatapointNodes;
   /** PSS diagram SVG without the drawio XML content. */
   diagram: string;
 }
@@ -4436,23 +4475,41 @@ export const SensorStatus = {
   online: "online",
 } as const;
 
-export type SensorValueOneOfAnalog = {
+export type SensorValueOneOfKind =
+  (typeof SensorValueOneOfKind)[keyof typeof SensorValueOneOfKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SensorValueOneOfKind = {
+  analog: "analog",
+} as const;
+
+export type SensorValueOneOfValue = {
   value: number;
 };
 
 export type SensorValueOneOf = {
-  analog: SensorValueOneOfAnalog;
+  kind: SensorValueOneOfKind;
+  value: SensorValueOneOfValue;
 };
 
-export type SensorValueOneOfThreeDigital = {
+export type SensorValueOneOfFourKind =
+  (typeof SensorValueOneOfFourKind)[keyof typeof SensorValueOneOfFourKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SensorValueOneOfFourKind = {
+  digital: "digital",
+} as const;
+
+export type SensorValueOneOfFourValue = {
   enabled: boolean;
 };
 
-export type SensorValueOneOfThree = {
-  digital: SensorValueOneOfThreeDigital;
+export type SensorValueOneOfFour = {
+  kind: SensorValueOneOfFourKind;
+  value: SensorValueOneOfFourValue;
 };
 
-export type SensorValue = SensorValueOneOf | SensorValueOneOfThree;
+export type SensorValue = SensorValueOneOf | SensorValueOneOfFour;
 
 /**
  * Represents the online/offline status of all sensors on the Sensor Carrier board.
