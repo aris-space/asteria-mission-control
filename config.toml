@@ -6,21 +6,30 @@ address = { protocol = "tcp", remote = "127.0.0.1:5760" }
 
 [scenario.default]
 name = "Default"
-state_machines = ["fc", "rfs"]
 
-[scenario.other]
-name = "Other"
-state_machines = ["fc"]
-
-[state_machine.fc]
+[scenario.default.state_machine.fc]
+kind = "fc"
 name = "Flight Computer"
 diagram_path = "state-machine.svg"
 config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
+[scenario.default.pss.rfs]
+name = "Remote Filling Station"
+kind = "rfs"
+diagram_path = "pss.svg"
 
-[state_machine.rfs]
-name = "Remote Fueling Station"
+[scenario.other]
+name = "Other"
+[scenario.other.state_machine.fc]
+kind = "fc"
+name = "Flight Computer"
 diagram_path = "state-machine.svg"
 config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-
-[pss]
+[scenario.other.state_machine.rfs]
+kind = "rfs"
+name = "Remote Filling Station"
+diagram_path = "state-machine.svg"
+config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
+[scenario.other.pss.rfs]
+name = "Remote Filling Station"
+kind = "rfs"
 diagram_path = "pss.svg"

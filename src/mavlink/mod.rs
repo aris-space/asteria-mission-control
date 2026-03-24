@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{config::Config, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
 use asteria_datapoint_information::datapoint::DatapointHolder;
@@ -9,6 +7,7 @@ use mavio::{
     io::{TokioReader, TokioWriter},
     prelude::V2,
 };
+use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
 /// Amount of receive-errors we tolerate before aborting the

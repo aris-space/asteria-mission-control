@@ -10,7 +10,6 @@ use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use asteria_messages::Message;
 use broadcast::Broadcast;
 use serde::Serialize;
-use std::collections::HashMap;
 
 pub mod broadcast;
 
@@ -109,19 +108,23 @@ pub async fn change_scenario(
 
 #[utoipa::path(
     responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)),
-    description = "Get a specific state machine"
+    description = "Get a specific state machine for a scenario"
 )]
-#[get("/statemachine/{statemachine_id}")]
-pub async fn state_machine(
-    ids: web::Path<String>,
-    state_machines: Data<HashMap<String, StateMachine>>,
-) -> actix_web::Result<Json<StateMachine>> {
-    let state_machine_id = ids.into_inner();
-    state_machines
-        .get(&state_machine_id)
-        .cloned()
+#[get("/statemachine/scenario/{scenario_id}/{state_machine_id}")]
+pub async fn state_machine(ids: web::Path<(String, String)>, config: Data<Config>) -> actix_web::Result<Json<StateMachine>> {
+    let (scenario_id, state_machine_id) = ids.into_inner();
+    config
+        .scenarios
+        .get(&scenario_id)
+        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
+        .and_then(|scenario| {
+            scenario
+                .state_machines
+                .get(&state_machine_id)
+                .cloned()
+                .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found on scenario '{scenario_id}'")))
+        })
         .map(Json)
-        .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found")))
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
@@ -151,24 +154,57 @@ pub async fn all_state_machines(
             scenario
                 .state_machines
                 .iter()
-                .filter_map(|id| {
-                    config
-                        .state_machines
-                        .get(id)
-                        .map(|machine| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
-                })
+                .map(|(id, machine)| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
                 .collect::<Vec<_>>()
         })
         .map(Json)
 }
 
 #[utoipa::path(
-    responses((status = OK, body = Pss)),
-    description = "Get the PSS information"
+    responses((status = OK, body = Pss), (status = NOT_FOUND, body = String)),
+    description = "Get a specific PSS information for a scenario"
 )]
-#[get("/pss")]
-pub async fn pss_information(pss: Data<Pss>) -> actix_web::Result<Json<Pss>> {
-    Ok(Json(pss.as_ref().clone()))
+#[get("/pss/scenario/{scenario_id}/{pss_id}")]
+pub async fn pss_information(ids: web::Path<(String, String)>, config: Data<Config>) -> actix_web::Result<Json<Pss>> {
+    let (scenario_id, pss_id) = ids.into_inner();
+    config
+        .scenarios
+        .get(&scenario_id)
+        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
+        .and_then(|scenario| {
+            scenario
+                .pss
+                .get(&pss_id)
+                .cloned()
+                .ok_or(ErrorNotFound(format!("PSS information '{pss_id}' not found on scenario '{scenario_id}'")))
+        })
+        .map(Json)
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
+struct PssInfo {
+    /// Identifier of the PSS information.
+    id: String,
+    /// Display name of the PSS information.
+    name: String,
+}
+
+#[utoipa::path(
+    responses((status = OK, body = Vec<PssInfo>), (status = NOT_FOUND, body = String)),
+    description = "Get all available PSS infos of a specific scenario"
+)]
+#[get("/pss/scenario/{scenario_id}")]
+pub async fn all_pss_infos(scenario_id: web::Path<String>, config: Data<Config>) -> actix_web::Result<Json<Vec<PssInfo>>> {
+    let scenario_id = scenario_id.into_inner();
+
+    config
+        .scenarios
+        .get(&scenario_id)
+        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
+        .map(|scenario| {
+            scenario.pss.iter().map(|(id, pss)| PssInfo { id: id.clone(), name: pss.name.clone() }).collect::<Vec<_>>()
+        })
+        .map(Json)
 }
 
 #[utoipa::path(

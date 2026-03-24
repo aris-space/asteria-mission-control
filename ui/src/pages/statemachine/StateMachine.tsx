@@ -246,7 +246,13 @@ function StateMachine() {
   }
 
   return (
-    <Flex direction={"column"} justify={"center"} align={"center"} w={"100%"} h={"100%"}>
+    <Flex
+      direction={"column"}
+      justify={"center"}
+      align={"center"}
+      w={"100%"}
+      h={"100%"}
+    >
       {stateMachine && (
         <Affix position={{ top: "5rem", right: "lg" }}>
           <Flex gap={"xs"}>
@@ -296,9 +302,12 @@ function StateMachineSelector(props: StateMachineSelectorProps) {
   const [selected, setSelected] = useState<string | null>();
   const { data: activeScenario, ...active } = useActiveScenario();
   const { data: allStateMachines = [], ...all } = useAllStateMachines(
-    activeScenario?.id ?? "",
+    activeScenario?.id as string,
   );
-  const { data: stateMachine, ...machine } = useStateMachine(selected ?? "");
+  const { data: stateMachine, ...machine } = useStateMachine(
+    activeScenario?.id as string,
+    selected as string,
+  );
 
   useEffect(() => {
     if (!selected) props.onChange(null);

@@ -1,6 +1,5 @@
-use std::net::{IpAddr, Ipv4Addr};
-
 use clap::Parser;
+use std::net::{IpAddr, Ipv4Addr};
 
 #[derive(Parser)]
 #[clap(version = env!("GIT_VERSION_FULL"), about, long_about = None)]

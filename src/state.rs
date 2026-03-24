@@ -1,8 +1,7 @@
 use std::sync::Arc;
-
 use tokio::sync::RwLock;
 
-use crate::config::{Config, ScenarioConfig};
+use crate::{config::Config, scenario::Scenario};
 
 pub type StateInstance = Arc<RwLock<State>>;
 
@@ -29,7 +28,7 @@ impl State {
     }
 
     /// Get the active scenario
-    pub fn get_scenario(&self) -> &ScenarioConfig {
+    pub fn get_scenario(&self) -> &Scenario {
         self.config.scenarios.get(&self.scenario).expect("State scenario should always exist")
     }
 
@@ -39,7 +38,7 @@ impl State {
     }
 
     /// Set the active scenario
-    pub fn set_scenario(&mut self, name: String) -> Result<&ScenarioConfig, StateError> {
+    pub fn set_scenario(&mut self, name: String) -> Result<&Scenario, StateError> {
         if self.scenario == name {
             return Err(StateError::AlreadyActive(name));
         }

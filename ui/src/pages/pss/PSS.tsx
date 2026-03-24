@@ -1,6 +1,9 @@
 import {
   DatapointValue,
   ExtendedDatapointInformation,
+  Pss,
+  useActiveScenario,
+  useAllPssInfos,
   usePssInformation,
 } from "@asteria/mission-control-client";
 import React, {
@@ -9,14 +12,24 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
-import { ActionIcon, Affix, Box, Flex, Loader, Tooltip } from "@mantine/core";
+import {
+  ActionIcon,
+  Affix,
+  Alert,
+  Box,
+  Flex,
+  Loader,
+  Select,
+  Tooltip,
+} from "@mantine/core";
 import { useMap, useToggle, useViewportSize } from "@mantine/hooks";
 import * as d3 from "d3";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import classes from "./PSS.module.css";
 import DatapointKind from "./kind";
-import useDiagramSvg from "../../hooks/SvgHook";
+import useDiagramSvg from "../../hooks/DiagramSvgHook";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -68,19 +81,25 @@ const TEST_VALUE: Array<[string, DatapointValue]> = [
 type Transform = { k: number; x: number; y: number };
 
 function PSS() {
+  const [pssInfo, setPssInfo] = useState<Pss | null>();
   const { width, height } = useViewportSize();
-  const { data: pssInformation } = usePssInformation();
+
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { isZoomDirty, resetZoom, zoomTransform, ready: svgReady } = useDiagramSvg(
-    pssInformation?.diagram as string,
+  const {
+    isZoomDirty,
+    resetZoom,
+    zoomTransform,
+    ready: svgReady,
+  } = useDiagramSvg(
+    pssInfo?.diagram as string,
     containerRef as RefObject<HTMLDivElement>,
     {
       onZoom: (transform) => {
         // We do this kinda sketchy style overriding here to prevent having a state update and thus a re-render
         // per zoom event. This is much more performant as zoom events happen at a very high frequency!
         Array.from(datapointValues.keys()).forEach((name) => {
-          const info = pssInformation?.datapointInfo[name];
+          const info = pssInfo?.datapointInfo[name];
           if (!info) return;
           const styles = computeDatapointStyle(transform, info);
           if (!styles) return;
@@ -119,13 +138,13 @@ function PSS() {
   useEffect(() => {
     updateDatapointVisibility();
     setupNodes();
-  }, [pssInformation, containerRef, datapointVisibility]);
+  }, [pssInfo, containerRef, datapointVisibility]);
 
   function setupNodes() {
-    if (!containerRef.current || !pssInformation) return;
+    if (!containerRef.current || !pssInfo) return;
     datapointNodes.clear();
 
-    Object.entries(pssInformation.datapointInfo).forEach(([name, { cell }]) => {
+    Object.entries(pssInfo.datapointInfo).forEach(([name, { cell }]) => {
       d3.select(`[${CELL_ID_ATTR}="${cell}"]`).each((_, index, nodes) => {
         const node = nodes[index] as SVGElement;
         datapointNodes.set(name, node);
@@ -134,10 +153,10 @@ function PSS() {
   }
 
   function updateDatapointVisibility() {
-    if (!containerRef.current || !pssInformation) return;
+    if (!containerRef.current || !pssInfo) return;
 
-    if (pssInformation) {
-      Object.entries(pssInformation.datapointInfo).forEach(([, { cell }]) => {
+    if (pssInfo) {
+      Object.entries(pssInfo.datapointInfo).forEach(([, { cell }]) => {
         d3.select(`[${CELL_ID_ATTR}="${cell}"]`).style(
           "visibility",
           datapointVisibility,
@@ -148,7 +167,7 @@ function PSS() {
 
   const datapointElements = useMemo(() => {
     return Array.from(datapointValues.entries()).map(([name, value]) => {
-      const info = pssInformation?.datapointInfo[name];
+      const info = pssInfo?.datapointInfo[name];
       if (!info) return <React.Fragment key={name} />;
 
       const styles = computeDatapointStyle(zoomTransform, info);
@@ -169,7 +188,7 @@ function PSS() {
     height,
     width,
     datapointValues,
-    pssInformation,
+    pssInfo,
     datapointNodes,
     svgReady,
   ]);
@@ -184,7 +203,7 @@ function PSS() {
         h={"calc(100vh - var(--app-shell-header-height))"}
         w={"100%"}
       >
-        {pssInformation && (
+        {pssInfo && (
           <Affix position={{ top: "5rem", right: "lg" }}>
             <Flex gap={"xs"}>
               <Tooltip label={"Toggle datapoint highlight"}>
@@ -206,7 +225,10 @@ function PSS() {
             </Flex>
           </Affix>
         )}
-        {pssInformation ? (
+        <Affix position={{ top: "5rem", left: "lg" }}>
+          <PssSelector onChange={setPssInfo} />
+        </Affix>
+        {pssInfo ? (
           <Box
             className={classes.container}
             style={{ justifySelf: "center", alignSelf: "center" }}
@@ -220,11 +242,73 @@ function PSS() {
           </Box>
         ) : (
           <Flex p={"lg"} justify={"center"} align={"center"}>
-            <Loader />
+            <Alert variant="light" color="blue" title="No PSS configuration selected">
+              You need to select a PSS configuration to start
+            </Alert>
           </Flex>
         )}
       </Flex>
     </>
+  );
+}
+
+interface PssSelectorProps {
+  // eslint-disable-next-line no-unused-vars
+  onChange: (pss: Pss | null) => void;
+}
+
+function PssSelector(props: PssSelectorProps) {
+  const [selected, setSelected] = useState<string | null>();
+  const { data: activeScenario, ...active } = useActiveScenario();
+  const { data: allPssInfos = [], ...all } = useAllPssInfos(
+    activeScenario?.id as string,
+  );
+  const { data: pssInfo, ...pss } = usePssInformation(
+    activeScenario?.id as string,
+    selected as string,
+  );
+
+  useEffect(() => {
+    if (!selected) props.onChange(null);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!activeScenario) return;
+    setSelected(null);
+  }, [activeScenario]);
+
+  useEffect(() => {
+    if (!pssInfo) return;
+    props.onChange(pssInfo);
+  }, [pssInfo]);
+
+  useEffect(() => {
+    if (!pss.error) return;
+    console.log(pss.error)
+    setSelected(null);
+  }, [pss.error]);
+
+  const handleStateMachineChange = (value: string | null) => {
+    setSelected(value);
+  };
+
+  const loading = active.isPending || all.isPending || pss.isLoading;
+
+  return (
+    <Select
+      placeholder={"Select a PSS configuration"}
+      data={allPssInfos.map(({ id, name }) => ({
+        label: name,
+        value: id,
+      }))}
+      disabled={loading}
+      value={selected}
+      onChange={handleStateMachineChange}
+      clearable
+      allowDeselect
+      rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
+      rightSectionWidth={40}
+    />
   );
 }
 

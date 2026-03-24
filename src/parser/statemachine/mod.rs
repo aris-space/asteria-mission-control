@@ -1,4 +1,7 @@
-use crate::parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig};
+use crate::{
+    config::RemoteComputerKind,
+    parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig},
+};
 use html_parser::Dom;
 use serde::Serialize;
 use std::{
@@ -35,6 +38,10 @@ pub enum StateMachineError {
 #[derive(Debug, Serialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StateMachine {
+    /// Kind of remote computer this state machine diagram is for.
+    pub kind: RemoteComputerKind,
+    /// Display name of the state machine.
+    pub name: String,
     /// State machine diagram SVG without the drawio XML content.
     pub diagram: String,
     /// Allowed manual transitions for every state.
@@ -45,23 +52,23 @@ pub struct StateMachine {
     pub state_nodes: HashMap<String, String>,
 }
 
-impl TryFrom<&crate::config::StateMachineConfig> for StateMachine {
+impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
     type Error = StateMachineError;
 
-    fn try_from(value: &crate::config::StateMachineConfig) -> Result<Self, Self::Error> {
-        let config_str = fs::read_to_string(&value.config_path).map_err(StateMachineError::ConfigRead)?;
-        let diagram_str = fs::read_to_string(&value.diagram_path).map_err(StateMachineError::DiagramRead)?;
+    fn try_from(config: crate::config::StateMachineConfig) -> Result<Self, Self::Error> {
+        let config_str = fs::read_to_string(&config.config_path).map_err(StateMachineError::ConfigRead)?;
+        let diagram_str = fs::read_to_string(&config.diagram_path).map_err(StateMachineError::DiagramRead)?;
 
-        let config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
+        let rc_config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
         // Read the state machine config and ensure that all manual transitions are valid.
         // This means that the source and the target of a transition need to be defined in
         // the config.
-        let (missing_states, manual_transitions) = config.state_machine.states.iter().fold(
+        let (missing_states, manual_transitions) = rc_config.state_machine.states.iter().fold(
             (Vec::new(), HashMap::new()),
             |(mut missing, mut manual), (state, state_config)| {
                 let mut transitions = Vec::new();
                 state_config.manual_transitions.iter().for_each(|transition| {
-                    if !config.state_machine.states.contains_key(transition.target()) {
+                    if !rc_config.state_machine.states.contains_key(transition.target()) {
                         missing.push(transition.target().clone());
                     } else {
                         transitions.push(transition.target().clone());
@@ -113,7 +120,7 @@ impl TryFrom<&crate::config::StateMachineConfig> for StateMachine {
         let mut state_nodes = HashMap::from_iter(state_node_labels.into_iter().zip(state_node_ids));
 
         // States from the config which are not defined in the diagram.
-        let missing_states = config
+        let missing_states = rc_config
             .state_machine
             .states
             .keys()
@@ -131,9 +138,16 @@ impl TryFrom<&crate::config::StateMachineConfig> for StateMachine {
 
         // Only keep all nodes which are declared in config
         // this is needed as we also treat text boxes as possible nodes.
-        state_nodes.retain(|label, _| config.state_machine.states.contains_key(label));
+        state_nodes.retain(|label, _| rc_config.state_machine.states.contains_key(label));
 
-        Ok(Self { diagram: svg, manual_transitions, initial_state: config.state_machine.initial_state, state_nodes })
+        Ok(Self {
+            diagram: svg,
+            manual_transitions,
+            initial_state: rc_config.state_machine.initial_state,
+            state_nodes,
+            kind: config.kind,
+            name: config.name,
+        })
     }
 }
 
