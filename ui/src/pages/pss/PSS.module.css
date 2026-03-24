@@ -1,5 +1,10 @@
 .container {
-    [bruh] {
-        background-color: red;
-    }
+    background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
+    background-size: 20px 20px;
+    min-height: calc(100vh - var(--app-shell-header-height));
+    overflow: hidden;
+}
+
+html {
+    overflow: hidden;
 }

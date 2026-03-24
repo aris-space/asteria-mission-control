@@ -1,4 +1,3 @@
-import React from "react";
 import {
   ExtendedDatapointInformation,
   NamedDatapointValue,
@@ -6,6 +5,7 @@ import {
 import { DigitalActuator } from "./DigitalActuator";
 import { DprActuator } from "./DprActuator";
 import { DigitalSensor } from "./DigitalSensor";
+import { AnalogSensor } from "./AnalogSensor";
 
 export const VERTICAL_PADDING: string = "4px";
 export const HORIZONTAL_PADDING: string = "6px";
@@ -28,10 +28,11 @@ function DatapointKind({ kind, value }: DatapointKindProps) {
   switch (value.component) {
     case "sensor": {
       switch (value.kind) {
-        case "analog":
-          return <React.Fragment />;
+        case "analog": {
+          const unit = (kind as any).value.unit;
+          return <AnalogSensor value={value.value.value} unit={unit} />;
+        }
         case "digital":
-          console.log("digital??? :(");
           return <DigitalSensor active={value.value.enabled} />;
       }
       break;

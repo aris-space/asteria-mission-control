@@ -32,7 +32,6 @@ export function DigitalSensor({ active }: DigitalSensorProps) {
           colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0],
         overflow: "hidden",
         height: CONTAINER_HEIGHT,
-        gap: GAP,
         width: `calc(1.5 * ${SLOT_WIDTH} + 2 * ${HORIZONTAL_PADDING})`,
         padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
       }}

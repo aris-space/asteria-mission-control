@@ -125,7 +125,7 @@ export function DprActuator({ value, onSet, onToggle, active }: DprActuatorProps
             : "translateX(0)",
         }}
       >
-        <Text p="xs" size="sm" fw={600}>
+        <Text p="xs" size="sm" fw={600} ff={active ? "monospace" : "text"} >
           {active ? value : "Off"}
         </Text>
       </Box>
