@@ -5,10 +5,10 @@ import {
 } from "@asteria/mission-control-client";
 import React, {
   CSSProperties,
+  RefObject,
   useEffect,
   useMemo,
   useRef,
-  useState,
 } from "react";
 import { ActionIcon, Affix, Box, Flex, Loader, Tooltip } from "@mantine/core";
 import { useMap, useToggle, useViewportSize } from "@mantine/hooks";
@@ -16,6 +16,7 @@ import * as d3 from "d3";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import classes from "./PSS.module.css";
 import DatapointKind from "./kind";
+import useDiagramSvg from "../../hooks/SvgHook";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -71,74 +72,17 @@ function PSS() {
   const { data: pssInformation } = usePssInformation();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const svgRef = useRef<SVGSVGElement>(null);
-  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
-  const [isDirty, setIsDirty] = useState<boolean>(false);
-  // By default the datapoint markers should not be visible.
-  const [datapointVisibility, toggleDatapointVisibility] = useToggle([
-    "hidden",
-    "inherit",
-  ]);
-  const datapointNodes = useMap<string, SVGElement>();
-  const datapointValues = useMap<string, DatapointValue>(TEST_VALUE);
-  const [svgReady, setSvgReady] = useState<boolean>();
-  const transform = useRef<Transform>({ k: 1, x: 0, y: 0 });
-
-  useEffect(() => {
-    setupSvg();
-    setupZoom();
-  }, [pssInformation, containerRef, width, height]);
-
-  useEffect(() => {
-    updateDatapointVisibility();
-    setupNodes();
-  }, [pssInformation, containerRef, datapointVisibility]);
-
-  function setupSvg() {
-    if (!pssInformation || !containerRef.current) return;
-    containerRef.current.innerHTML = pssInformation.diagram;
-    const svg = containerRef.current.querySelector("svg");
-    if (!svg) {
-      console.warn("Received non-svg PSS diagram from API");
-      return;
-    }
-    svgRef.current = svg;
-
-    // ensure the whole svg content is wrapped in a `g` element to which we can
-    // apply our transformation
-    if (!svg.querySelector("g")) {
-      const wrapper = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "g",
-      );
-      wrapper.innerHTML = svg.innerHTML;
-      svg.innerHTML = "";
-      svg.appendChild(wrapper);
-    }
-
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "calc(100vh - var(--app-shell-header-height))");
-    setSvgReady(true);
-  }
-
-  function setupZoom() {
-    if (!svgRef.current) return;
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.25, 10])
-      .on("zoom", (event) => {
-        setIsDirty(true);
-
-        d3.select(svgRef.current)
-          .select("g")
-          .attr("transform", event.transform.toString());
-
+  const { isZoomDirty, resetZoom, zoomTransform, ready: svgReady } = useDiagramSvg(
+    pssInformation?.diagram as string,
+    containerRef as RefObject<HTMLDivElement>,
+    {
+      onZoom: (transform) => {
         // We do this kinda sketchy style overriding here to prevent having a state update and thus a re-render
         // per zoom event. This is much more performant as zoom events happen at a very high frequency!
         Array.from(datapointValues.keys()).forEach((name) => {
           const info = pssInformation?.datapointInfo[name];
           if (!info) return;
-          const styles = computeDatapointStyle(event.transform, info);
+          const styles = computeDatapointStyle(transform, info);
           if (!styles) return;
 
           const datapointContainer = document.querySelector(
@@ -160,14 +104,22 @@ function PSS() {
             styles[1].transform as string,
           );
         });
-        // Set current transform into a ref such that we keep it across re-renders but
-        // without triggering a re-render on change.
-        transform.current = event.transform;
-      });
+      },
+    },
+  );
 
-    d3.select(svgRef.current).call(zoom).on("dblclick.zoom", null);
-    zoomRef.current = zoom;
-  }
+  // By default the datapoint markers should not be visible.
+  const [datapointVisibility, toggleDatapointVisibility] = useToggle([
+    "hidden",
+    "inherit",
+  ]);
+  const datapointNodes = useMap<string, SVGElement>();
+  const datapointValues = useMap<string, DatapointValue>(TEST_VALUE);
+
+  useEffect(() => {
+    updateDatapointVisibility();
+    setupNodes();
+  }, [pssInformation, containerRef, datapointVisibility]);
 
   function setupNodes() {
     if (!containerRef.current || !pssInformation) return;
@@ -194,22 +146,12 @@ function PSS() {
     }
   }
 
-  function resetZoomAndPan() {
-    if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current).call(
-        zoomRef.current.transform,
-        d3.zoomIdentity,
-      );
-    }
-    setIsDirty(false);
-  }
-
   const datapointElements = useMemo(() => {
     return Array.from(datapointValues.entries()).map(([name, value]) => {
       const info = pssInformation?.datapointInfo[name];
       if (!info) return <React.Fragment key={name} />;
 
-      const styles = computeDatapointStyle(transform.current, info);
+      const styles = computeDatapointStyle(zoomTransform, info);
       if (!styles) return <React.Fragment key={name} />;
 
       const datapoint = <DatapointKind value={value} kind={info.kind} />;
@@ -254,9 +196,9 @@ function PSS() {
                   )}
                 </ActionIcon>
               </Tooltip>
-              {isDirty && (
+              {isZoomDirty && (
                 <Tooltip label={"Reset zoom and pan"}>
-                  <ActionIcon onClick={resetZoomAndPan}>
+                  <ActionIcon onClick={resetZoom}>
                     <IconZoomReset />
                   </ActionIcon>
                 </Tooltip>
