@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub enum ScenarioError {
     #[error("Unable to parse state machine '{0}': {1}")]
     StateMachineParse(String, StateMachineError),
-    #[error("Unable to parse PSS '{0}': {1}")]
+    #[error("Unable to parse PSS information '{0}': {1}")]
     PssParse(String, PssError),
 }
 

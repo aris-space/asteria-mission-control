@@ -1,10 +1,9 @@
+use crate::config::MavlinkAddress;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, Error as IoError, ReadBuf};
 use tokio::net::{TcpStream, UdpSocket};
 use tokio_serial::{SerialPortBuilderExt, SerialStream};
-
-use crate::config::MavlinkAddress;
 
 /// Enum holding the different transport backends we'll use for MavLink communication.
 ///

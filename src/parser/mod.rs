@@ -19,9 +19,9 @@ where
     /// Cells of the diagram.
     cells: Vec<Cell<T>>,
     /// Width of the diagram in pixels.
-    width: u32,
+    width: i32,
     /// Height of the diagram in pixels.
-    height: u32,
+    height: i32,
 }
 
 /// A cell is a generic representation of a drawio diagram cell.

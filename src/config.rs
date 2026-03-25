@@ -1,19 +1,23 @@
 #![allow(clippy::result_large_err)]
 
+use crate::{CONFIG_PATH, scenario::Scenario};
+use schemars::JsonSchema;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
-
-use crate::{
-    CONFIG_PATH,
-    scenario::{Scenario, ScenarioError},
-};
-use schemars::JsonSchema;
-use serde::{Deserialize, Deserializer, Serialize};
 use utoipa::ToSchema;
+
+/// Static variable containing the optional name of the default scenario and
+/// an optional list of available scenarios. This is needed to provide nice
+/// errors from parsing. The idea is, that independently whether the
+/// `default_scenario` or `scenarios` is deserialized first, the other always
+/// either know the already defined default scenario or the list with available
+/// scenarios and can thus return the corresponding error.
+static DEFAULT_SCENARIO_OR_SCENARIOS: OnceLock<(Option<String>, Option<Vec<String>>)> = OnceLock::new();
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -21,51 +25,22 @@ pub enum ConfigError {
     Read(std::io::Error),
     #[error("Error whilst deserializing config: {0}")]
     Deserialize(toml::de::Error),
-    #[error("The config needs at least one scenario")]
-    NoScenarios,
-    #[error("Default scenario '{0}' doesn't exist")]
-    MissingDefaultScenario(String),
-    #[error("Unable to create scenario '{0}': {1}")]
-    InvalidScenario(String, ScenarioError),
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-#[serde(try_from = "RawConfig")]
 pub struct Config {
     /// All scenarios available on the mission control.
-    #[serde(skip)]
+    ///
+    /// To run the mission control successfully, at least one scenario needs
+    /// to be specified.
+    #[serde(alias = "scenario", deserialize_with = "deserialize_scenarios")]
+    #[schemars(with = "HashMap<String, ScenarioConfig>")]
     pub scenarios: HashMap<String, Scenario>,
     /// Scenario which should be selected by default on startup.
+    #[serde(deserialize_with = "deserialize_default_scenario")]
     pub default_scenario: String,
     /// MavLink related configuration.
     pub mavlink: MavlinkConfig,
-}
-
-impl TryFrom<RawConfig> for Config {
-    type Error = ConfigError;
-
-    fn try_from(config: RawConfig) -> Result<Self, Self::Error> {
-        // Ensure that at least one scenario is defined.
-        if config.scenarios.is_empty() {
-            return Err(ConfigError::NoScenarios);
-        }
-        // Ensure that the default scenario exists.
-        if !config.scenarios.contains_key(&config.default_scenario) {
-            return Err(ConfigError::MissingDefaultScenario(config.default_scenario));
-        }
-
-        let scenarios = config
-            .scenarios
-            .into_iter()
-            .map(|(name, config)| {
-                Scenario::try_from(config)
-                    .map(|scenario| (name.clone(), scenario))
-                    .map_err(|err| ConfigError::InvalidScenario(name, err))
-            })
-            .collect::<Result<HashMap<_, _>, _>>()?;
-
-        Ok(Config { scenarios, default_scenario: config.default_scenario, mavlink: config.mavlink })
-    }
 }
 
 impl Config {
@@ -75,21 +50,6 @@ impl Config {
         let config = toml::from_str::<Config>(&config_str).map_err(ConfigError::Deserialize)?;
         Ok(Arc::new(config))
     }
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(rename = "Config")]
-struct RawConfig {
-    /// All scenarios available on the mission control.
-    ///
-    /// To run the mission control successfully, at least one scenario needs
-    /// to be specified.
-    #[serde(rename = "scenario")]
-    pub scenarios: HashMap<String, ScenarioConfig>,
-    /// Scenario which should be selected by default on startup.
-    pub default_scenario: String,
-    /// MavLink related configuration.
-    pub mavlink: MavlinkConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema, Clone)]
@@ -165,6 +125,66 @@ pub struct PssConfig {
     pub diagram_path: PathBuf,
 }
 
+/// Deserialize a map of [`Scenario`] from a map of [`ScenarioConfig`] and validate
+/// that at least one scenario is defined.
+fn deserialize_scenarios<'de, D>(deserializer: D) -> Result<HashMap<String, Scenario>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let scenario_configs = HashMap::<String, ScenarioConfig>::deserialize(deserializer)?;
+    // Ensure that at least one scenario is defined.
+    if scenario_configs.is_empty() {
+        return Err(serde::de::Error::custom("At least one scenario needs to be defined"));
+    }
+
+    let scenarios = scenario_configs
+        .into_iter()
+        .map(|(name, config)| {
+            Scenario::try_from(config)
+                .map(|scenario| (name.clone(), scenario))
+                .map_err(|err| serde::de::Error::custom(format!("Scenario '{name}' is invalid: {err}")))
+        })
+        .collect::<Result<HashMap<_, _>, _>>()?;
+
+    let names = scenarios.keys().cloned().collect::<Vec<_>>();
+    if let Some((Some(default_scenario), None)) = DEFAULT_SCENARIO_OR_SCENARIOS.get() {
+        if !names.contains(default_scenario) {
+            return Err(serde::de::Error::custom(format!(
+                "Default scenario '{default_scenario}' does not exist. Available scenarios are: {}",
+                names.iter().map(|scenario| format!("'{scenario}'")).collect::<Vec<_>>().join(", ")
+            )));
+        }
+    } else {
+        DEFAULT_SCENARIO_OR_SCENARIOS.set((None, Some(names))).expect("OnceLock shouldn't be initialized")
+    }
+
+    Ok(scenarios)
+}
+
+/// Deserialize the configured default scenario. This is only needed to store the value during deserialization
+/// in the [`DEFAULT_SCENARIO_OR_SCENARIOS`] static variable to return the appropriate error when
+/// [`deserialize_scenarios`] is called and the specified default scenario doesn't exist.
+fn deserialize_default_scenario<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let default_scenario = String::deserialize(deserializer)?;
+    if let Some((None, Some(scenarios))) = DEFAULT_SCENARIO_OR_SCENARIOS.get() {
+        if !scenarios.contains(&default_scenario) {
+            return Err(serde::de::Error::custom(format!(
+                "Default scenario '{default_scenario}' does not exist. Available scenarios are: {}",
+                scenarios.iter().map(|scenario| format!("'{scenario}'")).collect::<Vec<_>>().join(", ")
+            )));
+        }
+    } else {
+        DEFAULT_SCENARIO_OR_SCENARIOS
+            .set((Some(default_scenario.clone()), None))
+            .expect("OnceLock shouldn't be initialized");
+    }
+
+    Ok(default_scenario)
+}
+
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative
 /// path to the config file.
 fn deserialize_relative_path<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
@@ -181,7 +201,7 @@ where
         Ok(path) => path,
         Err(..) => {
             return Err(serde::de::Error::custom(format!(
-                "The path '{}' cannot be canonicalized or does not exist",
+                "Path '{}' cannot be canonicalized or does not exist",
                 absolute_path.display()
             )));
         }

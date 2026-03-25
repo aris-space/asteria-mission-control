@@ -23,9 +23,9 @@ pub struct Diagram<T> {
 #[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
 pub struct MxGraphModel<T> {
     #[serde(rename(deserialize = "@dx"))]
-    pub width: u32,
+    pub width: i32,
     #[serde(rename(deserialize = "@dy"))]
-    pub height: u32,
+    pub height: i32,
     pub root: Root<T>,
 }
 
