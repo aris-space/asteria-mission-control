@@ -7,7 +7,6 @@ import {
 } from "@mantine/core";
 import {
   CONTAINER_HEIGHT,
-  GAP,
   HORIZONTAL_PADDING,
   SLIDER_PADDING,
   SLOT_WIDTH,

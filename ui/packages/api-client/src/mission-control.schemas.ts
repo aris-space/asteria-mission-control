@@ -56,63 +56,6 @@ export const ActuatorStatus = {
   powerOn: "powerOn",
 } as const;
 
-export type ActuatorValueOneOfKind =
-  (typeof ActuatorValueOneOfKind)[keyof typeof ActuatorValueOneOfKind];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const ActuatorValueOneOfKind = {
-  digital: "digital",
-} as const;
-
-export type ActuatorValueOneOfValue = {
-  active: boolean;
-};
-
-export type ActuatorValueOneOf = {
-  kind: ActuatorValueOneOfKind;
-  value: ActuatorValueOneOfValue;
-};
-
-export type ActuatorValueOneOfFourKind =
-  (typeof ActuatorValueOneOfFourKind)[keyof typeof ActuatorValueOneOfFourKind];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const ActuatorValueOneOfFourKind = {
-  dpr: "dpr",
-} as const;
-
-export type ActuatorValueOneOfFourValue = {
-  enabled: boolean;
-  setpoint: number;
-};
-
-export type ActuatorValueOneOfFour = {
-  kind: ActuatorValueOneOfFourKind;
-  value: ActuatorValueOneOfFourValue;
-};
-
-export type ActuatorValueOneOfSevenKind =
-  (typeof ActuatorValueOneOfSevenKind)[keyof typeof ActuatorValueOneOfSevenKind];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const ActuatorValueOneOfSevenKind = {
-  fractional: "fractional",
-} as const;
-
-export type ActuatorValueOneOfSevenValue = {
-  precent: number;
-};
-
-export type ActuatorValueOneOfSeven = {
-  kind: ActuatorValueOneOfSevenKind;
-  value: ActuatorValueOneOfSevenValue;
-};
-
-export type ActuatorValue =
-  | ActuatorValueOneOf
-  | ActuatorValueOneOfFour
-  | ActuatorValueOneOfSeven;
-
 export type Alignment = (typeof Alignment)[keyof typeof Alignment];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
@@ -255,37 +198,6 @@ export type DatapointKindOneOfFourAllOf = {
 export type DatapointKindOneOfFour = SensorKind & DatapointKindOneOfFourAllOf;
 
 export type DatapointKind = DatapointKindOneOf | DatapointKindOneOfFour;
-
-export type DatapointValueOneOfAllOfComponent =
-  (typeof DatapointValueOneOfAllOfComponent)[keyof typeof DatapointValueOneOfAllOfComponent];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DatapointValueOneOfAllOfComponent = {
-  actuator: "actuator",
-} as const;
-
-export type DatapointValueOneOfAllOf = {
-  component: DatapointValueOneOfAllOfComponent;
-};
-
-export type DatapointValueOneOf = ActuatorValue & DatapointValueOneOfAllOf;
-
-export type DatapointValueOneOfFourAllOfComponent =
-  (typeof DatapointValueOneOfFourAllOfComponent)[keyof typeof DatapointValueOneOfFourAllOfComponent];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const DatapointValueOneOfFourAllOfComponent = {
-  sensor: "sensor",
-} as const;
-
-export type DatapointValueOneOfFourAllOf = {
-  component: DatapointValueOneOfFourAllOfComponent;
-};
-
-export type DatapointValueOneOfFour = SensorValue &
-  DatapointValueOneOfFourAllOf;
-
-export type DatapointValue = DatapointValueOneOf | DatapointValueOneOfFour;
 
 export interface EngineBayTemperature {
   /** Oxidizer Runline temperature in °C. */
@@ -2128,11 +2040,11 @@ export type Message =
   | MessageOneOfOnefive
   | MessageOneOfOneseven;
 
-export interface NamedDatapointValue {
+export interface NamedPssDatapointValue {
   /** Unique name of the datapoint */
   name: string;
   /** Value of the datapoint */
-  value: DatapointValue;
+  value: number;
 }
 
 export interface OrientationData {
@@ -4575,42 +4487,6 @@ export const SensorStatus = {
   offline: "offline",
   online: "online",
 } as const;
-
-export type SensorValueOneOfKind =
-  (typeof SensorValueOneOfKind)[keyof typeof SensorValueOneOfKind];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const SensorValueOneOfKind = {
-  analog: "analog",
-} as const;
-
-export type SensorValueOneOfValue = {
-  value: number;
-};
-
-export type SensorValueOneOf = {
-  kind: SensorValueOneOfKind;
-  value: SensorValueOneOfValue;
-};
-
-export type SensorValueOneOfFourKind =
-  (typeof SensorValueOneOfFourKind)[keyof typeof SensorValueOneOfFourKind];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const SensorValueOneOfFourKind = {
-  digital: "digital",
-} as const;
-
-export type SensorValueOneOfFourValue = {
-  enabled: boolean;
-};
-
-export type SensorValueOneOfFour = {
-  kind: SensorValueOneOfFourKind;
-  value: SensorValueOneOfFourValue;
-};
-
-export type SensorValue = SensorValueOneOf | SensorValueOneOfFour;
 
 /**
  * Represents the online/offline status of all sensors on the Sensor Carrier board.

@@ -1,6 +1,7 @@
-use crate::{config::Config, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast};
+use crate::{NamedPssDatapointValue, config::Config, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
 use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_messages::Message;
 use futures::stream::FuturesUnordered;
 use mavio::{
     AsyncReceiver, AsyncSender, Endpoint,
@@ -9,6 +10,9 @@ use mavio::{
 };
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
+use tokio_stream::StreamExt;
+
+mod transport;
 
 /// Amount of receive-errors we tolerate before aborting the
 /// reception of messages.
@@ -25,11 +29,6 @@ pub enum MavlinkError {
     #[error("Mavio error: {0}")]
     Mavio(mavio::Error),
 }
-
-mod transport;
-
-use asteria_messages::Message;
-use tokio_stream::StreamExt;
 
 type MavlinkSender = AsyncSender<tokio::io::Error, TokioWriter<AsyncTransportStream>, V2>;
 
@@ -93,9 +92,9 @@ impl Mavlink {
 
             let datapoint_result = message
                 .get_datapoint_values()
-                .iter()
+                .into_iter()
                 .map(|value| {
-                    let data = Data::new_json(value)?;
+                    let data = Data::new_json(NamedPssDatapointValue::from(value))?;
                     let event = Event::Data(data.event("pss-data"));
                     Ok(self.broadcast.broadcast(event))
                 })

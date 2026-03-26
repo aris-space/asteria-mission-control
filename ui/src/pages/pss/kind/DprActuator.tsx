@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   NumberInput,
@@ -10,7 +10,7 @@ import {
   useMantineColorScheme,
 } from "@mantine/core";
 import {
-    CONTAINER_HEIGHT,
+  CONTAINER_HEIGHT,
   GAP,
   HORIZONTAL_PADDING,
   SLIDER_PADDING,
@@ -20,15 +20,23 @@ import {
 
 interface DprActuatorProps {
   value: number;
-  onSet: (value: number) => void;
-  onToggle: (active: boolean) => void;
+  onChange: (active: boolean, value: number) => void;
   active: boolean;
 }
 
-export function DprActuator({ value, onSet, onToggle, active }: DprActuatorProps) {
+export function DprActuator({ value, onChange, active }: DprActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
   const [inputValue, setInputValue] = useState<number | string>(value);
+  // We store the last value we received such that we can switch to "active" with
+  // a value.
+  // TODO: This is kinda flawed because what if we start in "inactive" state? Then we
+  // can never open again :/
+  const lastValue = useRef<number>(NaN);
+
+  useEffect(() => {
+    if (!isNaN(value)) lastValue.current = value;
+  }, [value]);
 
   return (
     <Paper
@@ -65,7 +73,7 @@ export function DprActuator({ value, onSet, onToggle, active }: DprActuatorProps
               color="dark"
               h={"fit-content"}
               variant="light"
-              onClick={() => onSet(Number(inputValue))}
+              onClick={() => onChange(active, Number(inputValue))}
             >
               SET
             </Button>
@@ -99,7 +107,9 @@ export function DprActuator({ value, onSet, onToggle, active }: DprActuatorProps
       </Box>
       <Box style={{ zIndex: 1 }} />
       <Box
-        onClick={() => onToggle(!active)}
+        onClick={() =>
+          onChange(!active, isNaN(value) ? lastValue.current : value)
+        }
         style={{
           position: "absolute",
           top: SLIDER_PADDING,
@@ -125,7 +135,7 @@ export function DprActuator({ value, onSet, onToggle, active }: DprActuatorProps
             : "translateX(0)",
         }}
       >
-        <Text p="xs" size="sm" fw={600} ff={active ? "monospace" : "text"} >
+        <Text p="xs" size="sm" fw={600} ff={active ? "monospace" : "text"}>
           {active ? value : "Off"}
         </Text>
       </Box>

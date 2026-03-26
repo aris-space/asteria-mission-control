@@ -4,13 +4,14 @@ use actix_web::{App, HttpServer, middleware, web::Data};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use clap::Parser;
 use env_logger::Env;
+use serde::Serialize;
 use std::{
     path::{Path, PathBuf},
     process::exit,
     sync::OnceLock,
     time::Duration,
 };
-use utoipa::OpenApi;
+use utoipa::{OpenApi, ToSchema};
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
 
@@ -39,10 +40,24 @@ const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
     components(
         // Manually add this type to the OpenAPI schema since we have no endpoint
         // using/returning this type. It's only broadcast through SSE.
-        schemas(NamedDatapointValue)
+        schemas(NamedPssDatapointValue)
     )
 )]
 struct ApiDoc;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct NamedPssDatapointValue {
+    /// Unique name of the datapoint
+    pub name: &'static str,
+    /// Value of the datapoint
+    pub value: f32,
+}
+
+impl From<NamedDatapointValue> for NamedPssDatapointValue {
+    fn from(NamedDatapointValue { name, value }: NamedDatapointValue) -> Self {
+        NamedPssDatapointValue { name, value: value.into() }
+    }
+}
 
 #[tokio::main]
 async fn main() {

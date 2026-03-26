@@ -250,8 +250,8 @@ function StateMachine() {
       direction={"column"}
       justify={"center"}
       align={"center"}
+      h={"calc(100vh - var(--app-shell-header-height))"}
       w={"100%"}
-      h={"100%"}
     >
       {stateMachine && (
         <Affix position={{ top: "5rem", right: "lg" }}>

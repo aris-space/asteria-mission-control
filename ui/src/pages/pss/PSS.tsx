@@ -1,5 +1,4 @@
 import {
-  DatapointValue,
   ExtendedDatapointInformation,
   Pss,
   useActiveScenario,
@@ -30,53 +29,17 @@ import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import classes from "./PSS.module.css";
 import DatapointKind from "./kind";
 import useDiagramSvg from "../../hooks/DiagramSvgHook";
+import { notifications } from "@mantine/notifications";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
 
-const TEST_VALUE: Array<[string, DatapointValue]> = [
-  [
-    "oss_dpr",
-    {
-      component: "actuator",
-      kind: "dpr",
-      value: {
-        enabled: true,
-        setpoint: 25.1,
-      },
-    },
-  ],
-  [
-    "oss_vnt_vlv",
-    {
-      component: "sensor",
-      kind: "digital",
-      value: {
-        enabled: false,
-      },
-    },
-  ],
-  [
-    "fss_inj_p",
-    {
-      component: "sensor",
-      kind: "analog",
-      value: {
-        value: 12.4,
-      },
-    },
-  ],
-  [
-    "oss_tnk_t",
-    {
-      component: "sensor",
-      kind: "analog",
-      value: {
-        value: -14.9,
-      },
-    },
-  ],
-];
+const TEST_VALUE: Record<string, number> = {
+  oss_dpr: 25.1,
+  oss_vnt_vlv: 0,
+  fss_inj_p: 12.4,
+  oss_tnk_t: -14.9,
+};
 
 type Transform = { k: number; x: number; y: number };
 
@@ -98,7 +61,7 @@ function PSS() {
       onZoom: (transform) => {
         // We do this kinda sketchy style overriding here to prevent having a state update and thus a re-render
         // per zoom event. This is much more performant as zoom events happen at a very high frequency!
-        Array.from(datapointValues.keys()).forEach((name) => {
+        Object.keys(datapointValues).forEach((name) => {
           const info = pssInfo?.datapointInfo[name];
           if (!info) return;
           const styles = computeDatapointStyle(transform, info);
@@ -133,7 +96,8 @@ function PSS() {
     "inherit",
   ]);
   const datapointNodes = useMap<string, SVGElement>();
-  const datapointValues = useMap<string, DatapointValue>(TEST_VALUE);
+  const [datapointValues, setDatapointValues] =
+    useState<Record<string, number>>(TEST_VALUE);
 
   useEffect(() => {
     updateDatapointVisibility();
@@ -166,14 +130,35 @@ function PSS() {
   }
 
   const datapointElements = useMemo(() => {
-    return Array.from(datapointValues.entries()).map(([name, value]) => {
+    return Object.entries(datapointValues).map(([name, value]) => {
       const info = pssInfo?.datapointInfo[name];
       if (!info) return <React.Fragment key={name} />;
 
       const styles = computeDatapointStyle(zoomTransform, info);
       if (!styles) return <React.Fragment key={name} />;
 
-      const datapoint = <DatapointKind value={value} kind={info.kind} />;
+      const datapoint = (
+        <DatapointKind
+          name={name}
+          value={value}
+          kind={info.kind}
+          onChange={({ actuator, value }) => {
+            const name = String.fromCharCode(...actuator).toString();
+
+            // TODO: Here we would send the mavlink message in JSON form to backend.
+            setDatapointValues((values) => ({
+              ...values,
+              [name]: value,
+            }));
+
+            notifications.show({
+              title: "Manual Actuator Change",
+              message: `Successfully changed value of actuator "${name}" to ${value}`,
+              color: "green",
+            });
+          }}
+        />
+      );
 
       return (
         <div data-datapoint-container-for={name} key={name} style={styles[0]}>
@@ -184,14 +169,7 @@ function PSS() {
         </div>
       );
     });
-  }, [
-    height,
-    width,
-    datapointValues,
-    pssInfo,
-    datapointNodes,
-    svgReady,
-  ]);
+  }, [height, width, datapointValues, pssInfo, datapointNodes, svgReady]);
 
   return (
     <>
@@ -242,7 +220,11 @@ function PSS() {
           </Box>
         ) : (
           <Flex p={"lg"} justify={"center"} align={"center"}>
-            <Alert variant="light" color="blue" title="No PSS configuration selected">
+            <Alert
+              variant="light"
+              color="blue"
+              title="No PSS configuration selected"
+            >
               You need to select a PSS configuration to start
             </Alert>
           </Flex>
@@ -284,7 +266,6 @@ function PssSelector(props: PssSelectorProps) {
 
   useEffect(() => {
     if (!pss.error) return;
-    console.log(pss.error)
     setSelected(null);
   }, [pss.error]);
 

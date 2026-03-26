@@ -1,6 +1,7 @@
 import {
   ExtendedDatapointInformation,
-  NamedDatapointValue,
+  ManualActuatorChange,
+  NamedPssDatapointValue,
 } from "@asteria/mission-control-client";
 import { DigitalActuator } from "./DigitalActuator";
 import { DprActuator } from "./DprActuator";
@@ -15,44 +16,65 @@ export const GAP: string = "0.5rem";
 export const SLIDER_PADDING: string = "4px";
 
 interface DatapointKindProps
-  extends Pick<ExtendedDatapointInformation, "kind">,
-    Pick<NamedDatapointValue, "value"> {}
+  extends Pick<ExtendedDatapointInformation, "kind" | "name">,
+    Pick<NamedPssDatapointValue, "value"> {
+  onChange: (action: ManualActuatorChange) => void;
+}
 
-function DatapointKind({ kind, value }: DatapointKindProps) {
-  if (kind.component != value.component || kind.kind != value.kind) {
-    // This should not happen; We received a value of a different datapoint kind than
-    // what the datapoint on the diagram is defined as.
-    return <></>;
-  }
+function DatapointKind({ kind, name, value, onChange }: DatapointKindProps) {
+  const handleDigitalActuatorChange = (active: boolean) => {
+    const encoder = new TextEncoder();
+    // We assume that the backend does bounds checks on the actuator name bytes length and
+    // thus we don't need to do that here.
+    const bytes = new Uint8Array(encoder.encode(name).buffer);
+    const action: ManualActuatorChange = {
+      actuator: Array.from(bytes),
+      pathIndex: 0,
+      value: active ? 1.0 : 0.0,
+    };
+    onChange(action);
+  };
 
-  switch (value.component) {
+  const handleDprActuatorChange = (active: boolean, value: number) => {
+    const encoder = new TextEncoder();
+    // We assume that the backend does bounds checks on the actuator name bytes length and
+    // thus we don't need to do that here.
+    const bytes = new Uint8Array(encoder.encode(name).buffer);
+    const action: ManualActuatorChange = {
+      actuator: Array.from(bytes),
+      pathIndex: 0,
+      value: active ? value : NaN,
+    };
+    onChange(action);
+  };
+
+  switch (kind.component) {
     case "sensor": {
-      switch (value.kind) {
+      switch (kind.kind) {
         case "analog": {
-          const unit = (kind as any).value.unit;
-          return <AnalogSensor value={value.value.value} unit={unit} />;
+          const unit = kind.value.unit;
+          return <AnalogSensor value={value} unit={unit} />;
         }
         case "digital":
-          return <DigitalSensor active={value.value.enabled} />;
+          return <DigitalSensor active={value == 1.0} />;
       }
       break;
     }
     case "actuator": {
-      switch (value.kind) {
+      switch (kind.kind) {
         case "digital":
           return (
             <DigitalActuator
-              active={value.value.active}
-              onToggle={console.log}
+              active={value == 1.0}
+              onChange={handleDigitalActuatorChange}
             />
           );
         case "dpr":
           return (
             <DprActuator
-              value={value.value.setpoint}
-              active={value.value.enabled}
-              onSet={console.log}
-              onToggle={console.log}
+              value={value}
+              active={!isNaN(value)}
+              onChange={handleDprActuatorChange}
             />
           );
         case "fractional":

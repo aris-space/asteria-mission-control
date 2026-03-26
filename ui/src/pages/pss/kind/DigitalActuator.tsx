@@ -15,11 +15,11 @@ import {
 } from ".";
 
 interface DigitalActuatorProps {
-  onToggle: (active: boolean) => void;
+  onChange: (active: boolean) => void;
   active: boolean;
 }
 
-export function DigitalActuator({ onToggle, active }: DigitalActuatorProps) {
+export function DigitalActuator({ onChange, active }: DigitalActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
 
@@ -41,7 +41,7 @@ export function DigitalActuator({ onToggle, active }: DigitalActuatorProps) {
       <Box style={{ zIndex: 1 }} />
       <Box style={{ zIndex: 1 }} />
       <Box
-        onClick={() => onToggle(!active)}
+        onClick={() => onChange(!active)}
         style={{
           position: "absolute",
           top: SLIDER_PADDING,

@@ -24,7 +24,11 @@ export default defineConfig([
         "off"
       ],
       "react-hooks/exhaustive-deps": ["off"],
-      "no-unused-vars": ["warn"]
+      // Ignore unused variables in function parameters. This is needed
+      // because typescript types like `(name: string) => void` would complain
+      // that the `name` variable is never used (_very stupid_).
+      "no-unused-vars": ["warn", { "argsIgnorePattern": "*" }],
+      "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "*"}]
     }
   },
 ])
