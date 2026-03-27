@@ -13,14 +13,15 @@ import { Route } from "react-router";
 import { Routes } from "react-router";
 import { notifications, Notifications } from "@mantine/notifications";
 import { AxiosError } from "axios";
-
-import StateMachine from "./pages/statemachine/StateMachine";
-import PSS from "./pages/pss/PSS";
-import Health from "./pages/health/Health";
 import {
   CodeHighlightAdapterProvider,
   createShikiAdapter,
 } from "@mantine/code-highlight";
+
+import StateMachine from "./pages/statemachine/StateMachine";
+import PSS from "./pages/pss/PSS";
+import Health from "./pages/health/Health";
+import Telemetry from "./pages/telemetry/Telemetry";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +70,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="statemachine" element={<StateMachine />} />
                   <Route path="pss" element={<PSS />} />
                   <Route path="health" element={<Health />} />
+                  <Route path="telemetry" element={<Telemetry />} />
                 </Routes>
               </Layout>
             </BrowserRouter>
