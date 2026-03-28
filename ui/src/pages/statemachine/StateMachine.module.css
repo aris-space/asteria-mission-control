@@ -27,3 +27,8 @@
         fill: orange !important;
     }
 }
+
+
+html {
+    overflow: hidden;
+}

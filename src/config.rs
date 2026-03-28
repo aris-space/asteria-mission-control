@@ -1,12 +1,23 @@
+#![allow(clippy::result_large_err)]
+
+use crate::{CONFIG_PATH, scenario::Scenario};
+use schemars::JsonSchema;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
+use utoipa::ToSchema;
 
-use schemars::JsonSchema;
-use serde::Deserialize;
+/// Static variable containing the optional name of the default scenario and
+/// an optional list of available scenarios. This is needed to provide nice
+/// errors from parsing. The idea is, that independently whether the
+/// `default_scenario` or `scenarios` is deserialized first, the other always
+/// either know the already defined default scenario or the list with available
+/// scenarios and can thus return the corresponding error.
+static DEFAULT_SCENARIO_OR_SCENARIOS: OnceLock<(Option<String>, Option<Vec<String>>)> = OnceLock::new();
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -14,32 +25,21 @@ pub enum ConfigError {
     Read(std::io::Error),
     #[error("Error whilst deserializing config: {0}")]
     Deserialize(toml::de::Error),
-    #[error("The config needs at least one scenario")]
-    NoScenarios,
-    #[error("Scenario with id '{0}' doesn't exist but is used as the default scenario")]
-    MissingDefaultScenario(String),
-    #[error("Error whilst canonicalizing state diagram path for state machine '{0}' at path {1:?}: {2}")]
-    MissingDiagram(String, PathBuf, std::io::Error),
-    #[error("Error whilst canonicalizing state machine config path for state machine '{0}' at path {1:?}: {2}")]
-    MissingConfig(String, PathBuf, std::io::Error),
-    #[error("Scenario with id '{0}' references a state machine with id '{1}' which does not exist")]
-    MissingStateMachine(String, String),
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct Config {
-    /// All scenarios availalable on the mission control
+    /// All scenarios available on the mission control.
     ///
     /// To run the mission control successfully, at least one scenario needs
-    /// to be specified
-    #[serde(rename = "scenario")]
+    /// to be specified.
+    #[serde(alias = "scenario", deserialize_with = "deserialize_scenarios")]
+    #[schemars(with = "HashMap<String, ScenarioConfig>")]
     pub scenarios: HashMap<String, Scenario>,
-    /// Scenario which should be selected by default on startup
+    /// Scenario which should be selected by default on startup.
+    #[serde(deserialize_with = "deserialize_default_scenario")]
     pub default_scenario: String,
-    /// All state machines available on the mission control
-    #[serde(rename = "state_machine")]
-    pub state_machines: HashMap<String, StateMachine>,
-    /// MavLink related configuration
+    /// MavLink related configuration.
     pub mavlink: MavlinkConfig,
 }
 
@@ -47,54 +47,17 @@ impl Config {
     /// Parse the config at a given path
     pub fn parse(path: &Path) -> Result<Arc<Self>, ConfigError> {
         let config_str = fs::read_to_string(path).map_err(ConfigError::Read)?;
-        let mut config = toml::from_str::<Self>(&config_str).map_err(ConfigError::Deserialize)?;
-        config.validate()?;
-
-        let parent_path = path.parent().unwrap_or(Path::new("/"));
-
-        // for all state machines join all paths onto the config path and try to canonicalize it
-        config.state_machines.iter_mut().try_for_each(|(id, state_machine)| {
-            let diagram_path = parent_path.join(&state_machine.diagram_path);
-            diagram_path.canonicalize().map_err(|err| ConfigError::MissingDiagram(id.clone(), diagram_path, err)).map(
-                |path| {
-                    state_machine.diagram_path = path;
-                },
-            )?;
-
-            let config_path = parent_path.join(&state_machine.config_path);
-            config_path.canonicalize().map_err(|err| ConfigError::MissingConfig(id.clone(), config_path, err)).map(
-                |path| {
-                    state_machine.config_path = path;
-                },
-            )?;
-
-            Ok(())
-        })?;
-
+        let config = toml::from_str::<Config>(&config_str).map_err(ConfigError::Deserialize)?;
         Ok(Arc::new(config))
     }
+}
 
-    /// Validate whether the config satisfies all semantic constraints
-    fn validate(&self) -> Result<(), ConfigError> {
-        if self.scenarios.is_empty() {
-            Err(ConfigError::NoScenarios)?
-        }
-        if !self.scenarios.contains_key(&self.default_scenario) {
-            Err(ConfigError::MissingDefaultScenario(self.default_scenario.clone()))?
-        }
-        // ensure that all referenced state machines exist
-        self.scenarios.iter().try_for_each(|(scenario_id, scenario)| {
-            scenario.state_machines.iter().try_for_each(|id| {
-                if !self.state_machines.contains_key(id) {
-                    Err(ConfigError::MissingStateMachine(scenario_id.clone(), id.clone()))
-                } else {
-                    Ok(())
-                }
-            })
-        })?;
-
-        Ok(())
-    }
+#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema, Clone)]
+pub enum RemoteComputerKind {
+    #[serde(rename = "fc")]
+    FlightComputer,
+    #[serde(rename = "rfs")]
+    RemoteFillingStation,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -117,35 +80,132 @@ pub enum MavlinkAddress {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct Scenario {
-    /// Displayname of the scenario
+pub struct ScenarioConfig {
+    /// Display name of the scenario.
     pub name: String,
-
-    /// Identifiers of the state machines of the scenario. All referenced state machines need to exist, otherwise the config
-    /// will fail to parse.
-    ///
-    /// Often those are just the flight computer and remote fueling station
-    /// state machines
-    pub state_machines: Vec<String>,
+    /// State machines of the scenario.
+    #[serde(rename = "state_machine")]
+    pub state_machines: HashMap<String, StateMachineConfig>,
+    /// PSS configs of the scenario.
+    pub pss: HashMap<String, PssConfig>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct StateMachine {
-    /// Displayname of the state machine on the UI
+pub struct StateMachineConfig {
+    /// Kind of remote computer the state machine represents.
+    pub kind: RemoteComputerKind,
+    /// Display name of the state machine on the UI.
     pub name: String,
-    /// Path to the drawio svg+xml file of the state machine
+    /// Path to the drawio SVG+XML file of the state machine.
     ///
     /// **Important**: If this path is relative, it needs to be relative to the location
-    ///                of the config file and will be joined and canonicalized after the
-    ///                path of the config file after parsing
-    #[serde(alias = "diagram")]
+    ///                of the config file and will be joined onto the config file path.
+    #[serde(alias = "diagram", deserialize_with = "deserialize_relative_path")]
     pub diagram_path: PathBuf,
     /// Path to the remote computers config which specifies the valid
-    /// state transitions of this state machine
+    /// state transitions of this state machine.
     ///
     /// **Important**: If this path is relative, it needs to be relative to the location
-    ///                of the config file and will be joined and canonicalized after the
-    ///                path of the config file after parsing
-    #[serde(alias = "config")]
+    ///                of the config file and will be joined onto the config file path.
+    #[serde(alias = "config", deserialize_with = "deserialize_relative_path")]
     pub config_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct PssConfig {
+    /// Kind of remote computer the PSS info belongs to.
+    pub kind: RemoteComputerKind,
+    /// Display name of the PSS info on the UI.
+    pub name: String,
+    /// Path to the drawio SVG+XML file of the PSS diagram.
+    ///
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined onto the config file path.
+    #[serde(alias = "diagram", deserialize_with = "deserialize_relative_path")]
+    pub diagram_path: PathBuf,
+}
+
+/// Deserialize a map of [`Scenario`] from a map of [`ScenarioConfig`] and validate
+/// that at least one scenario is defined.
+fn deserialize_scenarios<'de, D>(deserializer: D) -> Result<HashMap<String, Scenario>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let scenario_configs = HashMap::<String, ScenarioConfig>::deserialize(deserializer)?;
+    // Ensure that at least one scenario is defined.
+    if scenario_configs.is_empty() {
+        return Err(serde::de::Error::custom("At least one scenario needs to be defined"));
+    }
+
+    let scenarios = scenario_configs
+        .into_iter()
+        .map(|(name, config)| {
+            Scenario::try_from(config)
+                .map(|scenario| (name.clone(), scenario))
+                .map_err(|err| serde::de::Error::custom(format!("Scenario '{name}' is invalid: {err}")))
+        })
+        .collect::<Result<HashMap<_, _>, _>>()?;
+
+    let names = scenarios.keys().cloned().collect::<Vec<_>>();
+    if let Some((Some(default_scenario), None)) = DEFAULT_SCENARIO_OR_SCENARIOS.get() {
+        if !names.contains(default_scenario) {
+            return Err(serde::de::Error::custom(format!(
+                "Default scenario '{default_scenario}' does not exist. Available scenarios are: {}",
+                names.iter().map(|scenario| format!("'{scenario}'")).collect::<Vec<_>>().join(", ")
+            )));
+        }
+    } else {
+        DEFAULT_SCENARIO_OR_SCENARIOS.set((None, Some(names))).expect("OnceLock shouldn't be initialized")
+    }
+
+    Ok(scenarios)
+}
+
+/// Deserialize the configured default scenario. This is only needed to store the value during deserialization
+/// in the [`DEFAULT_SCENARIO_OR_SCENARIOS`] static variable to return the appropriate error when
+/// [`deserialize_scenarios`] is called and the specified default scenario doesn't exist.
+fn deserialize_default_scenario<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let default_scenario = String::deserialize(deserializer)?;
+    if let Some((None, Some(scenarios))) = DEFAULT_SCENARIO_OR_SCENARIOS.get() {
+        if !scenarios.contains(&default_scenario) {
+            return Err(serde::de::Error::custom(format!(
+                "Default scenario '{default_scenario}' does not exist. Available scenarios are: {}",
+                scenarios.iter().map(|scenario| format!("'{scenario}'")).collect::<Vec<_>>().join(", ")
+            )));
+        }
+    } else {
+        DEFAULT_SCENARIO_OR_SCENARIOS
+            .set((Some(default_scenario.clone()), None))
+            .expect("OnceLock shouldn't be initialized");
+    }
+
+    Ok(default_scenario)
+}
+
+/// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative
+/// path to the config file.
+fn deserialize_relative_path<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let relative_path = PathBuf::deserialize(deserializer)?;
+    let config_path = CONFIG_PATH.get().expect("global config path should be initialized");
+    let config_parent_path = config_path.parent().map(Path::to_path_buf).unwrap_or_default();
+
+    let absolute_path = config_parent_path.join(&relative_path);
+
+    let canonicalized_path = match absolute_path.canonicalize() {
+        Ok(path) => path,
+        Err(..) => {
+            return Err(serde::de::Error::custom(format!(
+                "Path '{}' cannot be canonicalized or does not exist",
+                absolute_path.display()
+            )));
+        }
+    };
+
+    Ok(canonicalized_path)
 }

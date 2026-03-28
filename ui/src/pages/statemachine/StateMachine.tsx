@@ -4,7 +4,7 @@ import {
   useAllStateMachines,
   useStateMachine,
 } from "@asteria/mission-control-client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { RefObject, useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   ActionIcon,
@@ -19,6 +19,7 @@ import {
 import classes from "./StateMachine.module.css";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import useDiagramSvg from "../../hooks/DiagramSvgHook";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -36,18 +37,18 @@ function StateMachine() {
   const [stateMachine, setStateMachine] =
     useState<StateMachineDefintion | null>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown>>(null);
-  const [isDirty, setIsDirty] = useState<boolean>(false);
+
+  const {
+    isZoomDirty,
+    resetZoom,
+    ref: svgRef,
+  } = useDiagramSvg(
+    stateMachine?.diagram as string,
+    containerRef as RefObject<HTMLDivElement>,
+  );
+
   const [highlightStates, setHighlightStates] = useState<boolean>(false);
-
   const [activeState, setActiveState] = useState<string | null>();
-
-  useEffect(() => {
-    if (!stateMachine) resetSvg();
-    setupSvg();
-    setupZoom();
-  }, [stateMachine, containerRef]);
 
   useEffect(() => {
     setActiveState(stateMachine?.initialState ?? null);
@@ -70,54 +71,6 @@ function StateMachine() {
 
     return () => {};
   }, [activeState, stateMachine]);
-
-  const resetSvg = () => {
-    if (!containerRef.current) return;
-    containerRef.current.innerHTML = "";
-    setIsDirty(false);
-  };
-
-  function setupSvg() {
-    if (!stateMachine || !containerRef.current) return;
-    containerRef.current.innerHTML = stateMachine.diagram;
-    const svg = containerRef.current.querySelector("svg");
-    if (!svg) {
-      console.warn("Received non-svg state machine from API");
-      return;
-    }
-    svgRef.current = svg;
-
-    // ensure the whole svg content is wrapped in a `g` element to which we can
-    // apply our transformation
-    if (!svg.querySelector("g")) {
-      const wrapper = document.createElementNS(
-        "http://www.w3.org/2000/svg",
-        "g",
-      );
-      wrapper.innerHTML = svg.innerHTML;
-      svg.innerHTML = "";
-      svg.appendChild(wrapper);
-    }
-
-    svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "100%");
-  }
-
-  function setupZoom() {
-    if (!svgRef.current) return;
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.25, 10])
-      .on("zoom", (event) => {
-        setIsDirty(true);
-        d3.select(svgRef.current)
-          .select("g")
-          .attr("transform", event.transform.toString());
-      });
-
-    d3.select(svgRef.current).call(zoom).on("dblclick.zoom", null);
-    zoomRef.current = zoom;
-  }
 
   function removeStateListeners() {
     if (!svgRef.current) return;
@@ -187,16 +140,6 @@ function StateMachine() {
       });
   }
 
-  function resetZoomAndPan() {
-    if (svgRef.current && zoomRef.current) {
-      d3.select(svgRef.current).call(
-        zoomRef.current.transform,
-        d3.zoomIdentity,
-      );
-    }
-    setIsDirty(false);
-  }
-
   function toggleStateHighlight() {
     setHighlightStates((highlight) => !highlight);
   }
@@ -246,7 +189,13 @@ function StateMachine() {
   }
 
   return (
-    <Flex direction={"column"} justify={"center"} align={"center"}>
+    <Flex
+      direction={"column"}
+      justify={"center"}
+      align={"center"}
+      h={"calc(100vh - var(--app-shell-header-height))"}
+      w={"100%"}
+    >
       {stateMachine && (
         <Affix position={{ top: "5rem", right: "lg" }}>
           <Flex gap={"xs"}>
@@ -255,9 +204,9 @@ function StateMachine() {
                 {highlightStates ? <IconEyeOff /> : <IconEye />}
               </ActionIcon>
             </Tooltip>
-            {isDirty && (
+            {isZoomDirty && (
               <Tooltip label={"Reset zoom and pan"}>
-                <ActionIcon onClick={resetZoomAndPan}>
+                <ActionIcon onClick={resetZoom}>
                   <IconZoomReset />
                 </ActionIcon>
               </Tooltip>
@@ -288,6 +237,7 @@ function StateMachine() {
 }
 
 interface StateMachineSelectorProps {
+  // eslint-disable-next-line no-unused-vars
   onChange: (stateMachine: StateMachineDefintion | null) => void;
 }
 
@@ -295,9 +245,12 @@ function StateMachineSelector(props: StateMachineSelectorProps) {
   const [selected, setSelected] = useState<string | null>();
   const { data: activeScenario, ...active } = useActiveScenario();
   const { data: allStateMachines = [], ...all } = useAllStateMachines(
-    activeScenario?.id ?? "",
+    activeScenario?.id as string,
   );
-  const { data: stateMachine, ...machine } = useStateMachine(selected ?? "");
+  const { data: stateMachine, ...machine } = useStateMachine(
+    activeScenario?.id as string,
+    selected as string,
+  );
 
   useEffect(() => {
     if (!selected) props.onChange(null);

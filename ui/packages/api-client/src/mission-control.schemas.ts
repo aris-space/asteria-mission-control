@@ -1,3 +1,44 @@
+export type ActuatorKindOneOfKind =
+  (typeof ActuatorKindOneOfKind)[keyof typeof ActuatorKindOneOfKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorKindOneOfKind = {
+  digital: "digital",
+} as const;
+
+export type ActuatorKindOneOf = {
+  kind: ActuatorKindOneOfKind;
+};
+
+export type ActuatorKindOneOfThreeKind =
+  (typeof ActuatorKindOneOfThreeKind)[keyof typeof ActuatorKindOneOfThreeKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorKindOneOfThreeKind = {
+  dpr: "dpr",
+} as const;
+
+export type ActuatorKindOneOfThree = {
+  kind: ActuatorKindOneOfThreeKind;
+};
+
+export type ActuatorKindOneOfFiveKind =
+  (typeof ActuatorKindOneOfFiveKind)[keyof typeof ActuatorKindOneOfFiveKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const ActuatorKindOneOfFiveKind = {
+  fractional: "fractional",
+} as const;
+
+export type ActuatorKindOneOfFive = {
+  kind: ActuatorKindOneOfFiveKind;
+};
+
+export type ActuatorKind =
+  | ActuatorKindOneOf
+  | ActuatorKindOneOfThree
+  | ActuatorKindOneOfFive;
+
 /**
  * Represents the current state of an actuator as detected by a board.
 
@@ -13,6 +54,14 @@ export const ActuatorStatus = {
   notConnected: "notConnected",
   connected: "connected",
   powerOn: "powerOn",
+} as const;
+
+export type Alignment = (typeof Alignment)[keyof typeof Alignment];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const Alignment = {
+  left: "left",
+  right: "right",
 } as const;
 
 /**
@@ -107,6 +156,48 @@ export type DPRValveOneOf = {
 };
 
 export type DPRValve = DPRValveOneOf | "disabled";
+
+/**
+ * Compile time information about a PSS datapoint
+ */
+export interface DatapointInformation {
+  /** Kind of the datapoint (e.g. DPR actuator, digital sensor, ...) */
+  kind: DatapointKind;
+  /** User-facing label of the datapoint */
+  label: string;
+  /** Unique name of the datapoint */
+  name: string;
+}
+
+export type DatapointKindOneOfAllOfComponent =
+  (typeof DatapointKindOneOfAllOfComponent)[keyof typeof DatapointKindOneOfAllOfComponent];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DatapointKindOneOfAllOfComponent = {
+  actuator: "actuator",
+} as const;
+
+export type DatapointKindOneOfAllOf = {
+  component: DatapointKindOneOfAllOfComponent;
+};
+
+export type DatapointKindOneOf = ActuatorKind & DatapointKindOneOfAllOf;
+
+export type DatapointKindOneOfFourAllOfComponent =
+  (typeof DatapointKindOneOfFourAllOfComponent)[keyof typeof DatapointKindOneOfFourAllOfComponent];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const DatapointKindOneOfFourAllOfComponent = {
+  sensor: "sensor",
+} as const;
+
+export type DatapointKindOneOfFourAllOf = {
+  component: DatapointKindOneOfFourAllOfComponent;
+};
+
+export type DatapointKindOneOfFour = SensorKind & DatapointKindOneOfFourAllOf;
+
+export type DatapointKind = DatapointKindOneOf | DatapointKindOneOfFour;
 
 export interface EngineBayTemperature {
   /** Oxidizer Runline temperature in °C. */
@@ -514,51 +605,6 @@ export type EngineControlBoardMessageOneOfTwooneType =
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const EngineControlBoardMessageOneOfTwooneType = {
-  ThrustCurveConfig: "ThrustCurveConfig",
-} as const;
-
-/**
- * # `ThrustCurveConfig`
-Event message sent by the FC.
-
-## Type
-- `Event`: sent by the FC configure the Launch Thrust Curve
-
-## Direction
-- **Emitted by:** `FlightComputer`
-- **Received by:** `EngineControlBoard`
-
-## Purpose
-Transmit the flight thrust curve to the Engine Control Board.
-
-## Reaction
-
- */
-export type EngineControlBoardMessageOneOfTwoone = {
-  /** # `ThrustCurveConfig`
-Event message sent by the FC.
-
-## Type
-- `Event`: sent by the FC configure the Launch Thrust Curve
-
-## Direction
-- **Emitted by:** `FlightComputer`
-- **Received by:** `EngineControlBoard`
-
-## Purpose
-Transmit the flight thrust curve to the Engine Control Board.
-
-## Reaction
- */
-  content: ThrustCurveConfig;
-  type: EngineControlBoardMessageOneOfTwooneType;
-};
-
-export type EngineControlBoardMessageOneOfTwothreeType =
-  (typeof EngineControlBoardMessageOneOfTwothreeType)[keyof typeof EngineControlBoardMessageOneOfTwothreeType];
-
-// eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EngineControlBoardMessageOneOfTwothreeType = {
   FiringAbortInitiation: "FiringAbortInitiation",
 } as const;
 
@@ -579,15 +625,15 @@ datapoints/dp-flight-computer/src
  ## Reaction
  The ECU should properly abort the firing
  */
-export type EngineControlBoardMessageOneOfTwothree = {
-  type: EngineControlBoardMessageOneOfTwothreeType;
+export type EngineControlBoardMessageOneOfTwoone = {
+  type: EngineControlBoardMessageOneOfTwooneType;
 };
 
-export type EngineControlBoardMessageOneOfTwofiveType =
-  (typeof EngineControlBoardMessageOneOfTwofiveType)[keyof typeof EngineControlBoardMessageOneOfTwofiveType];
+export type EngineControlBoardMessageOneOfTwothreeType =
+  (typeof EngineControlBoardMessageOneOfTwothreeType)[keyof typeof EngineControlBoardMessageOneOfTwothreeType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EngineControlBoardMessageOneOfTwofiveType = {
+export const EngineControlBoardMessageOneOfTwothreeType = {
   FiringInitiation: "FiringInitiation",
 } as const;
 
@@ -608,15 +654,15 @@ Initiate firing sequence
 ## Reaction
 The Engine Control Board shall initiate the firing sequence upon receiving this command
  */
-export type EngineControlBoardMessageOneOfTwofive = {
-  type: EngineControlBoardMessageOneOfTwofiveType;
+export type EngineControlBoardMessageOneOfTwothree = {
+  type: EngineControlBoardMessageOneOfTwothreeType;
 };
 
-export type EngineControlBoardMessageOneOfTwosevenType =
-  (typeof EngineControlBoardMessageOneOfTwosevenType)[keyof typeof EngineControlBoardMessageOneOfTwosevenType];
+export type EngineControlBoardMessageOneOfTwofiveType =
+  (typeof EngineControlBoardMessageOneOfTwofiveType)[keyof typeof EngineControlBoardMessageOneOfTwofiveType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EngineControlBoardMessageOneOfTwosevenType = {
+export const EngineControlBoardMessageOneOfTwofiveType = {
   OxidizerMainControlFC: "OxidizerMainControlFC",
 } as const;
 
@@ -640,7 +686,7 @@ The Engine Control Board shall change the Oxidizer Main Valve position according
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed
  */
-export type EngineControlBoardMessageOneOfTwoseven = {
+export type EngineControlBoardMessageOneOfTwofive = {
   /** # `OxidizerMainControlFC`
 Event message sent by the FC.
 
@@ -660,14 +706,14 @@ The Engine Control Board shall change the Oxidizer Main Valve position according
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed */
   content: ValveState;
-  type: EngineControlBoardMessageOneOfTwosevenType;
+  type: EngineControlBoardMessageOneOfTwofiveType;
 };
 
-export type EngineControlBoardMessageOneOfTwonineType =
-  (typeof EngineControlBoardMessageOneOfTwonineType)[keyof typeof EngineControlBoardMessageOneOfTwonineType];
+export type EngineControlBoardMessageOneOfTwosevenType =
+  (typeof EngineControlBoardMessageOneOfTwosevenType)[keyof typeof EngineControlBoardMessageOneOfTwosevenType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EngineControlBoardMessageOneOfTwonineType = {
+export const EngineControlBoardMessageOneOfTwosevenType = {
   OxidizerMainControlRFS: "OxidizerMainControlRFS",
 } as const;
 
@@ -691,7 +737,7 @@ The Engine Control Board shall change the Oxidizer Main Valve position according
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed
  */
-export type EngineControlBoardMessageOneOfTwonine = {
+export type EngineControlBoardMessageOneOfTwoseven = {
   /** # `OxidizerMainControlRFS`
 Event message sent by the RFS.
 
@@ -711,14 +757,14 @@ The Engine Control Board shall change the Oxidizer Main Valve position according
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed */
   content: ValveState;
-  type: EngineControlBoardMessageOneOfTwonineType;
+  type: EngineControlBoardMessageOneOfTwosevenType;
 };
 
-export type EngineControlBoardMessageOneOfThreeoneType =
-  (typeof EngineControlBoardMessageOneOfThreeoneType)[keyof typeof EngineControlBoardMessageOneOfThreeoneType];
+export type EngineControlBoardMessageOneOfTwonineType =
+  (typeof EngineControlBoardMessageOneOfTwonineType)[keyof typeof EngineControlBoardMessageOneOfTwonineType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EngineControlBoardMessageOneOfThreeoneType = {
+export const EngineControlBoardMessageOneOfTwonineType = {
   FuelMainControlFC: "FuelMainControlFC",
 } as const;
 
@@ -742,7 +788,7 @@ The Engine Control Board shall change the Fuel Main Valve position accordingly.
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed
  */
-export type EngineControlBoardMessageOneOfThreeone = {
+export type EngineControlBoardMessageOneOfTwonine = {
   /** # `FuelMainControlFC`
 Event message sent by the FC.
 
@@ -762,14 +808,14 @@ The Engine Control Board shall change the Fuel Main Valve position accordingly.
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed */
   content: ValveState;
-  type: EngineControlBoardMessageOneOfThreeoneType;
+  type: EngineControlBoardMessageOneOfTwonineType;
 };
 
-export type EngineControlBoardMessageOneOfThreethreeType =
-  (typeof EngineControlBoardMessageOneOfThreethreeType)[keyof typeof EngineControlBoardMessageOneOfThreethreeType];
+export type EngineControlBoardMessageOneOfThreeoneType =
+  (typeof EngineControlBoardMessageOneOfThreeoneType)[keyof typeof EngineControlBoardMessageOneOfThreeoneType];
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
-export const EngineControlBoardMessageOneOfThreethreeType = {
+export const EngineControlBoardMessageOneOfThreeoneType = {
   FuelMainControlRFS: "FuelMainControlRFS",
 } as const;
 
@@ -793,7 +839,7 @@ The Engine Control Board shall change the Fuel Main Valve position accordingly.
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed
  */
-export type EngineControlBoardMessageOneOfThreethree = {
+export type EngineControlBoardMessageOneOfThreeone = {
   /** # `FuelMainControlRFS`
 Event message sent by the RFS.
 
@@ -813,7 +859,7 @@ The Engine Control Board shall change the Fuel Main Valve position accordingly.
 The Engine Control Board might also change the valve position without input from this message, during the firing sequence
 The Valve is Normally Closed */
   content: ValveState;
-  type: EngineControlBoardMessageOneOfThreethreeType;
+  type: EngineControlBoardMessageOneOfThreeoneType;
 };
 
 export type EngineControlBoardMessage =
@@ -832,8 +878,7 @@ export type EngineControlBoardMessage =
   | EngineControlBoardMessageOneOfTwofive
   | EngineControlBoardMessageOneOfTwoseven
   | EngineControlBoardMessageOneOfTwonine
-  | EngineControlBoardMessageOneOfThreeone
-  | EngineControlBoardMessageOneOfThreethree;
+  | EngineControlBoardMessageOneOfThreeone;
 
 export interface EngineControlBoardStatus {
   /** `Armed` if the engine is armed and the main valves receive power, ie engine arming Pin is pulled */
@@ -876,6 +921,17 @@ This data point should only be used for low-frequency applications. */
   /** Temperature in Celsius. */
   temperature: Celsius;
 }
+
+export type ExtendedDatapointInformationAllOf = {
+  /** Alignment of the replacement element. */
+  align: Alignment;
+  /** Id of the diagram cell which should be replaced by the
+replacement element. */
+  cell: string;
+};
+
+export type ExtendedDatapointInformation = DatapointInformation &
+  ExtendedDatapointInformationAllOf;
 
 export type FlightComputerMessageOneOfType =
   (typeof FlightComputerMessageOneOfType)[keyof typeof FlightComputerMessageOneOfType];
@@ -969,9 +1025,57 @@ It is also used to only arm the RFS if the FC is armed and ensure exclusive PSS 
   type: FlightComputerMessageOneOfThreeType;
 };
 
+export type FlightComputerMessageOneOfFiveType =
+  (typeof FlightComputerMessageOneOfFiveType)[keyof typeof FlightComputerMessageOneOfFiveType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const FlightComputerMessageOneOfFiveType = {
+  ManualStateTransition: "ManualStateTransition",
+} as const;
+
+/**
+ * Command a manual state transition on the FC.
+The state machine will perform the state transition and emit a state change event.
+ */
+export type FlightComputerMessageOneOfFive = {
+  /** Command a manual state transition on the FC.
+The state machine will perform the state transition and emit a state change event. */
+  content: ManualStateTransition;
+  type: FlightComputerMessageOneOfFiveType;
+};
+
+export type FlightComputerMessageOneOfSevenType =
+  (typeof FlightComputerMessageOneOfSevenType)[keyof typeof FlightComputerMessageOneOfSevenType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const FlightComputerMessageOneOfSevenType = {
+  ManualActuatorChange: "ManualActuatorChange",
+} as const;
+
+/**
+ * Command a specific actuator to move to a specific target position.
+The actuator name and the semantics of the value are defined using
+an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
+macro.
+
+Upon change, an "actuator states" message will be emitted.
+ */
+export type FlightComputerMessageOneOfSeven = {
+  /** Command a specific actuator to move to a specific target position.
+The actuator name and the semantics of the value are defined using
+an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
+macro.
+
+Upon change, an "actuator states" message will be emitted. */
+  content: ManualActuatorChange;
+  type: FlightComputerMessageOneOfSevenType;
+};
+
 export type FlightComputerMessage =
   | FlightComputerMessageOneOf
-  | FlightComputerMessageOneOfThree;
+  | FlightComputerMessageOneOfThree
+  | FlightComputerMessageOneOfFive
+  | FlightComputerMessageOneOfSeven;
 
 export interface FlightComputerStatus {
   common: StatusCommonMessage;
@@ -1745,9 +1849,9 @@ export interface ImuData {
 }
 
 export interface Info {
-  /** Default scenario from current configuration file */
+  /** Default scenario from current configuration file. */
   default_scenario: string;
-  /** Git version of the mission control server */
+  /** Git version of the mission control server. */
   version: string;
 }
 
@@ -1772,6 +1876,37 @@ export interface MagnetometerData {
   magneticFieldY: number;
   /** Magnetic field along body Z-axis (down) in μT. Range: ±4915.2 μT */
   magneticFieldZ: number;
+}
+
+/**
+ * Shared manual actuator change used by the FC and RFSC.
+ */
+export interface ManualActuatorChange {
+  /** The name of the actuator whose value should be changed. */
+  actuator: number[];
+  /**
+   * The index in the state path where the current state is.
+For the initial state this is 0 and increments with every transition.
+   * @minimum 0
+   */
+  pathIndex: number;
+  /** The target value of the actuator.
+This depends on the actuator type, for valves 0.0 is fully closed
+and 1.0 is fully open. */
+  value: number;
+}
+
+/**
+ * Shared manual state transition used by the FC and RFSC.
+ */
+export interface ManualStateTransition {
+  /** The name of the state to which the state machine should transition. */
+  state: number[];
+  /**
+   * The index in the state path where the new state should end up at.
+   * @minimum 0
+   */
+  transitionIndex: number;
 }
 
 export type MessageOneOfBoard =
@@ -1904,6 +2039,13 @@ export type Message =
   | MessageOneOfOnethree
   | MessageOneOfOnefive
   | MessageOneOfOneseven;
+
+export interface NamedPssDatapointValue {
+  /** Unique name of the datapoint */
+  name: string;
+  /** Value of the datapoint */
+  value: number;
+}
 
 export interface OrientationData {
   /** Normalised quaternion scalar component of the rotation from inertial NED to body-fixed frame. */
@@ -2801,6 +2943,34 @@ opening_time = kp * (target_pressure - current_pressure), in milliseconds
 export type PressurizationGain = number;
 
 /**
+ * Map of all datapoints defined in the diagram together with information
+collected at compile time and from the diagram about the datapoint.
+ */
+export type PssDatapointInfo = { [key: string]: ExtendedDatapointInformation };
+
+/**
+ * Representation of a PSS diagram.
+ */
+export interface Pss {
+  /** Map of all datapoints defined in the diagram together with information
+collected at compile time and from the diagram about the datapoint. */
+  datapointInfo: PssDatapointInfo;
+  /** PSS diagram SVG without the drawio XML content. */
+  diagram: string;
+  /** Kind of remote computer this PSS infomration is for. */
+  kind: RemoteComputerKind;
+  /** Display name of the PSS information. */
+  name: string;
+}
+
+export interface PssInfo {
+  /** Identifier of the PSS information. */
+  id: string;
+  /** Display name of the PSS information. */
+  name: string;
+}
+
+/**
  * Shared rail status structure for both 5V and 24V power rails.
  */
 export interface RailStatus {
@@ -3212,6 +3382,15 @@ Steering power is not affected by arming. */
   steeringEnabled: boolean;
 }
 
+export type RemoteComputerKind =
+  (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const RemoteComputerKind = {
+  fc: "fc",
+  rfs: "rfs",
+} as const;
+
 export type RfsComputerMessageOneOfType =
   (typeof RfsComputerMessageOneOfType)[keyof typeof RfsComputerMessageOneOfType];
 
@@ -3537,6 +3716,52 @@ The remote filling station shall adjust the GOX and H2 purge valve state accordi
   type: RfsComputerMessageOneOfOnethreeType;
 };
 
+export type RfsComputerMessageOneOfOnefiveType =
+  (typeof RfsComputerMessageOneOfOnefiveType)[keyof typeof RfsComputerMessageOneOfOnefiveType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const RfsComputerMessageOneOfOnefiveType = {
+  ManualStateTransition: "ManualStateTransition",
+} as const;
+
+/**
+ * Command a manual state transition on the RFSC.
+The state machine will perform the state transition and emit a state change event.
+ */
+export type RfsComputerMessageOneOfOnefive = {
+  /** Command a manual state transition on the RFSC.
+The state machine will perform the state transition and emit a state change event. */
+  content: ManualStateTransition;
+  type: RfsComputerMessageOneOfOnefiveType;
+};
+
+export type RfsComputerMessageOneOfOnesevenType =
+  (typeof RfsComputerMessageOneOfOnesevenType)[keyof typeof RfsComputerMessageOneOfOnesevenType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const RfsComputerMessageOneOfOnesevenType = {
+  ManualActuatorChange: "ManualActuatorChange",
+} as const;
+
+/**
+ * Command a specific actuator to move to a specific target position.
+The actuator name and the semantics of the value are defined using
+an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
+macro.
+
+Upon change, an "actuator states" message will be emitted.
+ */
+export type RfsComputerMessageOneOfOneseven = {
+  /** Command a specific actuator to move to a specific target position.
+The actuator name and the semantics of the value are defined using
+an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
+macro.
+
+Upon change, an "actuator states" message will be emitted. */
+  content: ManualActuatorChange;
+  type: RfsComputerMessageOneOfOnesevenType;
+};
+
 export type RfsComputerMessage =
   | RfsComputerMessageOneOf
   | RfsComputerMessageOneOfThree
@@ -3544,7 +3769,9 @@ export type RfsComputerMessage =
   | RfsComputerMessageOneOfSeven
   | RfsComputerMessageOneOfNine
   | RfsComputerMessageOneOfOneone
-  | RfsComputerMessageOneOfOnethree;
+  | RfsComputerMessageOneOfOnethree
+  | RfsComputerMessageOneOfOnefive
+  | RfsComputerMessageOneOfOneseven;
 
 export interface RfsComputerStatus {
   common: StatusCommonMessage;
@@ -3570,9 +3797,9 @@ export interface RfsComputerValveStates {
 }
 
 export interface ScenarioInfo {
-  /** Identifier of the scenario */
+  /** Identifier of the scenario. */
   id: string;
-  /** Displayname of the scenario */
+  /** Display name of the scenario. */
   name: string;
 }
 
@@ -4219,6 +4446,37 @@ export interface SensorCarrierStatus {
   sensorHealth: SensorsHealth;
 }
 
+export type SensorKindOneOfKind =
+  (typeof SensorKindOneOfKind)[keyof typeof SensorKindOneOfKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SensorKindOneOfKind = {
+  analog: "analog",
+} as const;
+
+export type SensorKindOneOfValue = {
+  unit: string;
+};
+
+export type SensorKindOneOf = {
+  kind: SensorKindOneOfKind;
+  value: SensorKindOneOfValue;
+};
+
+export type SensorKindOneOfFourKind =
+  (typeof SensorKindOneOfFourKind)[keyof typeof SensorKindOneOfFourKind];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const SensorKindOneOfFourKind = {
+  digital: "digital",
+} as const;
+
+export type SensorKindOneOfFour = {
+  kind: SensorKindOneOfFourKind;
+};
+
+export type SensorKind = SensorKindOneOf | SensorKindOneOfFour;
+
 /**
  * Enum representing the status of a sensor.
  */
@@ -4258,33 +4516,37 @@ export interface SensorsHealth {
 }
 
 /**
- * Allowed manual transitions for every state
+ * Allowed manual transitions for every state.
  */
 export type StateMachineManualTransitions = { [key: string]: string[] };
 
 /**
- * Mapping of state names to diagram cell ids
+ * Mapping of state names to diagram cell ids.
  */
 export type StateMachineStateNodes = { [key: string]: string };
 
 /**
- * Representation of a state machine diagram
+ * Representation of a state machine diagram.
  */
 export interface StateMachine {
-  /** State machine diagram svg without the drawio xml content */
+  /** State machine diagram SVG without the drawio XML content. */
   diagram: string;
-  /** Initial state of the state machine */
+  /** Initial state of the state machine. */
   initialState: string;
-  /** Allowed manual transitions for every state */
+  /** Kind of remote computer this state machine diagram is for. */
+  kind: RemoteComputerKind;
+  /** Allowed manual transitions for every state. */
   manualTransitions: StateMachineManualTransitions;
-  /** Mapping of state names to diagram cell ids */
+  /** Display name of the state machine. */
+  name: string;
+  /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
 }
 
 export interface StateMachineInfo {
-  /** Identifier of the state machine */
+  /** Identifier of the state machine. */
   id: string;
-  /** Displayname of the state machine */
+  /** Display name of the state machine. */
   name: string;
 }
 
@@ -4439,29 +4701,6 @@ export type SystemManagementMessage =
   | SystemManagementMessageOneOf
   | SystemManagementMessageOneOfThree
   | SystemManagementMessageOneOfFive;
-
-export interface ThrustCurveConfig {
-  /** The thrust curve, consisting of 25 points. */
-  thrustCurve: ThrustPoint[];
-  /**
-   * The length of the thrust curve in points (0-25).
-   * @minimum 0
-   */
-  thrustCurveLength: number;
-}
-
-export interface ThrustPoint {
-  /**
-   * Thrust level in percentage (0-100).
-   * @minimum 0
-   */
-  thrust: number;
-  /**
-   * Time in 100ms steps after ignition when this thrust level should be reached.
-   * @minimum 0
-   */
-  time: number;
-}
 
 /**
  * Enum representing the state of a valve.

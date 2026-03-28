@@ -27,7 +27,11 @@ export function Layout(props: PropsWithChildren) {
   const hasVersion = !!info?.version;
 
   return (
-    <AppShell padding="0" header={{ height: "4rem" }}>
+    <AppShell
+      padding="0"
+      header={{ height: "4rem" }}
+      style={{ minHeight: "100vh" }}
+    >
       <AppShell.Header>
         <SimpleGrid py={"xs"} px={"sm"} cols={2}>
           <Flex align={"center"} justify={"start"} gap={"lg"}>
@@ -69,7 +73,9 @@ export function Layout(props: PropsWithChildren) {
           </Flex>
         </SimpleGrid>
       </AppShell.Header>
-      <AppShell.Main>{props.children}</AppShell.Main>
+      <AppShell.Main style={{ display: "flex" }} w={"100%"} h={"100%"}>
+        {props.children}
+      </AppShell.Main>
     </AppShell>
   );
 }

@@ -1,8 +1,6 @@
+use crate::{config::Config, scenario::Scenario};
 use std::sync::Arc;
-
 use tokio::sync::RwLock;
-
-use crate::config::{Config, Scenario};
 
 pub type StateInstance = Arc<RwLock<State>>;
 

@@ -1,50 +1,61 @@
 use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt::Debug;
 use utoipa::ToSchema;
+
+// This file contains the types for constructing an "abstract node tree" of a drawio diagram.
 
 #[derive(Debug, Deserialize)]
 #[serde(rename(deserialize = "mxfile"))]
-pub struct MxFile {
+#[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
+pub struct MxFile<T> {
     #[serde(rename(deserialize = "diagram"))]
-    pub diagram: Diagram,
+    pub diagram: Diagram<T>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Diagram {
+#[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
+pub struct Diagram<T> {
     #[serde(rename(deserialize = "mxGraphModel"))]
-    pub model: MxGraphModel,
+    pub model: MxGraphModel<T>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct MxGraphModel {
+#[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
+pub struct MxGraphModel<T> {
     #[serde(rename(deserialize = "@dx"))]
-    pub width: u32,
+    pub width: i32,
     #[serde(rename(deserialize = "@dy"))]
-    pub height: u32,
-    pub root: Root,
+    pub height: i32,
+    pub root: Root<T>,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Root {
+#[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
+pub struct Root<T> {
     #[serde(rename(deserialize = "$value"))]
-    pub children: Vec<RootChild>,
+    pub children: Vec<RootChild<T>>,
 }
 
 #[derive(Debug, Deserialize)]
-pub enum RootChild {
+#[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
+pub enum RootChild<T> {
     #[serde(rename(deserialize = "mxCell"))]
     Cell(MxCell),
     #[serde(rename(deserialize = "object"))]
-    Object(Object),
+    Object(Object<T>),
+    #[serde(rename(deserialize = "UserObject"))]
+    UserObject(Object<T>),
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Object {
+#[serde(bound(deserialize = "T: Deserialize<'de> + Debug"))]
+pub struct Object<T> {
     #[serde(rename(deserialize = "@id"))]
     pub id: String,
     #[serde(rename(deserialize = "@label"))]
     pub label: String,
-    #[serde(rename(deserialize = "@state"))]
-    pub state: String,
+    #[serde(flatten)]
+    pub data: T,
     #[serde(rename(deserialize = "mxCell"))]
     pub cell: MxCell,
 }

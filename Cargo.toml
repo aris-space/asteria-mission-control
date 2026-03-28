@@ -10,8 +10,10 @@ actix-web = { version = "4.11.0", features = ["rustls"] }
 actix-web-lab = "0.24.3"
 asteria-messages = { package = "messages", path = "data-definitions/messages", default-features = false, features = [
   "mavlink",
-  "mission-control"
+  "mission-control",
+  "pss"
 ] }
+asteria-datapoint-information = { package = "datapoint-information", path = "data-definitions/datapoint-information", features = ["mission-control"] }
 chrono = "0.4.42"
 clap = { version = "4.5.51", features = ["derive", "env"] }
 env_logger = "0.11.8"

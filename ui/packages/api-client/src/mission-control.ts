@@ -17,6 +17,8 @@ import type {
 import type {
   Info,
   Message,
+  Pss,
+  PssInfo,
   ScenarioInfo,
   StateMachine,
   StateMachineInfo,
@@ -517,6 +519,308 @@ export const useSendMessage = <TError = ErrorType<unknown>, TContext = unknown>(
 
   return useMutation(mutationOptions, queryClient);
 };
+
+/**
+ * Get all available PSS infos of a specific scenario
+ */
+export const allPssInfos = (
+  scenarioId: string,
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<PssInfo[]>(
+    { url: `/api/pss/scenario/${scenarioId}`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getAllPssInfosQueryKey = (scenarioId?: string) => {
+  return [`/api/pss/scenario/${scenarioId}`] as const;
+};
+
+export const getAllPssInfosQueryOptions = <
+  TData = Awaited<ReturnType<typeof allPssInfos>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getAllPssInfosQueryKey(scenarioId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof allPssInfos>>> = ({
+    signal,
+  }) => allPssInfos(scenarioId, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!scenarioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof allPssInfos>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type AllPssInfosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof allPssInfos>>
+>;
+export type AllPssInfosQueryError = ErrorType<string>;
+
+export function useAllPssInfos<
+  TData = Awaited<ReturnType<typeof allPssInfos>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof allPssInfos>>,
+          TError,
+          Awaited<ReturnType<typeof allPssInfos>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useAllPssInfos<
+  TData = Awaited<ReturnType<typeof allPssInfos>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof allPssInfos>>,
+          TError,
+          Awaited<ReturnType<typeof allPssInfos>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useAllPssInfos<
+  TData = Awaited<ReturnType<typeof allPssInfos>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function useAllPssInfos<
+  TData = Awaited<ReturnType<typeof allPssInfos>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getAllPssInfosQueryOptions(scenarioId, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
+
+/**
+ * Get a specific PSS information for a scenario
+ */
+export const pssInformation = (
+  scenarioId: string,
+  pssId: string,
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<Pss>(
+    { url: `/api/pss/scenario/${scenarioId}/${pssId}`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getPssInformationQueryKey = (
+  scenarioId?: string,
+  pssId?: string,
+) => {
+  return [`/api/pss/scenario/${scenarioId}/${pssId}`] as const;
+};
+
+export const getPssInformationQueryOptions = <
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  pssId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getPssInformationQueryKey(scenarioId, pssId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof pssInformation>>> = ({
+    signal,
+  }) => pssInformation(scenarioId, pssId, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(scenarioId && pssId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof pssInformation>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type PssInformationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof pssInformation>>
+>;
+export type PssInformationQueryError = ErrorType<string>;
+
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  pssId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pssInformation>>,
+          TError,
+          Awaited<ReturnType<typeof pssInformation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  pssId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof pssInformation>>,
+          TError,
+          Awaited<ReturnType<typeof pssInformation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  pssId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+
+export function usePssInformation<
+  TData = Awaited<ReturnType<typeof pssInformation>>,
+  TError = ErrorType<string>,
+>(
+  scenarioId: string,
+  pssId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getPssInformationQueryOptions(
+    scenarioId,
+    pssId,
+    options,
+  );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey;
+
+  return query;
+}
 
 /**
  * Get the active scenario
@@ -1028,28 +1332,39 @@ export function useAllStateMachines<
 }
 
 /**
- * Get a specific state machine
+ * Get a specific state machine for a scenario
  */
 export const stateMachine = (
-  statemachineId: string,
+  scenarioId: string,
+  stateMachineId: string,
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
   return customAxiosInstance<StateMachine>(
-    { url: `/api/statemachine/${statemachineId}`, method: "GET", signal },
+    {
+      url: `/api/statemachine/scenario/${scenarioId}/${stateMachineId}`,
+      method: "GET",
+      signal,
+    },
     options,
   );
 };
 
-export const getStateMachineQueryKey = (statemachineId?: string) => {
-  return [`/api/statemachine/${statemachineId}`] as const;
+export const getStateMachineQueryKey = (
+  scenarioId?: string,
+  stateMachineId?: string,
+) => {
+  return [
+    `/api/statemachine/scenario/${scenarioId}/${stateMachineId}`,
+  ] as const;
 };
 
 export const getStateMachineQueryOptions = <
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  statemachineId: string,
+  scenarioId: string,
+  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1060,16 +1375,17 @@ export const getStateMachineQueryOptions = <
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey =
-    queryOptions?.queryKey ?? getStateMachineQueryKey(statemachineId);
+    queryOptions?.queryKey ??
+    getStateMachineQueryKey(scenarioId, stateMachineId);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof stateMachine>>> = ({
     signal,
-  }) => stateMachine(statemachineId, requestOptions, signal);
+  }) => stateMachine(scenarioId, stateMachineId, requestOptions, signal);
 
   return {
     queryKey,
     queryFn,
-    enabled: !!statemachineId,
+    enabled: !!(scenarioId && stateMachineId),
     ...queryOptions,
   } as UseQueryOptions<
     Awaited<ReturnType<typeof stateMachine>>,
@@ -1087,7 +1403,8 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  statemachineId: string,
+  scenarioId: string,
+  stateMachineId: string,
   options: {
     query: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1110,7 +1427,8 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  statemachineId: string,
+  scenarioId: string,
+  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1133,7 +1451,8 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  statemachineId: string,
+  scenarioId: string,
+  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1149,7 +1468,8 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  statemachineId: string,
+  scenarioId: string,
+  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1160,7 +1480,11 @@ export function useStateMachine<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getStateMachineQueryOptions(statemachineId, options);
+  const queryOptions = getStateMachineQueryOptions(
+    scenarioId,
+    stateMachineId,
+    options,
+  );
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

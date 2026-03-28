@@ -1,31 +1,33 @@
+use crate::{cli::Cli, config::Config, mavlink::Mavlink, state::State, web::broadcast::Broadcast};
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
+use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use clap::Parser;
 use env_logger::Env;
-use std::{collections::HashMap, path::Path, process::exit, sync::Arc, time::Duration};
-use tokio::sync::RwLock;
-use utoipa::OpenApi;
+use serde::Serialize;
+use std::{
+    path::{Path, PathBuf},
+    process::exit,
+    sync::OnceLock,
+    time::Duration,
+};
+use utoipa::{OpenApi, ToSchema};
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
-
-use crate::{
-    cli::Cli,
-    config::Config,
-    mavlink::Mavlink,
-    state::State,
-    statemachine::{StateMachine, StateMachineError},
-    web::broadcast::Broadcast,
-};
 
 mod cli;
 mod config;
 mod mavlink;
+mod parser;
+mod scenario;
 mod state;
-mod statemachine;
 mod web;
 
-/// Duration after which a restart of the mavlink
-/// message proxy should be attempted
+/// Global variable containing the path where the config file is located.
+pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+/// Duration after which a restart of the MavLink
+/// message proxy should be attempted.
 const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 
 #[derive(utoipa::OpenApi)]
@@ -35,13 +37,36 @@ const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
         description = "Documentation for the ASTERIA mission control API",
         version = env!("GIT_VERSION")
     ),
+    components(
+        // Manually add this type to the OpenAPI schema since we have no endpoint
+        // using/returning this type. It's only broadcast through SSE.
+        schemas(NamedPssDatapointValue)
+    )
 )]
 struct ApiDoc;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct NamedPssDatapointValue {
+    /// Unique name of the datapoint
+    pub name: &'static str,
+    /// Value of the datapoint
+    pub value: f32,
+}
+
+impl From<NamedDatapointValue> for NamedPssDatapointValue {
+    fn from(NamedDatapointValue { name, value }: NamedDatapointValue) -> Self {
+        NamedPssDatapointValue { name, value: value.into() }
+    }
+}
 
 #[tokio::main]
 async fn main() {
     env_logger::init_from_env(Env::new().default_filter_or("info"));
     let cli = Cli::parse();
+
+    // Since this is at the beginning of our main function, we can be sure
+    // that the OnceLock hasn't been initialized yet.
+    CONFIG_PATH.set(Path::new(&cli.config_path).to_path_buf()).unwrap();
 
     let config = match Config::parse(Path::new(&cli.config_path)) {
         Ok(config) => config,
@@ -53,37 +78,26 @@ async fn main() {
 
     log::debug!("Using config: {config:?}");
 
-    let state_machines = match config
-        .state_machines
-        .iter()
-        .map(|(name, config)| {
-            Result::<_, (String, StateMachineError)>::Ok((
-                name.clone(),
-                StateMachine::try_from(config).map_err(|err| (name.clone(), err))?,
-            ))
-        })
-        .collect::<Result<HashMap<_, _>, (String, StateMachineError)>>()
-    {
-        Ok(state_machines) => Arc::new(state_machines),
-        Err((state_machine, err)) => {
-            log::error!("Error whilst parsing state machine '{state_machine}': {err}");
-            exit(1);
-        }
-    };
-    log::info!("Successfully loaded {} state machines", state_machines.len());
+    config.scenarios.iter().for_each(|(name, scenario)| {
+        log::info!(
+            "Found scenario '{name}' with {} state machine(s) and {} PSS configuration(s)",
+            scenario.state_machines.len(),
+            scenario.pss.len()
+        )
+    });
 
-    let state = Arc::new(RwLock::new(State::new(config.clone())));
+    let state = State::new(config.clone());
     let broadcast = Broadcast::new();
     let mavlink = Mavlink::new(config.clone(), broadcast.clone());
 
     let mavlink_clone = mavlink.clone();
     tokio::spawn(async move {
         loop {
-            // start mavlink receiver and proxy messages as SSE events
+            // Start MavLink receiver and proxy messages as SSE events.
             if let Err(err) = mavlink_clone.run_message_proxy().await {
                 log::error!("Error whilst starting mavlink message proxy: {err}");
             }
-            // await restart timeout and then attempt restart in next iteration
+            // Await restart timeout and then attempt restart in next iteration.
             tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT).await
         }
     });
@@ -94,7 +108,6 @@ async fn main() {
             .wrap(middleware::Logger::default())
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
-            .app_data(Data::from(state_machines.clone()))
             .app_data(Data::from(mavlink.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
@@ -115,7 +128,7 @@ async fn main() {
     .expect("Should start web server");
 }
 
-/// Apply all endpoints to the main service config which is exposed under /api/
+/// Apply all endpoints to the main service config which is exposed under `/api/`.
 fn apply_endpoints(cfg: &mut ServiceConfig) {
     cfg.service(web::info)
         .service(web::config_schema)
@@ -126,11 +139,13 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::all_scenarios)
         .service(web::state_machine)
         .service(web::all_state_machines)
+        .service(web::pss_information)
+        .service(web::all_pss_infos)
         .service(web::send_message);
 }
 
 #[cfg(feature = "static-frontend")]
-/// Service which serves a static frontend on the `/` directory
+/// Service which serves a static frontend on the `/` directory.
 fn static_frontend_service(frontend_path: &Path) -> actix_files::Files {
     let frontend_pathbuf = frontend_path.to_path_buf();
     actix_files::Files::new("/", frontend_path)

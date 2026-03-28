@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio_stream::wrappers::ReceiverStream;
 
-/// Interval in seconds at which all subscriptions should be pinged
+/// Interval in seconds at which all subscriptions should be pinged.
 const PING_INTERVAL: u64 = 10;
 
 pub struct Broadcast {
@@ -24,7 +24,7 @@ impl Broadcast {
     }
 
     /// Ping all connected clients and remove clients which are no longer connected
-    /// to the broadcast
+    /// to the broadcast.
     fn spawn_ping(this: Arc<Self>) {
         tokio::task::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(PING_INTERVAL));
@@ -36,7 +36,7 @@ impl Broadcast {
     }
 
     /// Remove all connections for which the ping broadcast fails to avoid
-    /// unnecessary broadcasts
+    /// unnecessary broadcasts.
     async fn remove_stale_connections(&self) {
         let mut subscriptions = self.subscriptions.lock().await;
 
@@ -51,7 +51,7 @@ impl Broadcast {
         .collect::<Vec<_>>();
     }
 
-    /// Subscribe to all events
+    /// Subscribe to all events.
     pub async fn subscribe(&self) -> actix_web::Result<Sse<InfallibleStream<ReceiverStream<Event>>>> {
         let (tx, rx) = tokio::sync::mpsc::channel::<Event>(10);
         let mut subscriptions = self.subscriptions.lock().await;
@@ -63,34 +63,34 @@ impl Broadcast {
         Ok(Sse::from_infallible_receiver(rx))
     }
 
-    /// Notify all subscriptions with a specific event
+    /// Notify all subscriptions with a specific event.
     pub async fn broadcast(&self, event: impl Into<Event>) {
-        // clone such that lock is dropped immediately
+        // Clone such that lock is dropped immediately.
         let subscriptions = self.subscriptions.lock().await.clone();
 
         trace!("notifying {} receivers of new event", subscriptions.len());
 
         let sse_event: Event = event.into();
         for receiver in subscriptions {
-            // we can ignore errors since the stale client gets removed in next cleanup
-            // anyways
+            // We can ignore errors since the stale client gets removed in next cleanup
+            // anyways.
             receiver.send(sse_event.clone()).await.ok();
         }
     }
 }
 
 #[derive(Serialize)]
-/// Internal events which are needed by the broadcast
+/// Internal events which are needed by the broadcast.
 enum BroadcastEvent {
-    /// Empty event used to check connectivity to clients
+    /// Empty event used to check connectivity to clients.
     Ping,
 }
 
 impl From<BroadcastEvent> for Event {
     fn from(value: BroadcastEvent) -> Self {
         match value {
-            // the data of the ping event contains the current UTC timestamp in milliseconds such that
-            // the client can display some sort of latency to the server
+            // The data of the ping event contains the current UTC timestamp in milliseconds such that
+            // the client can display some sort of latency to the server.
             BroadcastEvent::Ping => Event::Data(Data::new(Utc::now().timestamp_millis().to_string()).event("ping")),
         }
     }
