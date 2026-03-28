@@ -1,35 +1,46 @@
-default_scenario = "default"
+default_scenario = "drogue-drop-test"
 
 [mavlink]
 system_id = 222
 address = { protocol = "tcp", remote = "127.0.0.1:5760" }
 
-[scenario.default]
-name = "Default"
+# [scenario.default]
+# name = "Default"
+# [scenario.default.state_machine.fc]
+# kind = "fc"
+# name = "Flight Computer"
+# diagram_path = "state-machine.svg"
+# config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
+# [scenario.default.pss.rfs]
+# name = "Remote Filling Station"
+# kind = "rfs"
+# diagram_path = "pss.svg"
 
-[scenario.default.state_machine.fc]
+[scenario.drogue-drop-test]
+name = "Drogue Drop Test"
+[scenario.drogue-drop-test.state_machine.fc]
 kind = "fc"
 name = "Flight Computer"
-diagram_path = "state-machine.svg"
-config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-[scenario.default.pss.rfs]
-name = "Remote Filling Station"
-kind = "rfs"
+diagram_path = "remote-computers/state-machines/drogue-drop-test-state-machine.drawio.svg"
+config_path = "remote-computers/flight-computer/configs/drop_test_campaign/drogue_out_drop_test_template.toml"
+[scenario.drogue-drop-test.pss.fc]
+name = "Flight Computer"
+kind = "fc"
 diagram_path = "pss.svg"
 
-[scenario.other]
-name = "Other"
-[scenario.other.state_machine.fc]
-kind = "fc"
-name = "Flight Computer"
-diagram_path = "state-machine.svg"
-config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-[scenario.other.state_machine.rfs]
-kind = "rfs"
-name = "Remote Filling Station"
-diagram_path = "state-machine.svg"
-config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-[scenario.other.pss.rfs]
-name = "Remote Filling Station"
-kind = "rfs"
-diagram_path = "pss.svg"
+# [scenario.other]
+# name = "Other"
+# [scenario.other.state_machine.fc]
+# kind = "fc"
+# name = "Flight Computer"
+# diagram_path = "state-machine.svg"
+# config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
+# [scenario.other.state_machine.rfs]
+# kind = "rfs"
+# name = "Remote Filling Station"
+# diagram_path = "state-machine.svg"
+# config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
+# [scenario.other.pss.rfs]
+# name = "Remote Filling Station"
+# kind = "rfs"
+# diagram_path = "pss.svg"

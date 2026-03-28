@@ -1,11 +1,17 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import { vanillaExtractPlugin } from "@vanilla-extract/vite-plugin";
+import path from "path";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), vanillaExtractPlugin()],
   server: {
-    host: "0.0.0.0"
-  }
+    host: "0.0.0.0",
+  },
+  resolve: {
+    alias: {
+      "@asteria/hooks": path.resolve(__dirname, "./src/hooks"),
+    },
+  },
 });

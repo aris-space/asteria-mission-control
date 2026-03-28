@@ -1,7 +1,10 @@
 import {
+  ManualStateTransition,
+  Message,
   StateMachine as StateMachineDefintion,
   useActiveScenario,
   useAllStateMachines,
+  useSendMessage,
   useStateMachine,
 } from "@asteria/mission-control-client";
 import React, { RefObject, useEffect, useRef, useState } from "react";
@@ -19,7 +22,9 @@ import {
 import classes from "./StateMachine.module.css";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import useDiagramSvg from "../../hooks/DiagramSvgHook";
+import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
+import { useMavlinkMessage } from "@asteria/hooks/EventContext";
+import { useToggle } from "@mantine/hooks";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -37,6 +42,20 @@ function StateMachine() {
   const [stateMachine, setStateMachine] =
     useState<StateMachineDefintion | null>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [transitionIndex, setTransitionIndex] = useState<number>(0);
+  // By default the states should not be highlighted.
+  const [highlightStates, toggleHighlightStates] = useToggle([false, true]);
+  const [activeState, setActiveState] = useState<string | null>();
+  const board = stateMachine
+    ? stateMachine.kind == "fc"
+      ? "FlightComputer"
+      : "RfsComputer"
+    : null;
+  const manualStateTransitionMessage = useMavlinkMessage(
+    board as any,
+    "ManualStateTransition",
+  );
+  const { mutate: sendMessage, isPending: isSending } = useSendMessage();
 
   const {
     isZoomDirty,
@@ -47,13 +66,19 @@ function StateMachine() {
     containerRef as RefObject<HTMLDivElement>,
   );
 
-  const [highlightStates, setHighlightStates] = useState<boolean>(false);
-  const [activeState, setActiveState] = useState<string | null>();
-
   useEffect(() => {
     setActiveState(stateMachine?.initialState ?? null);
-    setHighlightStates(false);
+    toggleHighlightStates(false);
   }, [stateMachine]);
+
+  useEffect(() => {
+    if (!manualStateTransitionMessage) return;
+
+    const { state, transitionIndex } =
+      manualStateTransitionMessage.message.content;
+    setTransitionIndex(transitionIndex);
+    setActiveState(String.fromCharCode(...state).toString());
+  }, [manualStateTransitionMessage]);
 
   useEffect(() => {
     highlightActiveState();
@@ -64,7 +89,7 @@ function StateMachine() {
 
     if (activeState && stateMachine) {
       notifications.show({
-        title: "Transitions from active state",
+        title: "Manual transitions from active state",
         message: `[${(stateMachine?.manualTransitions[activeState] || []).join(", ")}]`,
       });
     }
@@ -87,8 +112,8 @@ function StateMachine() {
   function setupStateListeners() {
     if (!svgRef.current) return;
 
-    // add click listener to rects representing a state of the state machine
-    // and set correct cursor
+    // Add click listener to rects representing a state of the state machine
+    // and set correct cursor.
     d3.select(svgRef.current)
       .selectAll(`[${MANUALLLY_REACHABLE_ATTR}="true"]`)
       .attr(CLICKABLE_ATTR, "true")
@@ -118,14 +143,11 @@ function StateMachine() {
             if (state) {
               notifications.show({
                 title: "Diagram state",
-                message: `Clicked on node for state "${state}"`,
+                message: `Clicked on node for state '${state}'`,
                 color: "blue",
               });
 
-              // TODO: Here we would need to send the manual transition message
-              //       and only once the message with the new active state
-              //       is received, we update the active state
-              setActiveState(state);
+              handleManualStateTransition(state);
             } else {
               console.warn(
                 `Found no state->node mapping in state machine for node ${stateId}`,
@@ -140,8 +162,42 @@ function StateMachine() {
       });
   }
 
-  function toggleStateHighlight() {
-    setHighlightStates((highlight) => !highlight);
+  /**
+   * Handle a manual state transition by sending a JSON-serialized
+   * MavLink message to the backend.
+   * @param state name of the state which should be transitioned into.
+   */
+  function handleManualStateTransition(state: string) {
+    const encoder = new TextEncoder();
+    const bytes = new Uint8Array(encoder.encode(state).buffer);
+    const transition: ManualStateTransition = {
+      // Exactly 30 bytes; Pad on the right with zeroes.
+      state: Array.from([...bytes, ...new Array(30).fill(0)]).slice(0, 30),
+      transitionIndex: transitionIndex + 1,
+    };
+    const message: Message = {
+      board: board as any,
+      message: { type: "ManualStateTransition", content: transition },
+    };
+    sendMessage(
+      { data: message },
+      {
+        onError: () => {
+          notifications.show({
+            title: "Manual transition failed",
+            message: `Manual state transition into '${state}' failed`,
+            color: "red",
+          });
+        },
+        onSuccess: () => {
+          notifications.show({
+            title: "Manual transition succeeded",
+            message: `Manual state transition into '${state}' succeeded!`,
+            color: "green",
+          });
+        },
+      },
+    );
   }
 
   function highlightActiveState() {
@@ -169,7 +225,14 @@ function StateMachine() {
         const stateId = stateMachine.stateNodes[state];
         d3.select(svgRef.current)
           .select(`[${CELL_ID_ATTR}="${stateId}"]`)
-          .attr(MANUALLLY_REACHABLE_ATTR, true);
+          .attr(MANUALLLY_REACHABLE_ATTR, true)
+          .each((_, index, nodes) => {
+            const node = nodes[index] as SVGElement;
+            if (!node) return;
+            const rect = node.querySelector("rect");
+            if (!rect) return;
+            calculateRectDasharray(rect);
+          });
       });
     }
   }
@@ -200,7 +263,7 @@ function StateMachine() {
         <Affix position={{ top: "5rem", right: "lg" }}>
           <Flex gap={"xs"}>
             <Tooltip label={"Toggle node highlight"}>
-              <ActionIcon onClick={toggleStateHighlight}>
+              <ActionIcon onClick={() => toggleHighlightStates()}>
                 {highlightStates ? <IconEyeOff /> : <IconEye />}
               </ActionIcon>
             </Tooltip>
@@ -217,11 +280,14 @@ function StateMachine() {
       <Affix position={{ top: "5rem", left: "lg" }}>
         <StateMachineSelector onChange={setStateMachine} />
       </Affix>
+      <Affix position={{ bottom: "lg", left: "lg" }}>
+        {isSending && <Loader size={"sm"} />}
+      </Affix>
       {stateMachine ? (
         <Box w={"100%"}>
           <section
             data-highlight-states={highlightStates}
-            className={classes.svgContainer}
+            className={classes.container}
             ref={containerRef}
           />
         </Box>
@@ -234,6 +300,24 @@ function StateMachine() {
       )}
     </Flex>
   );
+}
+
+/**
+ * Calculate the dash array properties for a rect to achieve a
+ * 10,5 dash array. The perfect offset for a smooth animation
+ * is written into the `--smooth-offset` CSS variable.
+ * @param rect rect to calculate the dash array for.
+ */
+function calculateRectDasharray(rect: SVGRectElement) {
+  const perimeter = rect.getTotalLength();
+  // We would want to have 10,5 stroke dash array.
+  const targetPattern = 15;
+  const repetitions = Math.round(perimeter / targetPattern);
+  const actualPatternLen = perimeter / repetitions;
+  const dash = actualPatternLen * (10 / 15);
+  const gap = actualPatternLen * (5 / 15);
+  rect.style.strokeDasharray = `${dash} ${gap}`;
+  rect.style.setProperty("--smooth-offset", actualPatternLen.toString());
 }
 
 interface StateMachineSelectorProps {

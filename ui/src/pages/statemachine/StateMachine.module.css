@@ -1,34 +1,38 @@
-.svgContainer {
-  div {
-    font-family: monospace !important;
-    line-height: 0.95;
-    font-size: 85%;
-  }
+.container {
+  cursor: move;
 
   [data-active-state] rect {
-    stroke: red !important;
     stroke-width: 2px;
+    stroke: var(--mantine-color-blue-6) !important;
   }
 
   [data-manually-reachable-state] rect {
-      stroke: green !important;
-      stroke-width: 2px;
+    stroke: var(--mantine-color-blue-6) !important;
+    stroke-width: 2px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: rotate-stroke 1s linear infinite;
   }
-
-  overflow: hidden;
-  max-height: calc(100vh - 4rem);
 
   background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-.svgContainer[data-highlight-states="true"] {
-    [data-state] rect {
-        fill: orange !important;
-    }
+.container[data-highlight-states="true"] {
+  [data-state] rect {
+    fill: orange !important;
+  }
 }
 
-
 html {
-    overflow: hidden;
+  overflow: hidden;
+}
+
+@keyframes rotate-stroke {
+  from {
+    stroke-dashoffset: var(--smooth-offset);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }

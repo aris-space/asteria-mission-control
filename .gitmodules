@@ -1,6 +1,7 @@
 [submodule "remote-computers"]
 	path = remote-computers
 	url = ../asteria-remote-computers.git
+	branch = "drop-test-state-machine-mc-fix"
 [submodule "data-definitions"]
 	path = data-definitions
 	url = ../asteria-data-definitions

@@ -26,11 +26,10 @@ pub enum StateMachineError {
     DiagramParse(quick_xml::de::DeError),
     #[error("Error whilst parsing state machine diagram nodes: {0}")]
     DiagramNodeParse(html_parser::Error),
-    #[expect(unused)]
-    #[error("State machine diagram contains duplicate state definitions for the following states: {0:?}")]
+    #[error("State machine diagram contains duplicate state definitions for the following states: {0:#?}")]
     DiagramDuplicateStates(Vec<String>),
     #[expect(unused)]
-    #[error("State machine diagram config references the following states which are missing in the diagram: {0:?}")]
+    #[error("State machine diagram config references the following states which are missing in the diagram: {0:#?}")]
     DiagramMissingStates(Vec<String>),
 }
 
@@ -97,10 +96,10 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
             })
             .collect::<Result<(Vec<_>, Vec<_>), _>>()?;
 
-        #[expect(unused_mut)]
         // All unique labels we have in the diagram. Note that we always use the first
         // string of a cell's value as it's state name.
-        let mut unique_state_labels = HashSet::<String>::from_iter(state_node_labels.iter().cloned());
+        let unique_state_labels = HashSet::<String>::from_iter(state_node_labels.iter().cloned());
+        log::debug!("Detected labels in state machine '{}': {unique_state_labels:#?}", config.name);
 
         // Check whether there are duplicate labels in the diagram.
         // We can only check for duplicate labels which are also defined in the state machine
@@ -108,13 +107,20 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
         // are allowed to have duplicate string values.
         if unique_state_labels.len() < state_node_labels.len() {
             // TODO: Enable this once we have a state machine diagram which does not contain any duplicate states
-            // let mut duplicates = Vec::new();
-            // state_node_labels.iter().for_each(|label| {
-            // if !unique_state_labels.remove(label) && config.state_machine.states.contains_key(label) {
-            // duplicates.push(label.clone());
-            // }
-            // });
-            // Err(StateMachineError::DiagramDuplicateStates(duplicates))?;
+            let mut duplicates = Vec::new();
+            let mut unique_state_labels_copy = unique_state_labels.clone();
+            state_node_labels.iter().for_each(|label| {
+                if !unique_state_labels_copy.remove(label) && rc_config.state_machine.states.contains_key(label) {
+                    duplicates.push(label.clone());
+                }
+            });
+
+            // Check that there was at least one duplicate state name. Since all cells which contain a
+            // string are matched as possible states, it's very likely that we have duplicate names e.g.
+            // as part of the diagram legend etc.
+            if !duplicates.is_empty() {
+                Err(StateMachineError::DiagramDuplicateStates(duplicates))?;
+            }
         }
 
         let mut state_nodes = HashMap::from_iter(state_node_labels.into_iter().zip(state_node_ids));
