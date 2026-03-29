@@ -76,8 +76,34 @@ function StateMachine() {
 
     const { state, transitionIndex } =
       manualStateTransitionMessage.message.content;
+
+    let targetState = String.fromCharCode(...state).toString();
+
+    if (!stateMachine?.stateNodes[targetState]) {
+      // The target state does not exist in the diagram.
+      if (targetState.endsWith(" - W"))
+        targetState = targetState.substring(0, targetState.length - 4);
+      else {
+        const split = targetState.split(" ");
+        const postfix = split[split.length - 1];
+        const stateName = split.slice(0, split.length - 2).join(" ");
+        if (!isNaN(parseInt(postfix))) targetState = stateName;
+        else {
+          // A state which doesn't exist in the diagram and which doesn't have a postfix
+          // should be unreachable.
+          notifications.show({
+            title: "Invalid State Transition",
+            message: `Received state transition into state '${targetState}' which does not exist in the diagram and is not a postfixed state`,
+            color: "red",
+          });
+          return;
+        }
+      }
+    }
+
     setTransitionIndex(transitionIndex);
-    setActiveState(String.fromCharCode(...state).toString());
+
+    setActiveState(targetState);
   }, [manualStateTransitionMessage]);
 
   useEffect(() => {

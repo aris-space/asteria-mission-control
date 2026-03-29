@@ -28,7 +28,6 @@ pub enum StateMachineError {
     DiagramNodeParse(html_parser::Error),
     #[error("State machine diagram contains duplicate state definitions for the following states: {0:#?}")]
     DiagramDuplicateStates(Vec<String>),
-    #[expect(unused)]
     #[error("State machine diagram config references the following states which are missing in the diagram: {0:#?}")]
     DiagramMissingStates(Vec<String>),
 }
@@ -106,7 +105,6 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
         // config since we match all text boxes as possible state boxes and text boxes
         // are allowed to have duplicate string values.
         if unique_state_labels.len() < state_node_labels.len() {
-            // TODO: Enable this once we have a state machine diagram which does not contain any duplicate states
             let mut duplicates = Vec::new();
             let mut unique_state_labels_copy = unique_state_labels.clone();
             state_node_labels.iter().for_each(|label| {
@@ -130,16 +128,35 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
             .state_machine
             .states
             .keys()
-            .filter(|&key| !unique_state_labels.contains(key))
+            .filter(|&state_name| {
+                if unique_state_labels.contains(state_name) {
+                    return false;
+                }
+
+                if state_name.ends_with(" - W") {
+                    // It's okay to "miss" this state as long as the same state without
+                    // postfix exists.
+                    return !unique_state_labels.contains(&state_name[..state_name.len() - 4]);
+                }
+
+                let split = state_name.split(" ").collect::<Vec<_>>();
+                match split.as_slice() {
+                    [state_name @ .., postfix] if postfix.parse::<u32>().is_ok() => {
+                        // State names with postfix (e.g. "Spiral 2") are okay to "miss" as long
+                        // as the same state without postifx exists.
+                        !unique_state_labels.contains(&state_name.join(" "))
+                    }
+                    // State does not exist and it doesn't have a postfix. This is a real miss.
+                    _ => true,
+                }
+            })
             .cloned()
             .collect::<Vec<_>>();
 
         // Check whether there are any states which are defined in the config but not
         // available in the diagram.
         if !missing_states.is_empty() {
-            // TODO: Enable this once we have a config which only specifies states which are
-            //       also part of the state machine
-            // Err(StateMachineError::DiagramMissingStates(missing_states))?;
+            Err(StateMachineError::DiagramMissingStates(missing_states))?;
         }
 
         // Only keep all nodes which are declared in config
