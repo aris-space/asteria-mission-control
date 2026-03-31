@@ -41,7 +41,7 @@ const EventContext = createContext<EventContextDefinition>(defaultValue);
 export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
-  // for every mavlink message type we just store the latest received message
+  // For every mavlink message type we just store the latest received message.
   const mavlinkMessages = useRef<Record<string, MavlinkMessage>>({});
   const notifiers = useRef<
     Record<string, [string, (message: MavlinkMessage) => void]>
@@ -50,7 +50,7 @@ export function EventProvider(props: PropsWithChildren) {
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
     setSource((src) => {
-      // close existing event source
+      // Close existing event source.
       src?.close();
       return eventSource;
     });
@@ -79,7 +79,6 @@ export function EventProvider(props: PropsWithChildren) {
         ...mavlinkMessages.current,
       };
       Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
-        console.log(cbMessageId, messageId);
         if (cbMessageId == messageId) cb(mavlinkMessage);
       });
     });
@@ -183,7 +182,6 @@ export function useMavlinkMessage<
   useEffect(() => {
     setMessage(context.getMessage(board, type));
     const cb = (newMessage: MavlinkMessage) => {
-      console.log("callback called", newMessage);
       if (JSON.stringify(message) != JSON.stringify(newMessage)) {
         setMessage(newMessage);
       }
