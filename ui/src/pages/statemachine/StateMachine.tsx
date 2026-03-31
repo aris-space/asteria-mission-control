@@ -111,7 +111,7 @@ function StateMachine() {
       else {
         const split = state.split(" ");
         const postfix = split[split.length - 1];
-        const stateName = split.slice(0, split.length - 2).join(" ");
+        const stateName = split.slice(0, split.length - 1).join(" ");
         if (!isNaN(parseInt(postfix))) return stateName;
         else {
           return undefined;
