@@ -24,7 +24,7 @@ interface EventContextDefinition {
     name: string,
     board: string,
     messageType: string,
-    cb: () => void,
+    cb: (message: MavlinkMessage) => void,
   ) => void;
   removeNotifier: (name: string) => void;
 }
@@ -45,7 +45,9 @@ export function EventProvider(props: PropsWithChildren) {
   const [mavlinkMessages, setMavlinkMessages] = useState<
     Record<string, MavlinkMessage>
   >({});
-  const notifiers = useRef<Record<string, [string, () => void]>>({});
+  const notifiers = useRef<
+    Record<string, [string, (message: MavlinkMessage) => void]>
+  >({});
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -79,7 +81,7 @@ export function EventProvider(props: PropsWithChildren) {
         ...messages,
       }));
       Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
-        if (cbMessageId == messageId) cb();
+        if (cbMessageId == messageId) cb(mavlinkMessage);
       });
     });
 
@@ -108,7 +110,7 @@ export function EventProvider(props: PropsWithChildren) {
     name: string,
     board: string,
     messageType: string,
-    cb: () => void,
+    cb: (message: MavlinkMessage) => void,
   ) => {
     notifiers.current[name] = [`${board}-${messageType}`, cb];
   };
@@ -167,16 +169,20 @@ export function useMavlinkMessage<
   type: T,
 ): (MavlinkMessage & { board: B; message: { type: T } }) | null {
   const id = useId();
-  const [, forceRerender] = useState<number>(0);
   const context = useContext(EventContext);
   if (!context)
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
+  const [message, setMessage] = useState<MavlinkMessage>(
+    context.messages[`${board}-${type}`],
+  );
 
   useEffect(() => {
-    const cb = () => {
-      forceRerender(Date.now());
+    const cb = (newMessage: MavlinkMessage) => {
+      if (JSON.stringify(message) != JSON.stringify(newMessage)) {
+        setMessage(newMessage);
+      }
     };
     context.addNotifier(id, board, type, cb);
     return () => {
@@ -185,7 +191,7 @@ export function useMavlinkMessage<
   }, []);
 
   return (
-    (context.messages[`${board}-${type}`] as MavlinkMessage & {
+    (message as MavlinkMessage & {
       board: B;
       message: { type: T };
     }) ?? null
