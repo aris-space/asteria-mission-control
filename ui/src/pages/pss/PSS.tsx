@@ -142,7 +142,7 @@ function PSS() {
           kind={info.kind}
           onChange={({ actuator, value }) => {
             const decoder = new TextDecoder();
-            const bytes = new Uint8Array(actuator);
+            const bytes = new Uint8Array(actuator.filter(Boolean));
             let name = decoder.decode(bytes);
 
             // TODO: Here we would send the mavlink message in JSON form to backend.

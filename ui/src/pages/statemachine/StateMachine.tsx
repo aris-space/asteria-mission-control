@@ -78,7 +78,7 @@ function StateMachine() {
       manualStateTransitionMessage.message.content;
 
       const decoder = new TextDecoder();
-      const bytes = new Uint8Array(state);
+      const bytes = new Uint8Array(state.filter(Boolean));
       let targetState = decoder.decode(bytes);
       console.log(targetState, stateMachine?.stateNodes);
     if (!stateMachine?.stateNodes[targetState]) {
