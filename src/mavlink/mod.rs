@@ -52,8 +52,7 @@ impl Mavlink {
     ///
     /// **Important**: This method only returns when an error during the receiving process of a message occurs.
     pub async fn run_message_proxy(&self) -> Result<(), MavlinkError> {
-        let transport =
-            AsyncTransportStream::new(&self.config.mavlink.address).await.map_err(MavlinkError::Connection)?;
+        let transport = AsyncTransportStream::new(&self.config.mavlink.address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
 
