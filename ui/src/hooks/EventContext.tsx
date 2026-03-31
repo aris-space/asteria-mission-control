@@ -1,5 +1,4 @@
 import { Message as MavlinkMessage } from "@asteria/mission-control-client";
-import { useMap } from "@mantine/hooks";
 import {
   createContext,
   useContext,
@@ -18,12 +17,12 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
-  messages: Map<[string, string], MavlinkMessage>;
+  messages: Record<string, MavlinkMessage>;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
-  messages: new Map(),
+  messages: {},
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -32,10 +31,9 @@ export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
   // for every mavlink message type we just store the latest received message
-  const mavlinkMessages = useMap<
-    [MavlinkMessage["board"], MavlinkMessage["message"]["type"]],
-    MavlinkMessage
-  >();
+  const [mavlinkMessages, setMavlinkMessages] = useState<
+    Record<string, MavlinkMessage>
+  >({});
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -62,11 +60,12 @@ export function EventProvider(props: PropsWithChildren) {
     eventSource.addEventListener("mavlink-message", (data) => {
       console.log("Received mavlink message");
 
-      const mavlinkMessage = data.data as MavlinkMessage;
-      mavlinkMessages.set(
-        [mavlinkMessage.board, mavlinkMessage.message.type],
-        mavlinkMessage,
-      );
+      const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
+      setMavlinkMessages((messages) => ({
+        [`${mavlinkMessage.board}-${mavlinkMessage.message.type}`]:
+          mavlinkMessage,
+        ...messages,
+      }));
     });
 
     eventSource.addEventListener("error", (data) => {
@@ -137,7 +136,7 @@ export function useMavlinkMessage<
     );
 
   return (
-    (context.messages.get([board, type]) as MavlinkMessage & {
+    (context.messages[`${board}-${type}`] as MavlinkMessage & {
       board: B;
       message: { type: T };
     }) ?? null

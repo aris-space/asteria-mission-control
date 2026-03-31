@@ -57,7 +57,7 @@ impl Mavlink {
     pub async fn run_message_proxy(&self) -> Result<(), MavlinkError> {
         let transport = AsyncTransportStream::new(&self.config.mavlink.address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
-        let mut receiver = AsyncReceiver::versionless(reader);
+        let mut receiver = AsyncReceiver::versioned(reader, V2);
 
         // Send an initial MavLink message such that the MavLink router
         // realizes that the MC exists.
