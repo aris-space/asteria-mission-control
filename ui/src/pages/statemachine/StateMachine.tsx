@@ -55,6 +55,8 @@ function StateMachine() {
     board as any,
     "StateMachineState",
   );
+
+    console.log(manualStateTransitionMessage);
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
 
   const {

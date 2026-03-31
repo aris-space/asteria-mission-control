@@ -70,7 +70,7 @@ export function EventProvider(props: PropsWithChildren) {
     });
 
     eventSource.addEventListener("mavlink-message", (data) => {
-      console.log("Received mavlink message");
+      // console.log("Received mavlink message");
 
       const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
       const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
@@ -183,6 +183,7 @@ export function useMavlinkMessage<
 
   useEffect(() => {
     const cb = (newMessage: MavlinkMessage) => {
+      console.log("callback called", newMessage);
       if (JSON.stringify(message) != JSON.stringify(newMessage)) {
         setMessage(newMessage);
       }
