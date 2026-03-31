@@ -14,6 +14,7 @@ import type {
   EnvironmentalData,
   ImuData,
   PositionData,
+  RailStatus,
   VelocityData,
 } from "@asteria/mission-control-client";
 import { useMavlinkMessage } from "../../hooks/EventContext";
@@ -62,6 +63,8 @@ function Telemetry() {
   const velMsg = useMavlinkMessage("SensorCarrier", "VelocityData");
   const imuMsg = useMavlinkMessage("SensorCarrier", "ImuData");
   const envMsg = useMavlinkMessage("SensorCarrier", "EnvironmentalData");
+  const rail5vMsg = useMavlinkMessage("PowerBoard", "RailStatus5V");
+  const rail24vMsg = useMavlinkMessage("PowerBoard", "RailStatus24V");
 
   const pos = (posMsg?.message as { content: PositionData } | undefined)
     ?.content;
@@ -69,6 +72,10 @@ function Telemetry() {
     ?.content;
   const imu = (imuMsg?.message as { content: ImuData } | undefined)?.content;
   const env = (envMsg?.message as { content: EnvironmentalData } | undefined)
+    ?.content;
+  const rail5v = (rail5vMsg?.message as { content: RailStatus } | undefined)
+    ?.content;
+  const rail24v = (rail24vMsg?.message as { content: RailStatus } | undefined)
     ?.content;
 
   const noData = !posMsg && !velMsg && !imuMsg && !envMsg;
@@ -102,7 +109,10 @@ function Telemetry() {
         </MetricCard>
 
         <MetricCard title="Position">
-          <MetricRow label="Latitude" value={`${fmt(pos?.locationLatitude, 6)}°`} />
+          <MetricRow
+            label="Latitude"
+            value={`${fmt(pos?.locationLatitude, 6)}°`}
+          />
           <MetricRow
             label="Longitude"
             value={`${fmt(pos?.locationLongitude, 6)}°`}
@@ -141,24 +151,30 @@ function Telemetry() {
         </MetricCard>
 
         <MetricCard title="Angular Velocity (Body)">
-          <MetricRow
-            label="X"
-            value={`${fmt(imu?.angularVelocityX)} °/s`}
-          />
-          <MetricRow
-            label="Y"
-            value={`${fmt(imu?.angularVelocityY)} °/s`}
-          />
-          <MetricRow
-            label="Z"
-            value={`${fmt(imu?.angularVelocityZ)} °/s`}
-          />
+          <MetricRow label="X" value={`${fmt(imu?.angularVelocityX)} °/s`} />
+          <MetricRow label="Y" value={`${fmt(imu?.angularVelocityY)} °/s`} />
+          <MetricRow label="Z" value={`${fmt(imu?.angularVelocityZ)} °/s`} />
         </MetricCard>
 
         <MetricCard title="Environmental">
-          <MetricRow label="Temperature" value={`${fmt(env?.temperature)} °C`} />
+          <MetricRow
+            label="Temperature"
+            value={`${fmt(env?.temperature)} °C`}
+          />
           <MetricRow label="Humidity" value={`${fmt(env?.humidity)} %`} />
           <MetricRow label="Pressure" value={`${fmt(env?.pressure)} hPa`} />
+        </MetricCard>
+
+        <MetricCard title="5V Rail">
+          <MetricRow label="Voltage" value={`${fmt(rail5v?.voltage)} V`} />
+          <MetricRow label="Current" value={`${fmt(rail5v?.current)} A`} />
+          <MetricRow label="Power" value={`${fmt(rail5v?.power)} W`} />
+        </MetricCard>
+
+        <MetricCard title="24V Rail">
+          <MetricRow label="Voltage" value={`${fmt(rail24v?.voltage)} V`} />
+          <MetricRow label="Current" value={`${fmt(rail24v?.current)} A`} />
+          <MetricRow label="Power" value={`${fmt(rail24v?.power)} W`} />
         </MetricCard>
       </SimpleGrid>
     </Flex>
