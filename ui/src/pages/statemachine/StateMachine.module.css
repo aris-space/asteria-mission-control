@@ -2,13 +2,13 @@
   cursor: move;
 
   [data-active-state] rect {
-    stroke-width: 2px;
+    stroke-width: 4px;
     stroke: var(--mantine-color-blue-6) !important;
   }
 
   [data-manually-reachable-state] rect {
-    stroke: var(--mantine-color-blue-6) !important;
-    stroke-width: 2px;
+    stroke: var(--mantine-color-orange-5) !important;
+    stroke-width: 4px;
     stroke-linecap: round;
     stroke-linejoin: round;
     animation: rotate-stroke 1s linear infinite;

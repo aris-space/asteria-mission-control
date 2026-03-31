@@ -81,7 +81,7 @@ function StateMachine() {
     const bytes = new Uint8Array(state.filter(Boolean));
     const targetState = decoder.decode(bytes);
 
-    console.debug("State changed to", targetState);
+    console.debug(`State changed to '${targetState}'`);
 
     setPathIndex(pathIndex);
     setActiveState(targetState);
@@ -268,7 +268,7 @@ function StateMachine() {
             if (!node) return;
             const rect = node.querySelector("rect");
             if (!rect) return;
-            calculateAndSetRectDasharray(rect);
+            calculateAndSetRectDasharray(rect, 10, 10);
           });
       });
     }
@@ -341,19 +341,24 @@ function StateMachine() {
 
 /**
  * Calculate the dash array properties for a rect to achieve a
- * 10,5 dash array and write them into the `--dasharray` CSS variable.
+ * dash array and write them into the `--dasharray` CSS variable.
  * The perfect offset for a smooth animation is written into the
  * `--smooth-offset` CSS variable.
+ * @param dashWidth width of a single dash in pixels.
+ * @param gapWidth width of a single gap in pixels.
  * @param rect rect to calculate the dash array for.
  */
-function calculateAndSetRectDasharray(rect: SVGRectElement) {
+function calculateAndSetRectDasharray(
+  rect: SVGRectElement,
+  dashWidth: number,
+  gapWidth: number,
+) {
   const perimeter = rect.getTotalLength();
-  // We would want to have 10,5 stroke dash array.
-  const targetPattern = 15;
-  const repetitions = Math.round(perimeter / targetPattern);
+  const totalWidth = dashWidth + gapWidth;
+  const repetitions = Math.round(perimeter / totalWidth);
   const actualPatternLen = perimeter / repetitions;
-  const dash = actualPatternLen * (10 / 15);
-  const gap = actualPatternLen * (5 / 15);
+  const dash = actualPatternLen * (dashWidth / totalWidth);
+  const gap = actualPatternLen * (gapWidth / totalWidth);
   rect.style.setProperty("--dasharray", `${dash} ${gap}`);
   rect.style.setProperty("--smooth-offset", actualPatternLen.toString());
 }

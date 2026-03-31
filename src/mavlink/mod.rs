@@ -1,13 +1,10 @@
 use crate::{NamedPssDatapointValue, config::Config, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
 use asteria_datapoint_information::datapoint::DatapointHolder;
-use asteria_messages::{
-    Message,
-    datapoints::dp_system_management::{self, Heartbeat, MavType},
-};
+use asteria_messages::Message;
 use futures::stream::FuturesUnordered;
 use mavio::{
-    AsyncReceiver, AsyncSender, Dialect, Endpoint,
+    AsyncReceiver, AsyncSender, Endpoint,
     io::{TokioReader, TokioWriter},
     prelude::V2,
 };
@@ -59,15 +56,6 @@ impl Mavlink {
             AsyncTransportStream::new(&self.config.mavlink.receiving_address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
-
-        // Send an initial MavLink message such that the MavLink router
-        // realizes that the MC exists.
-        let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
-            type_: MavType::Gcs,
-            mavlink_version: Message::version().unwrap_or_default(),
-            ..Default::default()
-        }));
-        self.send(heartbeat_message).await?;
 
         loop {
             let frame = match receiver.recv().await {

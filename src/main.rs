@@ -2,8 +2,13 @@ use crate::{cli::Cli, config::Config, mavlink::Mavlink, state::State, web::broad
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;
+use asteria_messages::{
+    Message,
+    datapoints::dp_system_management::{self, Heartbeat, MavType},
+};
 use clap::Parser;
 use env_logger::Env;
+use mavio::Dialect;
 use serde::Serialize;
 use std::{
     path::{Path, PathBuf},
@@ -99,6 +104,23 @@ async fn main() {
             }
             // Await restart timeout and then attempt restart in next iteration.
             tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT).await
+        }
+    });
+    let mavlink_clone = mavlink.clone();
+    tokio::spawn(async move {
+        loop {
+            // Send an heartbeat MavLink message to the MavLink router.
+            let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
+                type_: MavType::Gcs,
+                mavlink_version: Message::version().unwrap_or_default(),
+                ..Default::default()
+            }));
+            if let Err(err) = mavlink_clone.send(heartbeat_message).await {
+                log::error!("Error whilst sending heartbeat mavlink message: {err}")
+            };
+
+            // Sleep for a second.
+            tokio::time::sleep(Duration::from_secs(1)).await
         }
     });
 
