@@ -1,10 +1,13 @@
 use crate::{NamedPssDatapointValue, config::Config, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast};
 use actix_web_lab::sse::{Data, Event};
 use asteria_datapoint_information::datapoint::DatapointHolder;
-use asteria_messages::Message;
+use asteria_messages::{
+    Message,
+    datapoints::dp_system_management::{self, Heartbeat, MavType},
+};
 use futures::stream::FuturesUnordered;
 use mavio::{
-    AsyncReceiver, AsyncSender, Endpoint,
+    AsyncReceiver, AsyncSender, Dialect, Endpoint,
     io::{TokioReader, TokioWriter},
     prelude::V2,
 };
@@ -56,6 +59,15 @@ impl Mavlink {
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versionless(reader);
 
+        // Send an initial MavLink message such that the MavLink router
+        // realizes that the MC exists.
+        let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
+            type_: MavType::Gcs,
+            mavlink_version: Message::version().unwrap_or_default(),
+            ..Default::default()
+        }));
+        self.send(heartbeat_message).await?;
+
         loop {
             let frame = match receiver.recv().await {
                 Ok(frame) => frame,
@@ -76,6 +88,8 @@ impl Mavlink {
                     continue;
                 }
             };
+
+            log::trace!("received mavlink frame: {frame:?}");
 
             if let Err(err) = frame.validate_checksum::<Message>() {
                 log::warn!("Received mavlink message with invalid checksum: {err}");
