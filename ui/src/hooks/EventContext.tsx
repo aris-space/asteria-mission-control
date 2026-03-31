@@ -19,7 +19,6 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
-  messages: Record<string, MavlinkMessage>;
   addNotifier: (
     name: string,
     board: string,
@@ -27,13 +26,14 @@ interface EventContextDefinition {
     cb: (message: MavlinkMessage) => void,
   ) => void;
   removeNotifier: (name: string) => void;
+  getMessage(board: string, messageType: string): MavlinkMessage | undefined;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
-  messages: {},
   addNotifier: () => {},
   removeNotifier: () => {},
+  getMessage: () => undefined,
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -42,9 +42,7 @@ export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
   // for every mavlink message type we just store the latest received message
-  const [mavlinkMessages, setMavlinkMessages] = useState<
-    Record<string, MavlinkMessage>
-  >({});
+  const mavlinkMessages = useRef<Record<string, MavlinkMessage>>({});
   const notifiers = useRef<
     Record<string, [string, (message: MavlinkMessage) => void]>
   >({});
@@ -76,10 +74,10 @@ export function EventProvider(props: PropsWithChildren) {
 
       const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
       const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
-      setMavlinkMessages((messages) => ({
+      mavlinkMessages.current = {
         [messageId]: mavlinkMessage,
-        ...messages,
-      }));
+        ...mavlinkMessages.current,
+      };
       Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
         if (cbMessageId == messageId) cb(mavlinkMessage);
       });
@@ -121,6 +119,11 @@ export function EventProvider(props: PropsWithChildren) {
     notifiers.current = copy;
   };
 
+  const getMessage = (board: string, messageType: string) => {
+    const messageId = `${board}-${messageType}`;
+    return mavlinkMessages.current[messageId];
+  };
+
   useEffect(() => {
     setupEventSource();
   }, []);
@@ -135,9 +138,9 @@ export function EventProvider(props: PropsWithChildren) {
     <EventContext.Provider
       value={{
         latency,
-        messages: mavlinkMessages,
         addNotifier,
         removeNotifier,
+        getMessage,
       }}
     >
       {props.children}
@@ -174,8 +177,8 @@ export function useMavlinkMessage<
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
-  const [message, setMessage] = useState<MavlinkMessage>(
-    context.messages[`${board}-${type}`],
+  const [message, setMessage] = useState<MavlinkMessage | undefined>(
+    context.getMessage(board, type),
   );
 
   useEffect(() => {
