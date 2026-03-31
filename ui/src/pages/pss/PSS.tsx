@@ -97,7 +97,6 @@ function PSS() {
     },
   );
 
-
   useEffect(() => {
     updateDatapointVisibility();
     setupNodes();
@@ -142,7 +141,9 @@ function PSS() {
           value={value}
           kind={info.kind}
           onChange={({ actuator, value }) => {
-            const name = String.fromCharCode(...actuator).toString();
+            const decoder = new TextDecoder();
+            const bytes = new Uint8Array(actuator);
+            let name = decoder.decode(bytes);
 
             // TODO: Here we would send the mavlink message in JSON form to backend.
             setDatapointValues((values) => ({

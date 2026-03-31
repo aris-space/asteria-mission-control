@@ -77,8 +77,10 @@ function StateMachine() {
     const { state, pathIndex } =
       manualStateTransitionMessage.message.content;
 
-    let targetState = String.fromCharCode(...state).toString();
-
+      const decoder = new TextDecoder();
+      const bytes = new Uint8Array(state);
+      let targetState = decoder.decode(bytes);
+      console.log(targetState, stateMachine?.stateNodes);
     if (!stateMachine?.stateNodes[targetState]) {
       // The target state does not exist in the diagram.
       if (targetState.endsWith(" - W"))
