@@ -19,7 +19,7 @@ import type {
 import { useMavlinkMessage } from "../../hooks/EventContext";
 
 function fmt(value: number | undefined, decimals = 2): string {
-  if (value === undefined) return "--";
+  if (value == undefined || value == null) return "--";
   return value.toFixed(decimals);
 }
 
