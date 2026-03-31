@@ -2,7 +2,8 @@ default_scenario = "drogue-drop-test"
 
 [mavlink]
 system_id = 222
-address = { protocol = "tcp", remote = "127.0.0.1:5760" }
+receiving_address = { protocol = "tcp", remote = "hermes2.local:5760" }
+sending_address = { protocol = "udp", remote = "hermes2.local", local = "0.0.0.0:0" }
 
 # [scenario.default]
 # name = "Default"

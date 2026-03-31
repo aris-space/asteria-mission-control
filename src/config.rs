@@ -62,8 +62,10 @@ pub enum RemoteComputerKind {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MavlinkConfig {
-    /// Address under which the mavlink broadcast is available
-    pub address: MavlinkAddress,
+    /// Address from which the MavLink messages should be received.
+    pub receiving_address: MavlinkAddress,
+    /// Address to which the MavLink messages should be sent.
+    pub sending_address: MavlinkAddress,
     /// System id which should be used by the backend when sending messages
     pub system_id: u8,
 }

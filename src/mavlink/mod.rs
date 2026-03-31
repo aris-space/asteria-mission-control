@@ -55,7 +55,8 @@ impl Mavlink {
     ///
     /// **Important**: This method only returns when an error during the receiving process of a message occurs.
     pub async fn run_message_proxy(&self) -> Result<(), MavlinkError> {
-        let transport = AsyncTransportStream::new(&self.config.mavlink.address).await.map_err(MavlinkError::Connection)?;
+        let transport =
+            AsyncTransportStream::new(&self.config.mavlink.receiving_address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
 
@@ -151,7 +152,7 @@ impl Mavlink {
         } else {
             // We need to initialize a new sender and then store it for later reuse.
             let transport =
-                AsyncTransportStream::new(&self.config.mavlink.address).await.map_err(MavlinkError::Connection)?;
+                AsyncTransportStream::new(&self.config.mavlink.sending_address).await.map_err(MavlinkError::Connection)?;
             let writer = TokioWriter::new(transport);
             let mut sender = AsyncSender::versioned(writer, V2);
             let bytes = sender.send(&frame).await.map_err(MavlinkError::Mavio)?;
