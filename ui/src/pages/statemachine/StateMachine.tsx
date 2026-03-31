@@ -81,7 +81,9 @@ function StateMachine() {
     const bytes = new Uint8Array(state.filter(Boolean));
     const targetState = decoder.decode(bytes);
 
-    console.debug(`State changed to '${targetState}'`);
+    if (targetState != activeState) {
+      console.debug(`State changed to '${targetState}'`);
+    }
 
     setPathIndex(pathIndex);
     setActiveState(targetState);
