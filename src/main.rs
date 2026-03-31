@@ -4,7 +4,7 @@ use actix_web::{App, HttpServer, middleware, web::Data};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use asteria_messages::{
     Message,
-    datapoints::dp_system_management::{self, Heartbeat, MavType},
+    datapoints::dp_system_management::{self, Heartbeat, MavState, MavType},
 };
 use clap::Parser;
 use env_logger::Env;
@@ -109,10 +109,11 @@ async fn main() {
     let mavlink_clone = mavlink.clone();
     tokio::spawn(async move {
         loop {
-            // Send an heartbeat MavLink message to the MavLink router.
+            // Send a heartbeat MavLink message to the MavLink router.
             let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
                 type_: MavType::Gcs,
                 mavlink_version: Message::version().unwrap_or_default(),
+                system_status: MavState::Active,
                 ..Default::default()
             }));
             if let Err(err) = mavlink_clone.send(heartbeat_message).await {
