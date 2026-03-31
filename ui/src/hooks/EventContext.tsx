@@ -178,11 +178,10 @@ export function useMavlinkMessage<
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
-  const [message, setMessage] = useState<MavlinkMessage | undefined>(
-    context.getMessage(board, type),
-  );
+  const [message, setMessage] = useState<MavlinkMessage>();
 
   useEffect(() => {
+    setMessage(context.getMessage(board, type));
     const cb = (newMessage: MavlinkMessage) => {
       console.log("callback called", newMessage);
       if (JSON.stringify(message) != JSON.stringify(newMessage)) {
@@ -193,7 +192,7 @@ export function useMavlinkMessage<
     return () => {
       context.removeNotifier(id);
     };
-  }, []);
+  }, [board, type]);
 
   return (
     (message as MavlinkMessage & {
