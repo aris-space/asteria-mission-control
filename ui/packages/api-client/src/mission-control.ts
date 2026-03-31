@@ -437,7 +437,7 @@ export function useSubscribeEvents<
 }
 
 /**
- * Send a message which will be proxied by the backend as a mavlink message
+ * Send a message which will be proxied by the backend as a MavLink message
  */
 export const sendMessage = (
   message: Message,

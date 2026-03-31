@@ -1725,6 +1725,7 @@ dependencies = [
  "crc",
  "mavio",
  "tbytes",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

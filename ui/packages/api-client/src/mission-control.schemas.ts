@@ -1030,17 +1030,15 @@ export type FlightComputerMessageOneOfFiveType =
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const FlightComputerMessageOneOfFiveType = {
-  ManualStateTransition: "ManualStateTransition",
+  StateMachineState: "StateMachineState",
 } as const;
 
 /**
- * Command a manual state transition on the FC.
-The state machine will perform the state transition and emit a state change event.
+ * The current state of the flight computer state machine.
  */
 export type FlightComputerMessageOneOfFive = {
-  /** Command a manual state transition on the FC.
-The state machine will perform the state transition and emit a state change event. */
-  content: ManualStateTransition;
+  /** The current state of the flight computer state machine. */
+  content: StateMachineState;
   type: FlightComputerMessageOneOfFiveType;
 };
 
@@ -1049,6 +1047,25 @@ export type FlightComputerMessageOneOfSevenType =
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const FlightComputerMessageOneOfSevenType = {
+  ManualStateTransition: "ManualStateTransition",
+} as const;
+
+/**
+ * Command a manual state transition on the FC.
+The state machine will perform the state transition and emit a state change event.
+ */
+export type FlightComputerMessageOneOfSeven = {
+  /** Command a manual state transition on the FC.
+The state machine will perform the state transition and emit a state change event. */
+  content: ManualStateTransition;
+  type: FlightComputerMessageOneOfSevenType;
+};
+
+export type FlightComputerMessageOneOfNineType =
+  (typeof FlightComputerMessageOneOfNineType)[keyof typeof FlightComputerMessageOneOfNineType];
+
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export const FlightComputerMessageOneOfNineType = {
   ManualActuatorChange: "ManualActuatorChange",
 } as const;
 
@@ -1060,7 +1077,7 @@ macro.
 
 Upon change, an "actuator states" message will be emitted.
  */
-export type FlightComputerMessageOneOfSeven = {
+export type FlightComputerMessageOneOfNine = {
   /** Command a specific actuator to move to a specific target position.
 The actuator name and the semantics of the value are defined using
 an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
@@ -1068,14 +1085,15 @@ macro.
 
 Upon change, an "actuator states" message will be emitted. */
   content: ManualActuatorChange;
-  type: FlightComputerMessageOneOfSevenType;
+  type: FlightComputerMessageOneOfNineType;
 };
 
 export type FlightComputerMessage =
   | FlightComputerMessageOneOf
   | FlightComputerMessageOneOfThree
   | FlightComputerMessageOneOfFive
-  | FlightComputerMessageOneOfSeven;
+  | FlightComputerMessageOneOfSeven
+  | FlightComputerMessageOneOfNine;
 
 export interface FlightComputerStatus {
   common: StatusCommonMessage;
@@ -1857,8 +1875,6 @@ export interface Info {
 
 /**
  * UTC timestamp given in microseconds since the Unix epoch (`1970-01-01T00:00:00Z`).
-
-This value is derived from the GPS time sensors and is therefore highly accurate.
  * @minimum 0
  */
 export type InstantUs = number;
@@ -4550,6 +4566,20 @@ export interface StateMachineInfo {
   name: string;
 }
 
+/**
+ * Shared state machine state used by the FC and RFSC.
+ */
+export interface StateMachineState {
+  /**
+   * The index in the state path where we are currently at.
+This equals the number of transitions that have occured.
+   * @minimum 0
+   */
+  pathIndex: number;
+  /** The name of the current state in zero-padded utf-8. */
+  state: number[];
+}
+
 export interface StatusCommonMessage {
   /**
    * Number of errors encountered since startup.
@@ -4584,6 +4614,8 @@ export const SystemManagementMessageOneOfType = {
  * # `UTCTimeUpdate`
 Synchronizes system time using GPS-derived UTC.
 
+This value is derived from the GPS time sensors and is therefore highly accurate.
+
 ## Type
 - `Periodic @ 10 Hz`
 
@@ -4603,6 +4635,8 @@ and is therefore discouraged.
 export type SystemManagementMessageOneOf = {
   /** # `UTCTimeUpdate`
 Synchronizes system time using GPS-derived UTC.
+
+This value is derived from the GPS time sensors and is therefore highly accurate.
 
 ## Type
 - `Periodic @ 10 Hz`

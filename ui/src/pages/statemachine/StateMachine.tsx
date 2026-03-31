@@ -42,7 +42,7 @@ function StateMachine() {
   const [stateMachine, setStateMachine] =
     useState<StateMachineDefintion | null>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [transitionIndex, setTransitionIndex] = useState<number>(0);
+  const [pathIndex, setPathIndex] = useState<number>(0);
   // By default the states should not be highlighted.
   const [highlightStates, toggleHighlightStates] = useToggle([false, true]);
   const [activeState, setActiveState] = useState<string | null>();
@@ -53,7 +53,7 @@ function StateMachine() {
     : null;
   const manualStateTransitionMessage = useMavlinkMessage(
     board as any,
-    "ManualStateTransition",
+    "StateMachineState",
   );
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
 
@@ -74,7 +74,7 @@ function StateMachine() {
   useEffect(() => {
     if (!manualStateTransitionMessage) return;
 
-    const { state, transitionIndex } =
+    const { state, pathIndex } =
       manualStateTransitionMessage.message.content;
 
     let targetState = String.fromCharCode(...state).toString();
@@ -101,7 +101,7 @@ function StateMachine() {
       }
     }
 
-    setTransitionIndex(transitionIndex);
+    setPathIndex(pathIndex);
 
     setActiveState(targetState);
   }, [manualStateTransitionMessage]);
@@ -199,7 +199,7 @@ function StateMachine() {
     const transition: ManualStateTransition = {
       // Exactly 30 bytes; Pad on the right with zeroes.
       state: Array.from([...bytes, ...new Array(30).fill(0)]).slice(0, 30),
-      transitionIndex: transitionIndex + 1,
+      transitionIndex: pathIndex + 1,
     };
     const message: Message = {
       board: board as any,
