@@ -118,7 +118,7 @@ function StateMachine() {
         }
       }
     } else {
-      return stateMachine.stateNodes[state];
+      return state;
     }
   };
 
