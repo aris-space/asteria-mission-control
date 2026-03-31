@@ -56,7 +56,6 @@ function StateMachine() {
     "StateMachineState",
   );
 
-    console.log(manualStateTransitionMessage);
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
 
   const {
@@ -76,13 +75,12 @@ function StateMachine() {
   useEffect(() => {
     if (!manualStateTransitionMessage) return;
 
-    const { state, pathIndex } =
-      manualStateTransitionMessage.message.content;
+    const { state, pathIndex } = manualStateTransitionMessage.message.content;
 
-      const decoder = new TextDecoder();
-      const bytes = new Uint8Array(state.filter(Boolean));
-      let targetState = decoder.decode(bytes);
-      console.log(targetState, stateMachine?.stateNodes);
+    const decoder = new TextDecoder();
+    const bytes = new Uint8Array(state.filter(Boolean));
+    let targetState = decoder.decode(bytes);
+    console.debug("State changed to", targetState);
     if (!stateMachine?.stateNodes[targetState]) {
       // The target state does not exist in the diagram.
       if (targetState.endsWith(" - W"))
@@ -215,14 +213,14 @@ function StateMachine() {
         onError: () => {
           notifications.show({
             title: "Manual transition failed",
-            message: `Manual state transition into '${state}' failed`,
+            message: `Failed to send message for manual state transition into '${state}'`,
             color: "red",
           });
         },
         onSuccess: () => {
           notifications.show({
-            title: "Manual transition succeeded",
-            message: `Manual state transition into '${state}' succeeded!`,
+            title: "Manual transition sent",
+            message: `Sent message for manual state transition into '${state}'!`,
             color: "green",
           });
         },
