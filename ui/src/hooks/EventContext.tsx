@@ -79,6 +79,7 @@ export function EventProvider(props: PropsWithChildren) {
         ...mavlinkMessages.current,
       };
       Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
+        console.log(cbMessageId, messageId);
         if (cbMessageId == messageId) cb(mavlinkMessage);
       });
     });
