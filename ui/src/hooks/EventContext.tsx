@@ -1,8 +1,10 @@
 import { Message as MavlinkMessage } from "@asteria/mission-control-client";
+import { useId } from "@mantine/hooks";
 import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -18,11 +20,20 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 interface EventContextDefinition {
   latency: number;
   messages: Record<string, MavlinkMessage>;
+  addNotifier: (
+    name: string,
+    board: string,
+    messageType: string,
+    cb: () => void,
+  ) => void;
+  removeNotifier: (name: string) => void;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
   messages: {},
+  addNotifier: () => {},
+  removeNotifier: () => {},
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -34,6 +45,7 @@ export function EventProvider(props: PropsWithChildren) {
   const [mavlinkMessages, setMavlinkMessages] = useState<
     Record<string, MavlinkMessage>
   >({});
+  const notifiers = useRef<Record<string, [string, () => void]>>({});
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -61,11 +73,14 @@ export function EventProvider(props: PropsWithChildren) {
       console.log("Received mavlink message");
 
       const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
+      const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
       setMavlinkMessages((messages) => ({
-        [`${mavlinkMessage.board}-${mavlinkMessage.message.type}`]:
-          mavlinkMessage,
+        [messageId]: mavlinkMessage,
         ...messages,
       }));
+      Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
+        if (cbMessageId == messageId) cb();
+      });
     });
 
     eventSource.addEventListener("error", (data) => {
@@ -89,6 +104,21 @@ export function EventProvider(props: PropsWithChildren) {
     }, EVENTS_RECONNECT_TIMEOUT);
   };
 
+  const addNotifier = (
+    name: string,
+    board: string,
+    messageType: string,
+    cb: () => void,
+  ) => {
+    notifiers.current[name] = [`${board}-${messageType}`, cb];
+  };
+
+  const removeNotifier = (name: string) => {
+    const copy = notifiers.current;
+    delete copy[name];
+    notifiers.current = copy;
+  };
+
   useEffect(() => {
     setupEventSource();
   }, []);
@@ -100,7 +130,14 @@ export function EventProvider(props: PropsWithChildren) {
   }, [source]);
 
   return (
-    <EventContext.Provider value={{ latency, messages: mavlinkMessages }}>
+    <EventContext.Provider
+      value={{
+        latency,
+        messages: mavlinkMessages,
+        addNotifier,
+        removeNotifier,
+      }}
+    >
       {props.children}
     </EventContext.Provider>
   );
@@ -129,11 +166,23 @@ export function useMavlinkMessage<
   board: B,
   type: T,
 ): (MavlinkMessage & { board: B; message: { type: T } }) | null {
+  const id = useId();
+  const [, forceRerender] = useState<number>(0);
   const context = useContext(EventContext);
   if (!context)
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
+
+  useEffect(() => {
+    const cb = () => {
+      forceRerender(Date.now());
+    };
+    context.addNotifier(id, board, type, cb);
+    return () => {
+      context.removeNotifier(id);
+    };
+  }, []);
 
   return (
     (context.messages[`${board}-${type}`] as MavlinkMessage & {
