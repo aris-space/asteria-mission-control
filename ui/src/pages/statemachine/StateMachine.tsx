@@ -259,7 +259,7 @@ function StateMachine() {
             if (!node) return;
             const rect = node.querySelector("rect");
             if (!rect) return;
-            calculateRectDasharray(rect);
+            calculateAndSetRectDasharray(rect);
           });
       });
     }
@@ -332,11 +332,12 @@ function StateMachine() {
 
 /**
  * Calculate the dash array properties for a rect to achieve a
- * 10,5 dash array. The perfect offset for a smooth animation
- * is written into the `--smooth-offset` CSS variable.
+ * 10,5 dash array and write them into the `--dasharray` CSS variable.
+ * The perfect offset for a smooth animation is written into the
+ * `--smooth-offset` CSS variable.
  * @param rect rect to calculate the dash array for.
  */
-function calculateRectDasharray(rect: SVGRectElement) {
+function calculateAndSetRectDasharray(rect: SVGRectElement) {
   const perimeter = rect.getTotalLength();
   // We would want to have 10,5 stroke dash array.
   const targetPattern = 15;
@@ -344,7 +345,7 @@ function calculateRectDasharray(rect: SVGRectElement) {
   const actualPatternLen = perimeter / repetitions;
   const dash = actualPatternLen * (10 / 15);
   const gap = actualPatternLen * (5 / 15);
-  rect.style.strokeDasharray = `${dash} ${gap}`;
+  rect.style.setProperty("--dasharray", `${dash} ${gap}`);
   rect.style.setProperty("--smooth-offset", actualPatternLen.toString());
 }
 

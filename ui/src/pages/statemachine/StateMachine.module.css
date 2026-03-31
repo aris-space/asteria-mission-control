@@ -12,11 +12,7 @@
     stroke-linecap: round;
     stroke-linejoin: round;
     animation: rotate-stroke 1s linear infinite;
-  }
-
-  :not([data-active-state]):not([data-manually-reachable-state]) rect {
-    stroke-dashoffset: 0;
-    stroke-dasharray: none !important;
+    stroke-dasharray: var(--dasharray);
   }
 
   background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
