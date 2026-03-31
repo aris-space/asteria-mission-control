@@ -79,32 +79,11 @@ function StateMachine() {
 
     const decoder = new TextDecoder();
     const bytes = new Uint8Array(state.filter(Boolean));
-    let targetState = decoder.decode(bytes);
+    const targetState = decoder.decode(bytes);
+
     console.debug("State changed to", targetState);
-    if (!stateMachine?.stateNodes[targetState]) {
-      // The target state does not exist in the diagram.
-      if (targetState.endsWith(" - W"))
-        targetState = targetState.substring(0, targetState.length - 4);
-      else {
-        const split = targetState.split(" ");
-        const postfix = split[split.length - 1];
-        const stateName = split.slice(0, split.length - 2).join(" ");
-        if (!isNaN(parseInt(postfix))) targetState = stateName;
-        else {
-          // A state which doesn't exist in the diagram and which doesn't have a postfix
-          // should be unreachable.
-          notifications.show({
-            title: "Invalid State Transition",
-            message: `Received state transition into state '${targetState}' which does not exist in the diagram and is not a postfixed state`,
-            color: "red",
-          });
-          return;
-        }
-      }
-    }
 
     setPathIndex(pathIndex);
-
     setActiveState(targetState);
   }, [manualStateTransitionMessage]);
 
@@ -124,6 +103,22 @@ function StateMachine() {
 
     return () => {};
   }, [activeState, stateMachine]);
+
+  const getDiagramState = (state: string) => {
+    if (!stateMachine?.stateNodes[state]) {
+      // The target state does not exist in the diagram.
+      if (state.endsWith(" - W")) return state.substring(0, state.length - 4);
+      else {
+        const split = state.split(" ");
+        const postfix = split[split.length - 1];
+        const stateName = split.slice(0, split.length - 2).join(" ");
+        if (!isNaN(parseInt(postfix))) return stateName;
+        else {
+          return undefined;
+        }
+      }
+    }
+  };
 
   function removeStateListeners() {
     if (!svgRef.current) return;
@@ -220,7 +215,7 @@ function StateMachine() {
         onSuccess: () => {
           notifications.show({
             title: "Manual transition sent",
-            message: `Sent message for manual state transition into '${state}'!`,
+            message: `Sent message for manual state transition into '${state}'`,
             color: "green",
           });
         },
@@ -235,7 +230,19 @@ function StateMachine() {
       .selectAll(`[${ACTIVE_ATTR}`)
       .attr(ACTIVE_ATTR, null);
     if (activeState && stateMachine) {
-      const activeStateId = stateMachine.stateNodes[activeState];
+      const diagramState = getDiagramState(activeState);
+      if (!diagramState) {
+        // A state which doesn't exist in the diagram and which doesn't have a postfix
+        // should be unreachable.
+        notifications.show({
+          title: "Invalid active state",
+          message: `Received active state '${activeState}' which does not exist in the diagram and is not a postfixed state`,
+          color: "red",
+        });
+        return;
+      }
+
+      const activeStateId = stateMachine.stateNodes[diagramState];
       d3.select(svgRef.current)
         .selectAll(`[${CELL_ID_ATTR}="${activeStateId}"]`)
         .attr(ACTIVE_ATTR, true);
