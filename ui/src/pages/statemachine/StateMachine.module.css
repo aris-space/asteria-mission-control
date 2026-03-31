@@ -15,6 +15,15 @@
     stroke-dasharray: var(--dasharray);
   }
 
+  [data-abort-transition] rect {
+    stroke: var(--mantine-color-red-5) !important;
+    stroke-width: 4px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    animation: rotate-stroke 1s linear infinite;
+    stroke-dasharray: var(--dasharray);
+  }
+
   background-image: radial-gradient(rgba(0, 0, 0, 0.1) 1px, transparent 1px);
   background-size: 20px 20px;
 }

@@ -42,8 +42,9 @@ pub struct StateMachine {
     pub name: String,
     /// State machine diagram SVG without the drawio XML content.
     pub diagram: String,
-    /// Allowed manual transitions for every state.
-    pub manual_transitions: HashMap<String, Vec<String>>,
+    /// Allowed manual transitions for every state and whether they
+    /// are an abort transition.
+    pub manual_transitions: HashMap<String, Vec<(String, bool)>>,
     /// Initial state of the state machine.
     pub initial_state: String,
     /// Mapping of state names to diagram cell ids.
@@ -69,7 +70,7 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
                     if !rc_config.state_machine.states.contains_key(transition.target()) {
                         missing.push(transition.target().clone());
                     } else {
-                        transitions.push(transition.target().clone());
+                        transitions.push((transition.target().clone(), transition.is_abort()));
                     }
                 });
                 manual.insert(state.clone(), transitions);

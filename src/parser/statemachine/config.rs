@@ -22,7 +22,11 @@ pub struct StateMachineStateConfig {
 #[serde(untagged)]
 pub enum StateMachineTransition {
     Default(String),
-    Full { target: String },
+    Full {
+        target: String,
+        #[serde(default)]
+        abort: bool,
+    },
 }
 
 impl StateMachineTransition {
@@ -30,5 +34,9 @@ impl StateMachineTransition {
         match self {
             StateMachineTransition::Default(target) | StateMachineTransition::Full { target, .. } => target,
         }
+    }
+
+    pub fn is_abort(&self) -> bool {
+        matches!(self, StateMachineTransition::Full { abort: true, .. })
     }
 }

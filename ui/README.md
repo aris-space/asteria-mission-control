@@ -7,7 +7,8 @@ Frontend for the ASTERIA mission control
 At the moment, there is nothing like an index page. Therefore, you can only change/select a view by entering the path manually. 
 
 Currently, the following views are available under the following paths:
-- **State machine**: The state machine view is availabe under `/statemachine`
+- **State machine**: The state machine view is available under `/statemachine`
+- **PSS**: The PSS view is available under `/pss`
 
 ## Development setup
 

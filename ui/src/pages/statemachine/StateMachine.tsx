@@ -37,6 +37,9 @@ const ACTIVE_ATTR: string = "data-active-state";
 // Attribute which is used to indicate whether a state is reachable from
 // the current state using a manual transition
 const MANUALLLY_REACHABLE_ATTR: string = "data-manually-reachable-state";
+// Attribute which is indicated that the manual transition into this
+// state is an abort transition.
+const ABORT_TRANSITION_ATTR: string = "data-abort-transition";
 
 function StateMachine() {
   const [stateMachine, setStateMachine] =
@@ -106,6 +109,12 @@ function StateMachine() {
     return () => {};
   }, [activeState, stateMachine]);
 
+  /**
+   * Get the name of the state how it's present in the diagram. If no (postfixed) version of the
+   * state is present in the diagram, return `undefined`.
+   * @param state original name of the state (with postfix)
+   * @returns name of the state how it's present in the diagram.
+   */
   const getDiagramState = (state: string) => {
     if (!stateMachine?.stateNodes[state]) {
       // The target state does not exist in the diagram.
@@ -255,16 +264,20 @@ function StateMachine() {
 
   function highlightManuallyReachableStates() {
     if (!svgRef.current) return;
-    // remove all currently highlighted states
+    // Remove all currently highlighted states.
     d3.select(svgRef.current)
       .selectAll(`[${MANUALLLY_REACHABLE_ATTR}`)
       .attr(MANUALLLY_REACHABLE_ATTR, null);
+    d3.select(svgRef.current)
+      .selectAll(`[${ABORT_TRANSITION_ATTR}`)
+      .attr(ABORT_TRANSITION_ATTR, null);
     if (stateMachine && activeState) {
-      stateMachine.manualTransitions[activeState].forEach((state) => {
+      stateMachine.manualTransitions[activeState].forEach(([state, abort]) => {
         const stateId = stateMachine.stateNodes[state];
         d3.select(svgRef.current)
           .select(`[${CELL_ID_ATTR}="${stateId}"]`)
           .attr(MANUALLLY_REACHABLE_ATTR, true)
+          .attr(ABORT_TRANSITION_ATTR, abort)
           .each((_, index, nodes) => {
             const node = nodes[index] as SVGElement;
             if (!node) return;

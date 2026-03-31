@@ -42,6 +42,9 @@ export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
   // For every mavlink message type we just store the latest received message.
+  // The messages are stored in a ref to prevent triggering a re-render for every received message.
+  // To minimize the number of re-renders, we store callback functions for all `useMavlinkMessage`
+  // hooks which are currently active and only trigger state updates inside those hooks.
   const mavlinkMessages = useRef<Record<string, MavlinkMessage>>({});
   const notifiers = useRef<
     Record<string, [string, (message: MavlinkMessage) => void]>
@@ -104,6 +107,14 @@ export function EventProvider(props: PropsWithChildren) {
     }, EVENTS_RECONNECT_TIMEOUT);
   };
 
+  /**
+   * Add a callback function which get's called once a matching MavLink message is received. The
+   * `name` is used as an identifier of this callback method such that it can be removed later on.
+   * @param name identifier of the callback function
+   * @param board board from which the message originates
+   * @param messageType the type of message we're interested
+   * @param cb the callback function which is called when a matching function is received
+   */
   const addNotifier = (
     name: string,
     board: string,
@@ -113,6 +124,10 @@ export function EventProvider(props: PropsWithChildren) {
     notifiers.current[name] = [`${board}-${messageType}`, cb];
   };
 
+  /**
+   * Remove a message callback function.
+   * @param name identifier of the callback function
+   */
   const removeNotifier = (name: string) => {
     const copy = notifiers.current;
     delete copy[name];
@@ -149,7 +164,7 @@ export function EventProvider(props: PropsWithChildren) {
 }
 
 /**
- * Get the lantecy to the backend server
+ * Get the lantecy to the backend server.
  * @returns latency in milliseconds or Infinity should the client not yet have received a ping
  */
 export function useLatency(): number {
@@ -160,7 +175,7 @@ export function useLatency(): number {
 }
 
 /**
- * Get the latest mavlink message of a certain type
+ * Get the latest mavlink message of a certain type.
  * @param type message type to get
  * @returns latest mavlink message of this type or null if no message of this type was received until now
  */
