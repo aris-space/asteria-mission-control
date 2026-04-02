@@ -56,17 +56,19 @@ impl Mavlink {
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
 
+        log::info!("Successfully connected to mavlink broadcast");
+
         loop {
             let frame = match receiver.recv().await {
                 Ok(frame) => frame,
                 Err(mavio::Error::Io(io_error)) => {
                     // When we have IO errors we stop receiving as the connection
                     // is most likely broken.
-                    let mut error_count = self.recv_errors.lock().await;
-                    if *error_count == MAX_RECV_ERROR_COUNT {
+                    let mut recv_error_count = self.recv_errors.lock().await;
+                    if *recv_error_count == MAX_RECV_ERROR_COUNT {
                         return Err(MavlinkError::Mavio(mavio::Error::Io(io_error)));
                     } else {
-                        *error_count += 1;
+                        *recv_error_count += 1;
                     }
                     log::warn!("Unable to receive mavlink message due to I/O error: {}", mavio::Error::Io(io_error));
                     continue;
@@ -134,7 +136,14 @@ impl Mavlink {
 
         if let Some(sender) = sender_guard.as_mut() {
             // There is an already initialized sender which we can use.
-            let bytes = sender.send(&frame).await.map_err(MavlinkError::Mavio)?;
+            let bytes = match sender.send(&frame).await {
+                Ok(bytes) => bytes,
+                Err(err) => {
+                    // Remove the sender instance as it's most likely broken.
+                    *sender_guard = None;
+                    Err(MavlinkError::Mavio(err))?
+                }
+            };
             Ok(bytes)
         } else {
             // We need to initialize a new sender and then store it for later reuse.

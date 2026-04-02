@@ -15,7 +15,7 @@
     stroke-dasharray: var(--dasharray);
   }
 
-  [data-abort-transition] rect {
+  [data-abort-transition="true"] rect {
     stroke: var(--mantine-color-red-5) !important;
     stroke-width: 4px;
     stroke-linecap: round;

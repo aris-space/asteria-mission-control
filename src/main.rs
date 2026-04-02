@@ -120,6 +120,8 @@ async fn main() {
                 log::error!("Error whilst sending heartbeat mavlink message: {err}")
             };
 
+            log::debug!("Successfully sent heartbeat message");
+
             // Sleep for a second.
             tokio::time::sleep(Duration::from_secs(1)).await
         }

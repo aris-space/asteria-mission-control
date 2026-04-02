@@ -99,13 +99,6 @@ function StateMachine() {
     removeStateListeners();
     setupStateListeners();
 
-    if (activeState && stateMachine) {
-      notifications.show({
-        title: "Manual transitions from active state",
-        message: `[${(stateMachine?.manualTransitions[activeState] || []).join(", ")}]`,
-      });
-    }
-
     return () => {};
   }, [activeState, stateMachine]);
 
@@ -177,12 +170,6 @@ function StateMachine() {
               ) ?? [];
 
             if (state) {
-              notifications.show({
-                title: "Diagram state",
-                message: `Clicked on node for state '${state}'`,
-                color: "blue",
-              });
-
               handleManualStateTransition(state);
             } else {
               console.warn(
