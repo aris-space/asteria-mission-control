@@ -30,7 +30,7 @@ RUN BUILDER_INITIALS=$BUILDER_INITIALS cargo build --release --package flight-co
 
 FROM alpine:3.21 AS runner
 
-RUN apk add --no-cache bash openssh libstdc++
+RUN apk add --no-cache bash libstdc++
 
 WORKDIR /app
 COPY --from=flight-computer-builder /app/target/release/flight-computer /usr/bin/flight-computer
@@ -49,15 +49,6 @@ ip link set can0 up
 
 # spawn mavlink router instance
 mavlink-routerd &> /dev/null &
-
-# generate ssh server keys
-# ssh-keygen -A
-
-# delete root password such that we can just use `ssh -p 2211 root@localhost`
-# passwd -d root
-
-# start ssh daemon
-# /usr/sbin/sshd -o PubkeyAuthentication=no -o PasswordAuthentication=yes -o PermitEmptyPasswords=yes &
 
 # run command provided through docker
 "\$@"
