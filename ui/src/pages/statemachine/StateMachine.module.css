@@ -1,5 +1,7 @@
 .container {
   cursor: move;
+  height: calc(100vh - var(--app-shell-header-height));
+  overflow-y: hidden;
 
   [data-active-state] rect {
     stroke-width: 4px;
@@ -32,10 +34,6 @@
   [data-state] rect {
     fill: orange !important;
   }
-}
-
-html {
-  overflow: hidden;
 }
 
 @keyframes rotate-stroke {
