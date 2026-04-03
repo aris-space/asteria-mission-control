@@ -62,7 +62,7 @@ pub enum RemoteComputerKind {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MavlinkConfig {
-    /// Address under which the mavlink broadcast is available
+    /// Address under which the MavLink router is available.
     pub address: MavlinkAddress,
     /// System id which should be used by the backend when sending messages
     pub system_id: u8,
@@ -71,8 +71,6 @@ pub struct MavlinkConfig {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(tag = "protocol", rename_all = "lowercase")]
 pub enum MavlinkAddress {
-    /// IP address and port used for UDP communication
-    Udp { local: String, remote: String },
     /// IP address and port used for TCP communication
     Tcp { remote: String },
     /// Path to a serial device together with the baud rate used

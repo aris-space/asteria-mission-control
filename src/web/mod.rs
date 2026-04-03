@@ -209,7 +209,7 @@ pub async fn all_pss_infos(scenario_id: web::Path<String>, config: Data<Config>)
 
 #[utoipa::path(
     responses((status = OK, body = ())),
-    description = "Send a message which will be proxied by the backend as a mavlink message")
+    description = "Send a message which will be proxied by the backend as a MavLink message")
 ]
 #[put("/message")]
 pub async fn send_message(message: Json<Message>, mavlink: Data<Mavlink>) -> actix_web::Result<()> {
@@ -217,8 +217,8 @@ pub async fn send_message(message: Json<Message>, mavlink: Data<Mavlink>) -> act
         .send(message.into_inner())
         .await
         .map_err(|err| {
-            log::error!("Error whilst sending mavlink message: {err}");
-            ErrorInternalServerError("Error whilst sending mavlink message")
+            log::error!("Error whilst sending MavLink message: {err}");
+            ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
         })
         .map(|_| ())
 }

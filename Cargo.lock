@@ -1001,6 +1001,7 @@ dependencies = [
 name = "dp-system-management"
 version = "0.3.0"
 dependencies = [
+ "bincode",
  "data-core",
  "datatypes",
  "gated-derive",
@@ -1725,6 +1726,7 @@ dependencies = [
  "crc",
  "mavio",
  "tbytes",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

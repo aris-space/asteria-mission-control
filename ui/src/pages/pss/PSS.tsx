@@ -28,7 +28,7 @@ import * as d3 from "d3";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import classes from "./PSS.module.css";
 import DatapointKind from "./kind";
-import useDiagramSvg from "../../hooks/DiagramSvgHook";
+import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
 import { notifications } from "@mantine/notifications";
 
 // Attribute which is used to store which state a diagram node represents
@@ -46,7 +46,14 @@ type Transform = { k: number; x: number; y: number };
 function PSS() {
   const [pssInfo, setPssInfo] = useState<Pss | null>();
   const { width, height } = useViewportSize();
-
+  // By default the datapoint markers should not be visible.
+  const [datapointVisibility, toggleDatapointVisibility] = useToggle([
+    "hidden",
+    "inherit",
+  ]);
+  const datapointNodes = useMap<string, SVGElement>();
+  const [datapointValues, setDatapointValues] =
+    useState<Record<string, number>>(TEST_VALUE);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -89,15 +96,6 @@ function PSS() {
       },
     },
   );
-
-  // By default the datapoint markers should not be visible.
-  const [datapointVisibility, toggleDatapointVisibility] = useToggle([
-    "hidden",
-    "inherit",
-  ]);
-  const datapointNodes = useMap<string, SVGElement>();
-  const [datapointValues, setDatapointValues] =
-    useState<Record<string, number>>(TEST_VALUE);
 
   useEffect(() => {
     updateDatapointVisibility();
@@ -143,7 +141,9 @@ function PSS() {
           value={value}
           kind={info.kind}
           onChange={({ actuator, value }) => {
-            const name = String.fromCharCode(...actuator).toString();
+            const decoder = new TextDecoder();
+            const bytes = new Uint8Array(actuator.filter(Boolean));
+            let name = decoder.decode(bytes);
 
             // TODO: Here we would send the mavlink message in JSON form to backend.
             setDatapointValues((values) => ({
@@ -153,7 +153,7 @@ function PSS() {
 
             notifications.show({
               title: "Manual Actuator Change",
-              message: `Successfully changed value of actuator "${name}" to ${value}`,
+              message: `Successfully changed value of actuator '${name}' to ${value}`,
               color: "green",
             });
           }}

@@ -1,9 +1,10 @@
 import { Message as MavlinkMessage } from "@asteria/mission-control-client";
-import { useMap } from "@mantine/hooks";
+import { useId } from "@mantine/hooks";
 import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
@@ -18,12 +19,21 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
-  messages: Map<[string, string], MavlinkMessage>;
+  addNotifier: (
+    name: string,
+    board: string,
+    messageType: string,
+    cb: (message: MavlinkMessage) => void,
+  ) => void;
+  removeNotifier: (name: string) => void;
+  getMessage(board: string, messageType: string): MavlinkMessage | undefined;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
-  messages: new Map(),
+  addNotifier: () => {},
+  removeNotifier: () => {},
+  getMessage: () => undefined,
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -31,16 +41,19 @@ const EventContext = createContext<EventContextDefinition>(defaultValue);
 export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
   const [latency, setLatency] = useState<number>(Infinity);
-  // for every mavlink message type we just store the latest received message
-  const mavlinkMessages = useMap<
-    [MavlinkMessage["board"], MavlinkMessage["message"]["type"]],
-    MavlinkMessage
-  >();
+  // For every mavlink message type we just store the latest received message.
+  // The messages are stored in a ref to prevent triggering a re-render for every received message.
+  // To minimize the number of re-renders, we store callback functions for all `useMavlinkMessage`
+  // hooks which are currently active and only trigger state updates inside those hooks.
+  const mavlinkMessages = useRef<Record<string, MavlinkMessage>>({});
+  const notifiers = useRef<
+    Record<string, [string, (message: MavlinkMessage) => void]>
+  >({});
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
     setSource((src) => {
-      // close existing event source
+      // Close existing event source.
       src?.close();
       return eventSource;
     });
@@ -60,13 +73,17 @@ export function EventProvider(props: PropsWithChildren) {
     });
 
     eventSource.addEventListener("mavlink-message", (data) => {
-      console.log("Received mavlink message");
+      // console.log("Received mavlink message");
 
-      const mavlinkMessage = data.data as MavlinkMessage;
-      mavlinkMessages.set(
-        [mavlinkMessage.board, mavlinkMessage.message.type],
-        mavlinkMessage,
-      );
+      const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
+      const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
+      mavlinkMessages.current = {
+        [messageId]: mavlinkMessage,
+        ...mavlinkMessages.current,
+      };
+      Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
+        if (cbMessageId == messageId) cb(mavlinkMessage);
+      });
     });
 
     eventSource.addEventListener("error", (data) => {
@@ -90,6 +107,38 @@ export function EventProvider(props: PropsWithChildren) {
     }, EVENTS_RECONNECT_TIMEOUT);
   };
 
+  /**
+   * Add a callback function which get's called once a matching MavLink message is received. The
+   * `name` is used as an identifier of this callback method such that it can be removed later on.
+   * @param name identifier of the callback function
+   * @param board board from which the message originates
+   * @param messageType the type of message we're interested
+   * @param cb the callback function which is called when a matching function is received
+   */
+  const addNotifier = (
+    name: string,
+    board: string,
+    messageType: string,
+    cb: (message: MavlinkMessage) => void,
+  ) => {
+    notifiers.current[name] = [`${board}-${messageType}`, cb];
+  };
+
+  /**
+   * Remove a message callback function.
+   * @param name identifier of the callback function
+   */
+  const removeNotifier = (name: string) => {
+    const copy = notifiers.current;
+    delete copy[name];
+    notifiers.current = copy;
+  };
+
+  const getMessage = (board: string, messageType: string) => {
+    const messageId = `${board}-${messageType}`;
+    return mavlinkMessages.current[messageId];
+  };
+
   useEffect(() => {
     setupEventSource();
   }, []);
@@ -101,14 +150,21 @@ export function EventProvider(props: PropsWithChildren) {
   }, [source]);
 
   return (
-    <EventContext.Provider value={{ latency, messages: mavlinkMessages }}>
+    <EventContext.Provider
+      value={{
+        latency,
+        addNotifier,
+        removeNotifier,
+        getMessage,
+      }}
+    >
       {props.children}
     </EventContext.Provider>
   );
 }
 
 /**
- * Get the lantecy to the backend server
+ * Get the lantecy to the backend server.
  * @returns latency in milliseconds or Infinity should the client not yet have received a ping
  */
 export function useLatency(): number {
@@ -119,7 +175,7 @@ export function useLatency(): number {
 }
 
 /**
- * Get the latest mavlink message of a certain type
+ * Get the latest mavlink message of a certain type.
  * @param type message type to get
  * @returns latest mavlink message of this type or null if no message of this type was received until now
  */
@@ -130,14 +186,29 @@ export function useMavlinkMessage<
   board: B,
   type: T,
 ): (MavlinkMessage & { board: B; message: { type: T } }) | null {
+  const id = useId();
   const context = useContext(EventContext);
   if (!context)
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
+  const [message, setMessage] = useState<MavlinkMessage>();
+
+  useEffect(() => {
+    setMessage(context.getMessage(board, type));
+    const cb = (newMessage: MavlinkMessage) => {
+      if (JSON.stringify(message) != JSON.stringify(newMessage)) {
+        setMessage(newMessage);
+      }
+    };
+    context.addNotifier(id, board, type, cb);
+    return () => {
+      context.removeNotifier(id);
+    };
+  }, [board, type]);
 
   return (
-    (context.messages.get([board, type]) as MavlinkMessage & {
+    (message as MavlinkMessage & {
       board: B;
       message: { type: T };
     }) ?? null

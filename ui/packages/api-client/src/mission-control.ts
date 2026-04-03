@@ -153,9 +153,7 @@ export function useInfo<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -284,9 +282,7 @@ export function useConfigSchema<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -431,17 +427,16 @@ export function useSubscribeEvents<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
- * Send a message which will be proxied by the backend as a mavlink message
+ * Send a message which will be proxied by the backend as a MavLink message
  */
 export const sendMessage = (
   message: Message,
   options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
 ) => {
   return customAxiosInstance<unknown>(
     {
@@ -449,6 +444,7 @@ export const sendMessage = (
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       data: message,
+      signal,
     },
     options,
   );
@@ -515,9 +511,7 @@ export const useSendMessage = <TError = ErrorType<unknown>, TContext = unknown>(
   { data: Message },
   TContext
 > => {
-  const mutationOptions = getSendMessageMutationOptions(options);
-
-  return useMutation(mutationOptions, queryClient);
+  return useMutation(getSendMessageMutationOptions(options), queryClient);
 };
 
 /**
@@ -534,7 +528,7 @@ export const allPssInfos = (
   );
 };
 
-export const getAllPssInfosQueryKey = (scenarioId?: string) => {
+export const getAllPssInfosQueryKey = (scenarioId: string) => {
   return [`/api/pss/scenario/${scenarioId}`] as const;
 };
 
@@ -659,9 +653,7 @@ export function useAllPssInfos<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -680,8 +672,8 @@ export const pssInformation = (
 };
 
 export const getPssInformationQueryKey = (
-  scenarioId?: string,
-  pssId?: string,
+  scenarioId: string,
+  pssId: string,
 ) => {
   return [`/api/pss/scenario/${scenarioId}/${pssId}`] as const;
 };
@@ -817,9 +809,7 @@ export function usePssInformation<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -948,9 +938,7 @@ export function useActiveScenario<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -1079,9 +1067,7 @@ export function useAllScenarios<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -1090,9 +1076,10 @@ export function useAllScenarios<
 export const changeScenario = (
   scenarioId: string,
   options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
 ) => {
   return customAxiosInstance<string>(
-    { url: `/api/scenario/${scenarioId}`, method: "PUT" },
+    { url: `/api/scenario/${scenarioId}`, method: "PUT", signal },
     options,
   );
 };
@@ -1161,9 +1148,7 @@ export const useChangeScenario = <
   { scenarioId: string },
   TContext
 > => {
-  const mutationOptions = getChangeScenarioMutationOptions(options);
-
-  return useMutation(mutationOptions, queryClient);
+  return useMutation(getChangeScenarioMutationOptions(options), queryClient);
 };
 
 /**
@@ -1180,7 +1165,7 @@ export const allStateMachines = (
   );
 };
 
-export const getAllStateMachinesQueryKey = (scenarioId?: string) => {
+export const getAllStateMachinesQueryKey = (scenarioId: string) => {
   return [`/api/statemachine/scenario/${scenarioId}`] as const;
 };
 
@@ -1326,9 +1311,7 @@ export function useAllStateMachines<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }
 
 /**
@@ -1351,8 +1334,8 @@ export const stateMachine = (
 };
 
 export const getStateMachineQueryKey = (
-  scenarioId?: string,
-  stateMachineId?: string,
+  scenarioId: string,
+  stateMachineId: string,
 ) => {
   return [
     `/api/statemachine/scenario/${scenarioId}/${stateMachineId}`,
@@ -1491,7 +1474,5 @@ export function useStateMachine<
     TError
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 
-  query.queryKey = queryOptions.queryKey;
-
-  return query;
+  return { ...query, queryKey: queryOptions.queryKey };
 }

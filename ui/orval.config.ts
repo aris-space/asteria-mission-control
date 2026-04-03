@@ -10,6 +10,7 @@ export default defineConfig({
       target: "./mission-control.ts",
       client: "react-query",
       mode: "split",
+      httpClient: "axios",
       override: {
         mutator: {
           path: "./api/mutator/custom-axios-instance.ts",

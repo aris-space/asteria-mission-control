@@ -24,11 +24,10 @@ interface DatapointKindProps
 function DatapointKind({ kind, name, value, onChange }: DatapointKindProps) {
   const handleDigitalActuatorChange = (active: boolean) => {
     const encoder = new TextEncoder();
-    // We assume that the backend does bounds checks on the actuator name bytes length and
-    // thus we don't need to do that here.
     const bytes = new Uint8Array(encoder.encode(name).buffer);
     const action: ManualActuatorChange = {
-      actuator: Array.from(bytes),
+      // Exactly 20 bytes; Pad with zeroes on the right.
+      actuator: Array.from([...bytes, ...new Array(20).fill(0)]).slice(0, 20),
       pathIndex: 0,
       value: active ? 1.0 : 0.0,
     };
