@@ -1,14 +1,4 @@
-import {
-  Alert,
-  ActionIcon,
-  Box,
-  Flex,
-  Text,
-  Title,
-  Tooltip,
-} from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
-import { useNavigate } from "react-router";
+import { Box, Flex, Text } from "@mantine/core";
 import type {
   EnvironmentalData,
   ImuData,
@@ -19,13 +9,9 @@ import type {
 } from "@asteria/mission-control-client";
 import { useMavlinkMessage } from "../../hooks/EventContext";
 
-function fmt(value: number | undefined, decimals = 2): string {
+function fmt(value: number | undefined, decimals = 3): string {
   if (value == undefined || value == null) return "--";
   return value.toFixed(decimals);
-}
-
-function fmt1(value: number | undefined): string {
-  return fmt(value, 1);
 }
 
 function speedMagnitude(
@@ -38,56 +24,51 @@ function speedMagnitude(
 }
 
 function accelMagnitude(
-  x?: number,
-  y?: number,
-  z?: number,
+  n?: number,
+  e?: number,
+  d?: number,
 ): number | undefined {
-  if (x == null || y == null || z == null) return undefined;
-  return Math.sqrt(x * x + y * y + z * z);
+  if (n == null || e == null || d == null) return undefined;
+  return Math.sqrt(n * n + e * e + d * d);
 }
 
 const STEERING_MAX_STEPS = 1000;
 
-/**
- * Vertical steering bar. Center = 0 steps (neutral).
- * Actual position shown as a solid block; target shown as an outline marker.
- * Positive steps → block moves up; negative → moves down.
- */
 function SteeringBar({
   label,
   actual,
   target,
-  width = 32,
 }: {
   label: string;
   actual?: number;
   target?: number;
-  width?: number;
 }) {
-  // Convert steps to a 0–1 fraction where 0.5 = neutral
   const toFrac = (steps: number) =>
     Math.max(0, Math.min(1, 0.5 + steps / (2 * STEERING_MAX_STEPS)));
 
   const actualFrac = actual != null ? toFrac(actual) : 0.5;
   const targetFrac = target != null ? toFrac(target) : null;
 
-  // Indicator block height as % of bar
   const indicatorH = 12; // percent
 
   return (
-    <Flex direction="column" align="center" gap={4} style={{ flexShrink: 0 }}>
-      <Text size="10px" c="dimmed" fw={600} tt="uppercase">
+    <Flex
+      direction="column"
+      align="center"
+      gap={4}
+      style={{ flexShrink: 0, width: 28, minWidth: 20 }}
+    >
+      <Text size="10px" c="dimmed" fw={600} tt="uppercase" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)", letterSpacing: 1 }}>
         {label}
       </Text>
       <Box
         style={{
-          width,
+          width: "100%",
           flex: 1,
           border: "2px solid #333",
           borderRadius: 3,
           position: "relative",
           backgroundColor: "transparent",
-          minHeight: 200,
         }}
       >
         {/* Center reference line */}
@@ -107,7 +88,6 @@ function SteeringBar({
           <Box
             style={{
               position: "absolute",
-              // center the block at targetFrac
               top: `calc(${(1 - targetFrac) * 100}% - ${indicatorH / 2}%)`,
               left: 2,
               right: 2,
@@ -139,9 +119,35 @@ function SteeringBar({
   );
 }
 
-function Telemetry() {
-  const navigate = useNavigate();
+/** Table row — label left, value right — no fixed sizes so it scales with container */
+function DataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <tr>
+      <td
+        style={{
+          paddingRight: 8,
+          color: "var(--mantine-color-dimmed)",
+          whiteSpace: "nowrap",
+          fontSize: "clamp(9px, 1.2vw, 12px)",
+        }}
+      >
+        {label}
+      </td>
+      <td
+        style={{
+          fontFamily: "monospace",
+          fontSize: "clamp(9px, 1.2vw, 12px)",
+          textAlign: "left",
+          paddingLeft: 4,
+        }}
+      >
+        {value}
+      </td>
+    </tr>
+  );
+}
 
+function Telemetry() {
   const posMsg = useMavlinkMessage("SensorCarrier", "PositionData");
   const velMsg = useMavlinkMessage("SensorCarrier", "VelocityData");
   const imuMsg = useMavlinkMessage("SensorCarrier", "ImuData");
@@ -175,190 +181,176 @@ function Telemetry() {
     steeringTargetMsg?.message as { content: SteeringPositions } | undefined
   )?.content;
 
-  const noData = !posMsg && !velMsg && !imuMsg && !envMsg;
-
   const altitude = pos?.locationHamsl;
   const vertAcc = pos?.verticalAccuracy;
   const horizAcc = pos?.horizontalAccuracy;
+
   const speed = speedMagnitude(
     vel?.velocityNorth,
     vel?.velocityEast,
     vel?.velocityDown,
   );
   const accel = accelMagnitude(
-    imu?.accelerationX,
-    imu?.accelerationY,
-    imu?.accelerationZ,
+    imu?.accelerationNorth,
+    imu?.accelerationEast,
+    imu?.accelerationDown,
   );
 
   const lat = pos?.locationLatitude;
   const lon = pos?.locationLongitude;
   const latStr =
-    lat != null ? `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? "N" : "S"}` : "--";
+    lat != null
+      ? `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? "N" : "S"}`
+      : "--";
   const lonStr =
-    lon != null ? `${Math.abs(lon).toFixed(1)}°${lon >= 0 ? "E" : "W"}` : "--";
+    lon != null
+      ? `${Math.abs(lon).toFixed(3)}°${lon >= 0 ? "E" : "W"}`
+      : "--";
 
   return (
-    <Flex direction="column" p="md" gap="md" align="center">
-      <Flex align="center" gap="sm" style={{ alignSelf: "flex-start" }}>
-        <Tooltip label="Back to Views">
-          <ActionIcon variant="subtle" onClick={() => navigate("/")}>
-            <IconArrowLeft />
-          </ActionIcon>
-        </Tooltip>
-        <Title order={3}>Telemetry</Title>
-      </Flex>
+    <Flex
+      direction="column"
+      p="md"
+      style={{
+        width: "100%",
+        overflow: "auto",
+        boxSizing: "border-box",
+      }}
+    >
+      {/* Body: left steering bar | content | right steering bar */}
+      <Flex gap="md" align="stretch" style={{ width: "100%" }}>
+        {/* Left bar — left steering */}
+        <SteeringBar
+          label="Steering L"
+          actual={steeringActual?.leftPos}
+          target={steeringTarget?.leftPos}
+        />
 
-      {noData && (
-        <Alert
-          variant="light"
-          color="yellow"
-          title="No telemetry data"
-          style={{ width: "100%", maxWidth: 600 }}
+        {/* Center content */}
+        <Flex
+          direction="column"
+          align="center"
+          gap={4}
+          style={{ flex: 1, minWidth: 0, textAlign: "center" }}
         >
-          No messages received yet. Check that the backend is connected.
-        </Alert>
-      )}
-
-      {/* Flight Altitude View panel */}
-      <Box
-        style={{
-          border: "2px solid #333",
-          borderRadius: 6,
-          width: "100%",
-          maxWidth: 600,
-          overflow: "hidden",
-        }}
-      >
-        {/* Title bar */}
-        <Box
-          style={{
-            borderBottom: "1px solid #333",
-            padding: "6px 12px",
-            textAlign: "center",
-          }}
-        >
-          <Text fw={600} size="sm">
-            Flight Altitude View
+          {/* Altitude */}
+          <Text size="10px" fw={600} tt="uppercase" c="dimmed" mt={4}>
+            Altitude
           </Text>
-        </Box>
-
-        {/* Body: left steering bar | content | right steering bar */}
-        <Flex gap="md" p="md" align="stretch">
-          {/* Left bar — left steering */}
-          <SteeringBar
-            label="Steering L"
-            actual={steeringActual?.leftPos}
-            target={steeringTarget?.leftPos}
-          />
-
-          {/* Center content */}
-          <Flex
-            direction="column"
-            align="center"
-            gap={4}
-            style={{ flex: 1, textAlign: "center" }}
-          >
-            {/* Altitude — primary */}
-            <Text size="10px" fw={600} tt="uppercase" c="dimmed" mt={4}>
-              Altitude
+          <Flex align="baseline" gap={6}>
+            <Text
+              fw={700}
+              ff="monospace"
+              lh={1.1}
+              style={{ fontSize: "clamp(1rem, 4vw, 2.25rem)" }}
+            >
+              {fmt(altitude)} m
             </Text>
-            <Flex align="baseline" gap={6}>
-              <Text size="36px" fw={700} ff="monospace" lh={1.1}>
-                {fmt1(altitude)} m
-              </Text>
-              {vertAcc != null && (
-                <Text size="sm" c="dimmed">
-                  ±{fmt1(vertAcc)}m
-                </Text>
-              )}
-            </Flex>
-
-            {/* Speed */}
-            <Text size="10px" fw={600} tt="uppercase" c="dimmed" mt={4}>
-              Velocity
-            </Text>
-            <Text size="28px" fw={700} ff="monospace" lh={1.1}>
-              {fmt1(speed)} m/s
-            </Text>
-
-            {/* NED velocity components */}
-            <Text size="xs" c="dimmed" ff="monospace">
-              N {fmt1(vel?.velocityNorth)} E {fmt1(vel?.velocityEast)} D{" "}
-              {fmt1(vel?.velocityDown)}
-            </Text>
-
-            {/* Acceleration magnitude */}
-            <Text size="10px" fw={600} tt="uppercase" c="dimmed" mt={4}>
-              Acceleration
-            </Text>
-            <Text size="28px" fw={700} ff="monospace" lh={1.2}>
-              {fmt1(accel)} m/s²
-            </Text>
-
-            {/* Accel components */}
-            <Text size="xs" c="dimmed" ff="monospace">
-              x {fmt1(imu?.accelerationX)} y {fmt1(imu?.accelerationY)} z{" "}
-              {fmt1(imu?.accelerationZ)}
-            </Text>
-
-            {/* Divider */}
-            <Box
-              style={{
-                width: "80%",
-                height: 1,
-                backgroundColor: "#ccc",
-                margin: "6px 0",
-              }}
-            />
-
-            {/* Angular velocity */}
-            <Text size="xs" ff="monospace">
-              Angl accel: x {fmt1(imu?.angularVelocityX)} y{" "}
-              {fmt1(imu?.angularVelocityY)} z {fmt1(imu?.angularVelocityZ)} °/s
-            </Text>
-
-            {/* Power rails */}
-            <Text size="xs" ff="monospace">
-              Rail 5V: {fmt(rail5v?.voltage)}v, {fmt(rail5v?.current)}A,{" "}
-              {fmt(rail5v?.power, 0)}W
-            </Text>
-            <Text size="xs" ff="monospace">
-              Rail 24V: {fmt(rail24v?.voltage)}v, {fmt(rail24v?.current)}A,{" "}
-              {fmt(rail24v?.power, 0)}W
-            </Text>
-
-            {/* Environmental */}
-            <Text size="xs" ff="monospace">
-              Stack: {fmt1(env?.temperature)}°, {fmt1(env?.humidity)}%,{" "}
-              {fmt(env?.pressure, 0)}hPa
-            </Text>
-
-            {/* Location */}
-            <Text size="xs" ff="monospace">
-              Location: {latStr}, {lonStr}
-              {horizAcc != null ? ` ±${fmt1(horizAcc)}m` : ""}
-            </Text>
-
-            {/* Steering (compact) */}
-            {(steeringActual || steeringTarget) && (
-              <Text size="xs" ff="monospace" c="dimmed">
-                Steering — Actual L:{steeringActual?.leftPos ?? "--"} R:
-                {steeringActual?.rightPos ?? "--"} | Target L:
-                {steeringTarget?.leftPos ?? "--"} R:
-                {steeringTarget?.rightPos ?? "--"}
+            {vertAcc != null && (
+              <Text size="sm" c="dimmed">
+                ±{fmt(vertAcc)}m
               </Text>
             )}
           </Flex>
 
-          {/* Right bar — right steering */}
-          <SteeringBar
-            label="Steering R"
-            actual={steeringActual?.rightPos}
-            target={steeringTarget?.rightPos}
+          {/* Velocity */}
+          <Text size="10px" fw={600} tt="uppercase" c="dimmed" mt={4}>
+            Velocity
+          </Text>
+          <Text
+            fw={700}
+            ff="monospace"
+            lh={1.1}
+            style={{ fontSize: "clamp(0.85rem, 3vw, 1.75rem)" }}
+          >
+            {fmt(speed)} m/s
+          </Text>
+          <table style={{ borderCollapse: "collapse" }}>
+            <tbody>
+              <DataRow
+                label="N / E / D"
+                value={`${fmt(vel?.velocityNorth)} / ${fmt(vel?.velocityEast)} / ${fmt(vel?.velocityDown)} m/s`}
+              />
+            </tbody>
+          </table>
+
+          {/* Acceleration */}
+          <Text size="10px" fw={600} tt="uppercase" c="dimmed" mt={4}>
+            Acceleration
+          </Text>
+          <Text
+            fw={700}
+            ff="monospace"
+            lh={1.2}
+            style={{ fontSize: "clamp(0.85rem, 3vw, 1.75rem)" }}
+          >
+            {fmt(accel)} m/s²
+          </Text>
+          <table style={{ borderCollapse: "collapse" }}>
+            <tbody>
+              <DataRow
+                label="N / E / D"
+                value={`${fmt(imu?.accelerationNorth)} / ${fmt(imu?.accelerationEast)} / ${fmt(imu?.accelerationDown)} m/s²`}
+              />
+            </tbody>
+          </table>
+
+          {/* Divider */}
+          <Box
+            style={{
+              width: "80%",
+              height: 1,
+              backgroundColor: "#ccc",
+              margin: "6px 0",
+            }}
           />
+
+          {/* Secondary data */}
+          <table style={{ borderCollapse: "collapse" }}>
+            <tbody>
+              <DataRow
+                label="Ang vel N"
+                value={`${fmt(imu?.angularVelocityNorth)} °/s`}
+              />
+              <DataRow
+                label="Ang vel E"
+                value={`${fmt(imu?.angularVelocityEast)} °/s`}
+              />
+              <DataRow
+                label="Ang vel D"
+                value={`${fmt(imu?.angularVelocityDown)} °/s`}
+              />
+              <DataRow
+                label="Rail 5V"
+                value={`${fmt(rail5v?.voltage)}v  ${fmt(rail5v?.current)}A  ${fmt(rail5v?.power, 0)}W`}
+              />
+              <DataRow
+                label="Rail 24V"
+                value={`${fmt(rail24v?.voltage)}v  ${fmt(rail24v?.current)}A  ${fmt(rail24v?.power, 0)}W`}
+              />
+              <DataRow
+                label="Temp / Hum"
+                value={`${fmt(env?.temperature)}°C  ${fmt(env?.humidity)}%`}
+              />
+              <DataRow
+                label="Pressure"
+                value={`${fmt(env?.pressure, 0)} hPa`}
+              />
+              <DataRow
+                label="Location"
+                value={`${latStr}  ${lonStr}${horizAcc != null ? `  ±${fmt(horizAcc)}m` : ""}`}
+              />
+            </tbody>
+          </table>
         </Flex>
-      </Box>
+
+        {/* Right bar — right steering */}
+        <SteeringBar
+          label="Steering R"
+          actual={steeringActual?.rightPos}
+          target={steeringTarget?.rightPos}
+        />
+      </Flex>
     </Flex>
   );
 }
