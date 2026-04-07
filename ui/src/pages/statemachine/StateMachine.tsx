@@ -295,7 +295,6 @@ function StateMachine() {
       direction={"column"}
       justify={"center"}
       align={"center"}
-      h={"calc(100vh - var(--app-shell-header-height))"}
       w={"100%"}
     >
       {stateMachine && (

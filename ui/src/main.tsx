@@ -2,7 +2,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import "@mantine/core/styles.css";
-import '@mantine/notifications/styles.css';
+import "@mantine/notifications/styles.css";
+import "@mantine/code-highlight/styles.css";
 import { MantineProvider } from "@mantine/core";
 import { Layout } from "./layout";
 import { EventProvider } from "./hooks/EventContext";
@@ -15,6 +16,11 @@ import { AxiosError } from "axios";
 
 import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
+import Health from "./pages/health/Health";
+import {
+  CodeHighlightAdapterProvider,
+  createShikiAdapter,
+} from "@mantine/code-highlight";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -30,29 +36,44 @@ const queryClient = new QueryClient({
           notifications.show({
             title: err.name,
             message: err.message,
-            color: "red"
-          })
+            color: "red",
+          });
         }
-      }
+      },
     },
-  }
+  },
 });
+
+const loadShiki = async () => {
+  const { createHighlighter } = await import("shiki");
+  const shiki = await createHighlighter({
+    langs: ["json"],
+    themes: ["catppuccin-latte"],
+  });
+
+  return shiki;
+};
+
+const shikiAdapter = createShikiAdapter(loadShiki);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <MantineProvider defaultColorScheme="light" theme={theme}>
-        <EventProvider>
-          <Notifications />
-          <BrowserRouter>
-            <Layout>
-              <Routes>
-                <Route path="statemachine" element={<StateMachine />} />
-                <Route path="pss" element={<PSS />} />
-              </Routes>
-            </Layout>
-          </BrowserRouter>
-        </EventProvider>
+        <CodeHighlightAdapterProvider adapter={shikiAdapter}>
+          <EventProvider>
+            <Notifications />
+            <BrowserRouter>
+              <Layout>
+                <Routes>
+                  <Route path="statemachine" element={<StateMachine />} />
+                  <Route path="pss" element={<PSS />} />
+                  <Route path="health" element={<Health />} />
+                </Routes>
+              </Layout>
+            </BrowserRouter>
+          </EventProvider>
+        </CodeHighlightAdapterProvider>
       </MantineProvider>
     </QueryClientProvider>
   </StrictMode>,

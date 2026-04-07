@@ -9,6 +9,7 @@ At the moment, there is nothing like an index page. Therefore, you can only chan
 Currently, the following views are available under the following paths:
 - **State machine**: The state machine view is available under `/statemachine`
 - **PSS**: The PSS view is available under `/pss`
+- **Health**: The health view is available under `/health`
 
 ## Development setup
 
