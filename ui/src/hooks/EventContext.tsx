@@ -1,5 +1,5 @@
 import { Message as MavlinkMessage } from "@asteria/mission-control-client";
-import { useId, useInterval } from "@mantine/hooks";
+import { useId } from "@mantine/hooks";
 import {
   createContext,
   useContext,
@@ -19,7 +19,6 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
-  telemetryActive: boolean;
   addNotifier: (
     name: string,
     board: string,
@@ -28,14 +27,15 @@ interface EventContextDefinition {
   ) => void;
   removeNotifier: (name: string) => void;
   getMessage(board: string, messageType: string): MavlinkMessage | undefined;
+  getLastMessageTimestamp: () => number;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
-  telemetryActive: false,
   addNotifier: () => {},
   removeNotifier: () => {},
   getMessage: () => undefined,
+  getLastMessageTimestamp: () => NaN,
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -51,20 +51,7 @@ export function EventProvider(props: PropsWithChildren) {
   const notifiers = useRef<
     Record<string, [string, (message: MavlinkMessage) => void]>
   >({});
-
   const lastMessageTimestamp = useRef<number>(NaN);
-  const [telemetryActive, setTelemetryActive] = useState<boolean>(false);
-
-  useInterval(
-    () => {
-      setTelemetryActive(
-        !isNaN(lastMessageTimestamp.current) &&
-          Date.now() - lastMessageTimestamp.current <= 1000,
-      );
-    },
-    1000,
-    { autoInvoke: true },
-  );
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -168,10 +155,10 @@ export function EventProvider(props: PropsWithChildren) {
     <EventContext.Provider
       value={{
         latency,
-        telemetryActive,
         addNotifier,
         removeNotifier,
         getMessage,
+        getLastMessageTimestamp: () => lastMessageTimestamp.current,
       }}
     >
       {props.children}
@@ -192,19 +179,23 @@ export function useBackendLatency(): number {
   return context.latency;
 }
 
+interface TelemetryHealthHook {
+  getLastMessageTimestamp: () => number;
+}
+
 /**
- * Get whether MavLink telemetry is active. We consider the telemetry to be active
- * if we received a MavLink message within the last second.
- * @returns Boolean whether the MavLink telemetry is active
+ * Hook to get health information about the MavLink telemetry.
  */
-export function useIsTelemetryActive(): boolean {
+export function useTelemetryHealth(): TelemetryHealthHook {
   const context = useContext(EventContext);
   if (!context)
     throw new Error(
-      "useIsTelemetryActive must only be used within a EventProvider",
+      "useTelemetryHealth must only be used within a EventProvider",
     );
 
-  return context.telemetryActive;
+  return {
+    getLastMessageTimestamp: context.getLastMessageTimestamp,
+  };
 }
 
 /**

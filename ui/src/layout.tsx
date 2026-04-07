@@ -1,8 +1,5 @@
-import React, { useEffect, type PropsWithChildren } from "react";
-import {
-  useBackendLatency,
-  useIsTelemetryActive,
-} from "./hooks/EventContext";
+import React, { useEffect, useState, type PropsWithChildren } from "react";
+import { useBackendLatency, useTelemetryHealth } from "./hooks/EventContext";
 import {
   AppShell,
   Badge,
@@ -26,6 +23,7 @@ import {
   IconRocketOff,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { useInterval } from "@mantine/hooks";
 
 export function Layout(props: PropsWithChildren) {
   return (
@@ -134,7 +132,7 @@ function BackendLatency() {
           ) : (
             <IconPlugX size={"1rem"} />
           )}
-          {hasLatency && <>{latency}ms</>}
+          {hasLatency && latency + "ms"}
         </Flex>
       </Badge>
     </Tooltip>
@@ -142,24 +140,45 @@ function BackendLatency() {
 }
 
 function TelemetryHealth() {
-  const isTelemetryActive = useIsTelemetryActive();
+  const { getLastMessageTimestamp } = useTelemetryHealth();
+  const [timeSinceLastMessage, setTimeSinceLastMessage] =
+    useState<number>(Infinity);
+
+  const isTelemetryActive = timeSinceLastMessage <= 1000;
+  const telemetryCondition =
+    timeSinceLastMessage < 250
+      ? "green"
+      : timeSinceLastMessage < 750
+        ? "orange"
+        : "red";
+
+  useInterval(
+    () => {
+      const lastMessageTimestamp = getLastMessageTimestamp();
+      const now = Date.now();
+      setTimeSinceLastMessage(now - lastMessageTimestamp);
+    },
+    25,
+    { autoInvoke: true },
+  );
 
   return (
     <Tooltip
       label={
         isTelemetryActive
-          ? `Received MavLink telemetry within last second`
+          ? `Received MavLink telemetry within last ${timeSinceLastMessage} milliseconds`
           : "No MavLink telemetry received within last second"
       }
     >
-      <Badge color={isTelemetryActive ? "green" : "red"} size="md">
+      <Badge color={telemetryCondition} size="md">
         <Flex align={"center"} gap={"0.25rem"}>
           {isTelemetryActive ? (
             <IconRocket size="1rem" />
           ) : (
             <IconRocketOff size="1rem" />
           )}
-          {isTelemetryActive ? "Active" : "Inactive"}
+          {isTelemetryActive &&
+            timeSinceLastMessage.toString().padStart(3, "0") + "ms"}
         </Flex>
       </Badge>
     </Tooltip>
