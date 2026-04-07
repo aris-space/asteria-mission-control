@@ -192,12 +192,18 @@ export function useMavlinkMessage<
     throw new Error(
       "useMavlinkMessage must only be used within a EventProvider",
     );
+
+  // Store current message in ref for comparison in callback function. This is needed
+  // because of weird react behavior when just usting the state value.
+  const currentMessage = useRef<MavlinkMessage>(undefined);
   const [message, setMessage] = useState<MavlinkMessage>();
 
   useEffect(() => {
     setMessage(context.getMessage(board, type));
     const cb = (newMessage: MavlinkMessage) => {
-      if (JSON.stringify(message) != JSON.stringify(newMessage)) {
+      if (
+        JSON.stringify(currentMessage.current) != JSON.stringify(newMessage)
+      ) {
         setMessage(newMessage);
       }
     };
@@ -206,6 +212,10 @@ export function useMavlinkMessage<
       context.removeNotifier(id);
     };
   }, [board, type]);
+
+  useEffect(() => {
+    currentMessage.current = message;
+  }, [message]);
 
   return (
     (message as MavlinkMessage & {
