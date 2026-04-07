@@ -1,5 +1,5 @@
 import { Message as MavlinkMessage } from "@asteria/mission-control-client";
-import { useId } from "@mantine/hooks";
+import { useId, useInterval } from "@mantine/hooks";
 import {
   createContext,
   useContext,
@@ -19,6 +19,7 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 interface EventContextDefinition {
   latency: number;
+  telemetryActive: boolean;
   addNotifier: (
     name: string,
     board: string,
@@ -31,6 +32,7 @@ interface EventContextDefinition {
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
+  telemetryActive: false,
   addNotifier: () => {},
   removeNotifier: () => {},
   getMessage: () => undefined,
@@ -49,6 +51,20 @@ export function EventProvider(props: PropsWithChildren) {
   const notifiers = useRef<
     Record<string, [string, (message: MavlinkMessage) => void]>
   >({});
+
+  const lastMessageTimestamp = useRef<number>(NaN);
+  const [telemetryActive, setTelemetryActive] = useState<boolean>(false);
+
+  useInterval(
+    () => {
+      setTelemetryActive(
+        !isNaN(lastMessageTimestamp.current) &&
+          Date.now() - lastMessageTimestamp.current <= 1000,
+      );
+    },
+    1000,
+    { autoInvoke: true },
+  );
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -73,8 +89,7 @@ export function EventProvider(props: PropsWithChildren) {
     });
 
     eventSource.addEventListener("mavlink-message", (data) => {
-      // console.log("Received mavlink message");
-
+      lastMessageTimestamp.current = Date.now();
       const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
       const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
       mavlinkMessages.current = {
@@ -153,6 +168,7 @@ export function EventProvider(props: PropsWithChildren) {
     <EventContext.Provider
       value={{
         latency,
+        telemetryActive,
         addNotifier,
         removeNotifier,
         getMessage,
@@ -167,11 +183,28 @@ export function EventProvider(props: PropsWithChildren) {
  * Get the lantecy to the backend server.
  * @returns latency in milliseconds or Infinity should the client not yet have received a ping
  */
-export function useLatency(): number {
+export function useBackendLatency(): number {
   const context = useContext(EventContext);
   if (!context)
-    throw new Error("useLatency must only be used within a EventProvider");
+    throw new Error(
+      "useBackendLatency must only be used within a EventProvider",
+    );
   return context.latency;
+}
+
+/**
+ * Get whether MavLink telemetry is active. We consider the telemetry to be active
+ * if we received a MavLink message within the last second.
+ * @returns Boolean whether the MavLink telemetry is active
+ */
+export function useIsTelemetryActive(): boolean {
+  const context = useContext(EventContext);
+  if (!context)
+    throw new Error(
+      "useIsTelemetryActive must only be used within a EventProvider",
+    );
+
+  return context.telemetryActive;
 }
 
 /**
