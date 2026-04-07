@@ -1,12 +1,72 @@
 services:
-  mission-control:
-    build:
-      context: .
-    ports:
-      # map container port 80 to host port 8888
-      - "8888:80"
-    volumes:
-      # mount development config into container
-      - ./config.toml:/app/config.toml
-      # mount development state machine used by config into container
-      - ./state-machine.svg:/app/state-machine.svg
+    mission-control:
+        profiles: ["mission-control", "full"]
+        build:
+            context: .
+            dockerfile: ./Dockerfile
+        ports:
+            # map container port 80 to host port 8888
+            - "8888:80"
+        volumes:
+            - ./pss.svg:/app/pss.svg:ro
+            - ./remote-computers/flight-computer/configs:/app/remote-computers/flight-computer/configs:ro
+            - ./remote-computers/state-machines:/app/remote-computers/state-machines:ro
+        configs:
+            - source: mission-control
+              target: /app/config.toml
+
+    flight-computer:
+        profiles: ["flight-computer", "full"]
+        build:
+            context: .
+            dockerfile: ./fc.Dockerfile
+        cap_add:
+            # needed to create the virtual can interface
+            - NET_ADMIN
+        configs:
+            - source: mavlink-router
+              target: /etc/mavlink-router/main.conf
+        ports:
+            # MavLink router TCP server.
+            - "5766:5766"
+            # SSH daemon.
+            - "2222:22"
+        volumes:
+            - ./remote-computers/flight-computer/configs:/app/configs:ro
+        command: flight-computer /app/configs/drop_test_campaign/drogue_out_drop_test_template.toml
+
+configs:
+    mission-control:
+        content: |
+            default_scenario = "drogue-drop-test"
+
+            [mavlink]
+            system_id = 222
+            address = { protocol = "tcp", remote = "flight-computer:5766" }
+
+            [scenario.drogue-drop-test]
+            name = "Drogue Drop Test"
+            [scenario.drogue-drop-test.state_machine.fc]
+            kind = "fc"
+            name = "Flight Computer"
+            diagram_path = "remote-computers/state-machines/drogue-drop-test-state-machine.drawio.svg"
+            config_path = "remote-computers/flight-computer/configs/drop_test_campaign/drogue_out_drop_test_template.toml"
+            [scenario.drogue-drop-test.pss.fc]
+            name = "Flight Computer"
+            kind = "fc"
+            diagram_path = "pss.svg"
+    mavlink-router:
+        content: |
+            [General]
+            TcpServerPort = 5766
+            Forwarding = True
+
+            # -------------------------------------
+            # UDP ENDPOINT DEFINITIONS
+            # -------------------------------------
+
+            # Endpoint for the flight computer connection
+            [UdpEndpoint flight_computer]
+            Mode = Server
+            Address = 127.0.0.1
+            Port = 5760

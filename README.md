@@ -13,8 +13,9 @@ To get an overview of the available flags, run the binary with the `--help` argu
 The project contains a `Dockerfile` which builds a full stack version of the ASTERIA mission control. The backend web server is used to serve the statically built frontend.
 
 To start the current development version of the mission control inside docker, you can simply run:
+
 ```bash
-# build new docker image and start it 
+# build new docker image and start it
 docker compose up
 ```
 
@@ -42,6 +43,7 @@ The code for the mission control UI is located in [the ui subdirectory](./ui/)
 
 For the statemachine and PSS views we use draw.io diagrams exported as SVG.
 There are some things which need to be followed whilst exporting the diagram as a SVG such that the SVGs can successfully be used by the Mission Control:
+
 - The SVG background needs to be set to **transparent**
 - The SVG appearance needs to be set to **light**
 - The "Include a copy of my diagram" option needs to be **enabled**. For multi-page diagrams, only include the current page of the diagram.
@@ -52,3 +54,15 @@ There are some things which need to be followed whilst exporting the diagram as 
 > The draw.io plugins are not stored inside the diagram file. They need to be enabled on every editor with which you want to edit the diagram!
 
 ![Screenshot of SVG export on draw.io](./docs/svg-export.png)
+
+## Local flight computer setup
+
+The `fc.Dockerfile` can be used to build a docker image containing a built version of the flight computer contained in the remote-computers submodule.
+
+The image also contains a mavlink-router which automatically gets started and which expects a config to be mounted at `/etc/mavlink-router/main.conf`.
+Additionally, there is also a SSH server running inside the container at port `22` (needs to be mapped to non-standard host port, e.g. `2222`) which allows passwordless root logins. This means, `ssh -p 2222 root@localhost` connects into the container.
+
+The `docker-compose.yml` in the project root contains a fully configured setup for such a flight computer. By running `docker compose --profile flight-computer up -d`, there will be a MavLink TCP server at port `5766` to which the local Mission Control can connect. Also, the SSH server is mapped to port `2222`.
+
+If you want to test a full deployment of the Mission Control + Flight Computer, run `docker compose --profile full up -d`. A statically compiled version of the Mission Control is then available under http://localhost:8888` which is
+connected to the flight computer running inside the docker container.
