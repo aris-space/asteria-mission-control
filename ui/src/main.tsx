@@ -12,8 +12,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Route } from "react-router";
 import { Routes } from "react-router";
 import { notifications, Notifications } from "@mantine/notifications";
-import { AxiosError } from "axios";
-
 import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
 import Health from "./pages/health/Health";
@@ -21,6 +19,8 @@ import {
   CodeHighlightAdapterProvider,
   createShikiAdapter,
 } from "@mantine/code-highlight";
+import Telemetry from "./pages/telemetry/Telemetry";
+import { AxiosError } from "axios";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,9 +66,11 @@ createRoot(document.getElementById("root")!).render(
             <BrowserRouter>
               <Layout>
                 <Routes>
+                  <Route path="/" element={<Views />} />
                   <Route path="statemachine" element={<StateMachine />} />
-                  <Route path="pss" element={<PSS />} />
+                  <Route path="telemetry" element={<Telemetry />} />
                   <Route path="health" element={<Health />} />
+                  <Route path="pss" element={<PSS />} />
                 </Routes>
               </Layout>
             </BrowserRouter>
