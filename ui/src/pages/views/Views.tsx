@@ -22,6 +22,12 @@ const views: ViewCard[] = [
     icon: <IconChartLine size="2rem" />,
     path: "/telemetry",
   },
+  {
+    title: "Map",
+    description: "Map view from 3 perspectives: top, side, front",
+    icon: <IconChartLine size="2rem" />,
+    path: "/map",
+  },
 ];
 
 function Views() {

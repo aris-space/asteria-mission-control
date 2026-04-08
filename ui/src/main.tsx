@@ -20,6 +20,8 @@ import {
   createShikiAdapter,
 } from "@mantine/code-highlight";
 import Telemetry from "./pages/telemetry/Telemetry";
+import Map from "./pages/map/Map";
+import Views from "./pages/views/Views";
 import { AxiosError } from "axios";
 
 const queryClient = new QueryClient({
@@ -71,6 +73,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="telemetry" element={<Telemetry />} />
                   <Route path="health" element={<Health />} />
                   <Route path="pss" element={<PSS />} />
+                  <Route path="map" element={<Map />} />
                 </Routes>
               </Layout>
             </BrowserRouter>
