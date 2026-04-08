@@ -14,6 +14,7 @@ import { notifications, Notifications } from "@mantine/notifications";
 import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
 import Telemetry from "./pages/telemetry/Telemetry";
+import Map from "./pages/map/Map";
 import Views from "./pages/views/Views";
 import { AxiosError } from "axios";
 
@@ -52,6 +53,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="statemachine" element={<StateMachine />} />
                 <Route path="pss" element={<PSS />} />
                 <Route path="telemetry" element={<Telemetry />} />
+                <Route path="map" element={<Map />} />
               </Routes>
             </Layout>
           </BrowserRouter>
