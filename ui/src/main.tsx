@@ -19,12 +19,13 @@ import {
 } from "@mantine/code-highlight";
 import { RemoteComputerProvider } from "@asteria/hooks/RemoteComputerContext";
 import { MavlinkProvider } from "@asteria/hooks/MavlinkContext";
+import { PssDataProvider } from "./hooks/PssDataContext";
 
 import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
 import Health from "./pages/health/Health";
 import Telemetry from "./pages/telemetry/Telemetry";
-import { PssDataProvider } from "./hooks/PssDataContext";
+import Map from "./pages/map/Map";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -81,6 +82,7 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="pss/rfs" element={<PSS kind="rfs" />} />
                         <Route path="health" element={<Health />} />
                         <Route path="telemetry" element={<Telemetry />} />
+                        <Route path="map" element={<Map />} />
                       </Routes>
                     </Layout>
                   </BrowserRouter>
