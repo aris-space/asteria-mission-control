@@ -51,12 +51,14 @@ function Health() {
   const [datapoints, setDatapoints] = useState<
     Array<HealthDatapoint<Message["board"], Message["message"]["type"]>>
   >([]);
-  const [addingDatapoint, setAddingDatapoint] = useState(false);
+  const [storageRead, setStorageRead] = useState<boolean>(false);
+  const [addingDatapoint, setAddingDatapoint] = useState<boolean>(false);
 
   useEffect(() => {
     const storedHealthDatapoints = localStorage.getItem(
       HEALTH_DATAPOINT_STORAGE_KEY,
     );
+    setStorageRead(true);
     if (!storedHealthDatapoints)
       return setDatapoints(DEFAULT_HEALTH_DATAPOINTS);
 
@@ -75,6 +77,8 @@ function Health() {
   }, []);
 
   useEffect(() => {
+    // As long as the storage has not been read, we don't overwrite the storage.
+    if (!storageRead) return;
     const content =
       datapoints.length == 0
         ? JSON.stringify(DEFAULT_HEALTH_DATAPOINTS)

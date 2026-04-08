@@ -27,6 +27,7 @@ interface EventContextDefinition {
   ) => void;
   removeNotifier: (name: string) => void;
   getMessage(board: string, messageType: string): MavlinkMessage | undefined;
+  getLastMessageTimestamp: () => number;
 }
 
 const defaultValue: EventContextDefinition = {
@@ -34,6 +35,7 @@ const defaultValue: EventContextDefinition = {
   addNotifier: () => {},
   removeNotifier: () => {},
   getMessage: () => undefined,
+  getLastMessageTimestamp: () => NaN,
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
@@ -49,6 +51,7 @@ export function EventProvider(props: PropsWithChildren) {
   const notifiers = useRef<
     Record<string, [string, (message: MavlinkMessage) => void]>
   >({});
+  const lastMessageTimestamp = useRef<number>(NaN);
 
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
@@ -73,8 +76,7 @@ export function EventProvider(props: PropsWithChildren) {
     });
 
     eventSource.addEventListener("mavlink-message", (data) => {
-      // console.log("Received mavlink message");
-
+      lastMessageTimestamp.current = Date.now();
       const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
       const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
       mavlinkMessages.current = {
@@ -156,6 +158,7 @@ export function EventProvider(props: PropsWithChildren) {
         addNotifier,
         removeNotifier,
         getMessage,
+        getLastMessageTimestamp: () => lastMessageTimestamp.current,
       }}
     >
       {props.children}
@@ -167,11 +170,32 @@ export function EventProvider(props: PropsWithChildren) {
  * Get the lantecy to the backend server.
  * @returns latency in milliseconds or Infinity should the client not yet have received a ping
  */
-export function useLatency(): number {
+export function useBackendLatency(): number {
   const context = useContext(EventContext);
   if (!context)
-    throw new Error("useLatency must only be used within a EventProvider");
+    throw new Error(
+      "useBackendLatency must only be used within a EventProvider",
+    );
   return context.latency;
+}
+
+interface TelemetryHealthHook {
+  getLastMessageTimestamp: () => number;
+}
+
+/**
+ * Hook to get health information about the MavLink telemetry.
+ */
+export function useTelemetryHealth(): TelemetryHealthHook {
+  const context = useContext(EventContext);
+  if (!context)
+    throw new Error(
+      "useTelemetryHealth must only be used within a EventProvider",
+    );
+
+  return {
+    getLastMessageTimestamp: context.getLastMessageTimestamp,
+  };
 }
 
 /**

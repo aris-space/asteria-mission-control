@@ -1,5 +1,5 @@
-import React, { useEffect, type PropsWithChildren } from "react";
-import { useLatency } from "./hooks/EventContext";
+import React, { useEffect, useState, type PropsWithChildren } from "react";
+import { useBackendLatency, useTelemetryHealth } from "./hooks/EventContext";
 import {
   AppShell,
   Badge,
@@ -16,16 +16,16 @@ import {
   useChangeScenario,
   useInfo,
 } from "@asteria/mission-control-client";
-import { IconPlug, IconPlugX } from "@tabler/icons-react";
+import {
+  IconPlug,
+  IconPlugX,
+  IconRocket,
+  IconRocketOff,
+} from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { useInterval } from "@mantine/hooks";
 
 export function Layout(props: PropsWithChildren) {
-  const latency = useLatency();
-  const { data: info } = useInfo();
-
-  const hasLatency = isFinite(latency);
-  const hasVersion = !!info?.version;
-
   return (
     <AppShell
       padding="0"
@@ -40,35 +40,9 @@ export function Layout(props: PropsWithChildren) {
           </Flex>
           <Flex align={"center"} justify={"end"}>
             <Flex gap={"md"}>
-              <Tooltip
-                label={
-                  hasLatency
-                    ? `Connection to backend has ${latency}ms latency`
-                    : "No connection to backend"
-                }
-              >
-                <Badge color={hasLatency ? "blue" : "red"} size="md">
-                  <Flex align={"center"} gap={"0.25rem"}>
-                    {hasLatency ? (
-                      <IconPlug size={"1rem"} />
-                    ) : (
-                      <IconPlugX size={"1rem"} />
-                    )}
-                    {hasLatency && <>{latency}ms</>}
-                  </Flex>
-                </Badge>
-              </Tooltip>
-              <Tooltip
-                label={
-                  hasVersion
-                    ? `Using backend version ${info.version}`
-                    : "Unable to get backend version"
-                }
-              >
-                <Badge color={hasVersion ? "blue" : "red"} size={"md"}>
-                  {info?.version ?? "v?.?.?"}
-                </Badge>
-              </Tooltip>
+              <TelemetryHealth />
+              <BackendLatency />
+              <BackendVersion />
             </Flex>
           </Flex>
         </SimpleGrid>
@@ -117,5 +91,96 @@ function ScenarioSelector() {
       rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
       rightSectionWidth={40}
     />
+  );
+}
+
+function BackendVersion() {
+  const { data: info } = useInfo();
+  const hasVersion = !!info?.version;
+
+  return (
+    <Tooltip
+      label={
+        hasVersion
+          ? `Using backend version ${info.version}`
+          : "Unable to get backend version"
+      }
+    >
+      <Badge color={hasVersion ? "blue" : "red"} size={"md"}>
+        {info?.version ?? "v?.?.?"}
+      </Badge>
+    </Tooltip>
+  );
+}
+
+function BackendLatency() {
+  const latency = useBackendLatency();
+  const hasLatency = isFinite(latency);
+
+  return (
+    <Tooltip
+      label={
+        hasLatency
+          ? `Connection to backend has ${latency}ms latency`
+          : "No connection to backend"
+      }
+    >
+      <Badge color={hasLatency ? "blue" : "red"} size="md">
+        <Flex align={"center"} gap={"0.25rem"}>
+          {hasLatency ? (
+            <IconPlug size={"1rem"} />
+          ) : (
+            <IconPlugX size={"1rem"} />
+          )}
+          {hasLatency && latency + "ms"}
+        </Flex>
+      </Badge>
+    </Tooltip>
+  );
+}
+
+function TelemetryHealth() {
+  const { getLastMessageTimestamp } = useTelemetryHealth();
+  const [timeSinceLastMessage, setTimeSinceLastMessage] =
+    useState<number>(Infinity);
+
+  const isTelemetryActive = timeSinceLastMessage <= 1000;
+  const telemetryCondition =
+    timeSinceLastMessage < 250
+      ? "green"
+      : timeSinceLastMessage < 750
+        ? "orange"
+        : "red";
+
+  useInterval(
+    () => {
+      const lastMessageTimestamp = getLastMessageTimestamp();
+      const now = Date.now();
+      setTimeSinceLastMessage(now - lastMessageTimestamp);
+    },
+    25,
+    { autoInvoke: true },
+  );
+
+  return (
+    <Tooltip
+      label={
+        isTelemetryActive
+          ? `Received MavLink telemetry within last ${timeSinceLastMessage} milliseconds`
+          : "No MavLink telemetry received within last second"
+      }
+    >
+      <Badge color={telemetryCondition} size="md">
+        <Flex align={"center"} gap={"0.25rem"}>
+          {isTelemetryActive ? (
+            <IconRocket size="1rem" />
+          ) : (
+            <IconRocketOff size="1rem" />
+          )}
+          {isTelemetryActive &&
+            timeSinceLastMessage.toString().padStart(3, "0") + "ms"}
+        </Flex>
+      </Badge>
+    </Tooltip>
   );
 }
