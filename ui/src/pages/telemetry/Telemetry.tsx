@@ -32,7 +32,7 @@ function accelMagnitude(
   return Math.sqrt(n * n + e * e + d * d);
 }
 
-const STEERING_MAX_STEPS = 1000;
+const STEERING_MAX_STEPS = 8000; // 4096 is one rotation
 
 function SteeringBar({
   label,
@@ -128,7 +128,7 @@ function DataRow({ label, value }: { label: string; value: string }) {
           paddingRight: 8,
           color: "var(--mantine-color-dimmed)",
           whiteSpace: "nowrap",
-          fontSize: "clamp(9px, 1.2vw, 12px)",
+          fontSize: "clamp(10px, 1.2vw, 24px)",
         }}
       >
         {label}
@@ -136,7 +136,7 @@ function DataRow({ label, value }: { label: string; value: string }) {
       <td
         style={{
           fontFamily: "monospace",
-          fontSize: "clamp(9px, 1.2vw, 12px)",
+          fontSize: "clamp(10px, 1.2vw, 24px)",
           textAlign: "left",
           paddingLeft: 4,
         }}
@@ -200,11 +200,11 @@ function Telemetry() {
   const lon = pos?.locationLongitude;
   const latStr =
     lat != null
-      ? `${Math.abs(lat).toFixed(3)}°${lat >= 0 ? "N" : "S"}`
+      ? `${Math.abs(lat).toFixed(6)}°${lat >= 0 ? "N" : "S"}`
       : "--";
   const lonStr =
     lon != null
-      ? `${Math.abs(lon).toFixed(3)}°${lon >= 0 ? "E" : "W"}`
+      ? `${Math.abs(lon).toFixed(6)}°${lon >= 0 ? "E" : "W"}`
       : "--";
 
   return (
@@ -221,7 +221,7 @@ function Telemetry() {
       <Flex gap="md" align="stretch" style={{ width: "100%" }}>
         {/* Left bar — left steering */}
         <SteeringBar
-          label="Steering L"
+          label="Steer L"
           actual={steeringActual?.leftPos}
           target={steeringTarget?.leftPos}
         />
@@ -244,7 +244,7 @@ function Telemetry() {
               lh={1.1}
               style={{ fontSize: "clamp(1rem, 4vw, 2.25rem)" }}
             >
-              {fmt(altitude)} m
+              {fmt(altitude, 1)} m
             </Text>
             {vertAcc != null && (
               <Text size="sm" c="dimmed">
@@ -309,16 +309,8 @@ function Telemetry() {
           <table style={{ borderCollapse: "collapse" }}>
             <tbody>
               <DataRow
-                label="Ang vel N"
-                value={`${fmt(imu?.angularVelocityNorth)} °/s`}
-              />
-              <DataRow
-                label="Ang vel E"
-                value={`${fmt(imu?.angularVelocityEast)} °/s`}
-              />
-              <DataRow
-                label="Ang vel D"
-                value={`${fmt(imu?.angularVelocityDown)} °/s`}
+                label="Ang vel N / E / D"
+                value={`${fmt(imu?.angularVelocityNorth)} ${fmt(imu?.angularVelocityEast)} ${fmt(imu?.angularVelocityDown)}°/s`}
               />
               <DataRow
                 label="Rail 5V"
@@ -346,7 +338,7 @@ function Telemetry() {
 
         {/* Right bar — right steering */}
         <SteeringBar
-          label="Steering R"
+          label="Steer R"
           actual={steeringActual?.rightPos}
           target={steeringTarget?.rightPos}
         />
