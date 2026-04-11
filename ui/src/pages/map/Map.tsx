@@ -5,6 +5,14 @@ import { CSSProperties, ReactNode, useEffect, useId, useState } from "react";
 
 const MAX_HISTORY = 1000;
 
+// Minimum visible span on any axis (metres).  Prevents the view from
+// zooming in to sub-centimetre detail when the vehicle is nearly stationary.
+const MIN_SPAN_M = 20;
+
+// Approximate metres per degree of latitude (constant) and per degree of
+// longitude (latitude-dependent).
+const METRES_PER_LAT_DEG = 111_320;
+
 // SVG plot canvas dimensions
 const SVG_W = 500;
 const SVG_H = 260;
@@ -29,21 +37,42 @@ const BOUNDING_POLYGON: GeoPoint[] = [];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+/** North-south offset from a reference latitude, in metres. */
+function latToM(lat: number, latRef: number): number {
+  return (lat - latRef) * METRES_PER_LAT_DEG;
+}
+
+/** East-west offset from a reference longitude, in metres (corrected for latitude). */
+function lonToM(lon: number, lonRef: number, latRef: number): number {
+  return (
+    (lon - lonRef) * METRES_PER_LAT_DEG * Math.cos((latRef * Math.PI) / 180)
+  );
+}
+
 function linScale(d0: number, d1: number, r0: number, r1: number) {
   if (d0 === d1) return (_: number) => (r0 + r1) / 2;
   return (v: number) => r0 + ((v - d0) / (d1 - d0)) * (r1 - r0);
 }
 
-function computeDomain(vals: number[], padFrac = 0.12): [number, number] {
-  if (!vals.length) return [0, 1];
+function computeDomain(
+  vals: number[],
+  padFrac = 0.12,
+  minSpan = 0,
+): [number, number] {
+  if (!vals.length) {
+    const half = Math.max(minSpan, 1) / 2;
+    return [-half, half];
+  }
   let min = vals[0];
   let max = vals[0];
   for (const v of vals) {
     if (v < min) min = v;
     if (v > max) max = v;
   }
-  const span = max - min || 1;
-  return [min - span * padFrac, max + span * padFrac];
+  const rawSpan = max - min;
+  const paddedSpan = Math.max(rawSpan * (1 + 2 * padFrac), minSpan);
+  const center = (min + max) / 2;
+  return [center - paddedSpan / 2, center + paddedSpan / 2];
 }
 
 function ticks(min: number, max: number, n = 5): number[] {
@@ -72,6 +101,8 @@ interface PlotProps {
     scaleX: (v: number) => number,
     scaleY: (v: number) => number,
   ) => ReactNode;
+  /** Minimum span enforced on both axes (same units as xs/ys) */
+  minSpan?: number;
   /** Forwarded to the outer Card (e.g. for CSS grid span) */
   style?: CSSProperties;
 }
@@ -83,6 +114,7 @@ function Plot({
   xs,
   ys,
   extraContent,
+  minSpan = 0,
   style,
 }: PlotProps) {
   const theme = useMantineTheme();
@@ -90,8 +122,8 @@ function Plot({
   const clipId = `clip-${uid}`;
   const hasData = xs.length > 0;
 
-  const [xd0, xd1] = computeDomain(xs);
-  const [yd0, yd1] = computeDomain(ys);
+  const [xd0, xd1] = computeDomain(xs, 0.12, minSpan);
+  const [yd0, yd1] = computeDomain(ys, 0.12, minSpan);
   const sx = linScale(xd0, xd1, 0, IW);
   const sy = linScale(yd0, yd1, IH, 0); // flip: larger values go up
 
@@ -298,18 +330,23 @@ function MapPage() {
     });
   }, [positionMsg]);
 
-  const lats = history.map((p) => p.lat);
-  const lons = history.map((p) => p.lon);
+  // Use the first received fix as the local origin so all axes are in metres.
+  const refLat = history[0]?.lat ?? 0;
+  const refLon = history[0]?.lon ?? 0;
+
+  const nsM = history.map((p) => latToM(p.lat, refLat)); // North-South metres
+  const ewM = history.map((p) => lonToM(p.lon, refLon, refLat)); // East-West metres
   const alts = history.map((p) => p.alt);
 
-  // Polygon extra-content callback for the top view (lat/lon space)
+  // Polygon extra-content callback for the top view (converted to metres)
   const topViewExtra = (
     scaleX: (v: number) => number,
     scaleY: (v: number) => number,
   ) => {
     if (!BOUNDING_POLYGON.length) return null;
     const points = BOUNDING_POLYGON.map(
-      (p) => `${scaleX(p.lon).toFixed(1)},${scaleY(p.lat).toFixed(1)}`,
+      (p) =>
+        `${scaleX(lonToM(p.lon, refLon, refLat)).toFixed(1)},${scaleY(latToM(p.lat, refLat)).toFixed(1)}`,
     ).join(" ");
     return (
       <polygon
@@ -337,29 +374,32 @@ function MapPage() {
     >
       {/* Row 1 – Side Views */}
       <Plot
-        title="Side View A – Latitude / Altitude"
-        xLabel="Latitude (°)"
+        title="Side View A – N-S / Altitude"
+        xLabel="N-S (m)"
         yLabel="Altitude AMSL (m)"
-        xs={lats}
+        xs={nsM}
         ys={alts}
+        minSpan={MIN_SPAN_M}
       />
       <Plot
-        title="Side View B – Longitude / Altitude"
-        xLabel="Longitude (°)"
+        title="Side View B – E-W / Altitude"
+        xLabel="E-W (m)"
         yLabel="Altitude AMSL (m)"
-        xs={lons}
+        xs={ewM}
         ys={alts}
+        minSpan={MIN_SPAN_M}
       />
 
       {/* Row 2 – Top View spanning both columns */}
       <Plot
-        title="Top View – Longitude / Latitude"
-        xLabel="Longitude (°)"
-        yLabel="Latitude (°)"
-        xs={lons}
-        ys={lats}
+        title="Top View – E-W / N-S"
+        xLabel="E-W (m)"
+        yLabel="N-S (m)"
+        xs={ewM}
+        ys={nsM}
         extraContent={topViewExtra}
         style={{ gridColumn: "span 2" }}
+        minSpan={MIN_SPAN_M}
       />
     </Box>
   );
