@@ -1,12 +1,10 @@
-use crate::{
-    config::RemoteComputerKind,
-    parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig},
-};
+use crate::parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig};
 use html_parser::Dom;
 use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    path::PathBuf,
 };
 use utoipa::ToSchema;
 
@@ -36,10 +34,6 @@ pub enum StateMachineError {
 #[derive(Debug, Serialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StateMachine {
-    /// Kind of remote computer this state machine diagram is for.
-    pub kind: RemoteComputerKind,
-    /// Display name of the state machine.
-    pub name: String,
     /// State machine diagram SVG without the drawio XML content.
     pub diagram: String,
     /// Allowed manual transitions for every state and whether they
@@ -51,12 +45,10 @@ pub struct StateMachine {
     pub state_nodes: HashMap<String, String>,
 }
 
-impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
-    type Error = StateMachineError;
-
-    fn try_from(config: crate::config::StateMachineConfig) -> Result<Self, Self::Error> {
-        let config_str = fs::read_to_string(&config.config_path).map_err(StateMachineError::ConfigRead)?;
-        let diagram_str = fs::read_to_string(&config.diagram_path).map_err(StateMachineError::DiagramRead)?;
+impl StateMachine {
+    pub fn new(diagram_path: &PathBuf, rc_config_path: &PathBuf) -> Result<Self, StateMachineError> {
+        let config_str = fs::read_to_string(rc_config_path).map_err(StateMachineError::ConfigRead)?;
+        let diagram_str = fs::read_to_string(diagram_path).map_err(StateMachineError::DiagramRead)?;
 
         let rc_config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
         // Read the state machine config and ensure that all manual transitions are valid.
@@ -99,7 +91,7 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
         // All unique labels we have in the diagram. Note that we always use the first
         // string of a cell's value as it's state name.
         let unique_state_labels = HashSet::<String>::from_iter(state_node_labels.iter().cloned());
-        log::debug!("Detected labels in state machine '{}': {unique_state_labels:#?}", config.name);
+        log::debug!("Detected labels in state machine: {unique_state_labels:#?}");
 
         // Check whether there are duplicate labels in the diagram.
         // We can only check for duplicate labels which are also defined in the state machine
@@ -164,14 +156,7 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
         // this is needed as we also treat text boxes as possible nodes.
         state_nodes.retain(|label, _| rc_config.state_machine.states.contains_key(label));
 
-        Ok(Self {
-            diagram: svg,
-            manual_transitions,
-            initial_state: rc_config.state_machine.initial_state,
-            state_nodes,
-            kind: config.kind,
-            name: config.name,
-        })
+        Ok(Self { diagram: svg, manual_transitions, initial_state: rc_config.state_machine.initial_state, state_nodes })
     }
 }
 

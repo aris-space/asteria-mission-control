@@ -1,46 +1,20 @@
-default_scenario = "drogue-drop-test"
-
 [mavlink]
 system_id = 222
-address = { protocol = "tcp", remote = "localhost:5766" }
 
-# [scenario.default]
-# name = "Default"
-# [scenario.default.state_machine.fc]
-# kind = "fc"
-# name = "Flight Computer"
-# diagram_path = "state-machine.svg"
-# config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-# [scenario.default.pss.rfs]
-# name = "Remote Filling Station"
-# kind = "rfs"
-# diagram_path = "pss.svg"
-
-[scenario.drogue-drop-test]
-name = "Drogue Drop Test"
-[scenario.drogue-drop-test.state_machine.fc]
-kind = "fc"
-name = "Flight Computer"
+[remotes.docker-fc]
+kind = "flight computer"
+description = "Flight computer running in a docker container. Only needed for development purposes!"
+mavlink = { protocol = "tcp", remote = "localhost:5766" }
+ssh = { host = "localhost", port = 2222, user = "root", authentication = { type = "none" } }
+# only temporary until remote computer broadcasts config hash
 diagram_path = "remote-computers/state-machines/drogue-drop-test-state-machine.drawio.svg"
 config_path = "remote-computers/flight-computer/configs/drop_test_campaign/drogue_out_drop_test_template.toml"
-[scenario.drogue-drop-test.pss.fc]
-name = "Flight Computer"
-kind = "fc"
-diagram_path = "pss.svg"
 
-# [scenario.other]
-# name = "Other"
-# [scenario.other.state_machine.fc]
-# kind = "fc"
-# name = "Flight Computer"
-# diagram_path = "state-machine.svg"
-# config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-# [scenario.other.state_machine.rfs]
-# kind = "rfs"
-# name = "Remote Filling Station"
-# diagram_path = "state-machine.svg"
-# config_path = "remote-computers/flight-computer/configs/flight/fc_flight_state_machine.toml"
-# [scenario.other.pss.rfs]
-# name = "Remote Filling Station"
-# kind = "rfs"
-# diagram_path = "pss.svg"
+[remotes.hermes-2]
+kind = "flight computer"
+description = "Flight computer running on raspberry pi."
+mavlink = { protocol = "tcp", remote = "hermes2.local:5766" }
+ssh = { host = "hermes2.local", port = 22, user = "hermes", authentication = { type = "password", password = "hermes" } }
+# only temporary until remote computer broadcasts config hash
+diagram_path = "remote-computers/state-machines/drogue-drop-test-state-machine.drawio.svg"
+config_path = "remote-computers/flight-computer/configs/drop_test_campaign/drogue_out_drop_test_template.toml"

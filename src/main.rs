@@ -1,21 +1,17 @@
-use crate::{cli::Cli, config::Config, mavlink::Mavlink, state::State, web::broadcast::Broadcast};
+use crate::{cli::Cli, config::Config, remote::RemoteComputer, state::State, web::broadcast::Broadcast};
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;
-use asteria_messages::{
-    Message,
-    datapoints::dp_system_management::{self, Heartbeat, MavState, MavType},
-};
 use clap::Parser;
 use env_logger::Env;
-use mavio::Dialect;
 use serde::Serialize;
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     process::exit,
-    sync::OnceLock,
-    time::Duration,
+    sync::{Arc, OnceLock},
 };
+use tokio::sync::RwLock;
 use utoipa::{OpenApi, ToSchema};
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
@@ -24,16 +20,12 @@ mod cli;
 mod config;
 mod mavlink;
 mod parser;
-mod scenario;
+mod remote;
 mod state;
 mod web;
 
 /// Global variable containing the path where the config file is located.
 pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
-
-/// Duration after which a restart of the MavLink
-/// message proxy should be attempted.
-const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -83,57 +75,28 @@ async fn main() {
 
     log::debug!("Using config: {config:?}");
 
-    config.scenarios.iter().for_each(|(name, scenario)| {
-        log::info!(
-            "Found scenario '{name}' with {} state machine(s) and {} PSS configuration(s)",
-            scenario.state_machines.len(),
-            scenario.pss.len()
-        )
-    });
+    config.remotes.keys().for_each(|name| log::info!("Found remote '{name}'"));
 
-    let state = State::new(config.clone());
     let broadcast = Broadcast::new();
-    let mavlink = Mavlink::new(config.clone(), broadcast.clone());
 
-    let mavlink_clone = mavlink.clone();
-    tokio::spawn(async move {
-        loop {
-            // Start MavLink receiver and proxy messages as SSE events.
-            if let Err(err) = mavlink_clone.run_message_proxy().await {
-                log::error!("Error whilst starting mavlink message proxy: {err}");
-            }
-            // Await restart timeout and then attempt restart in next iteration.
-            tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT).await
-        }
-    });
-    let mavlink_clone = mavlink.clone();
-    tokio::spawn(async move {
-        loop {
-            // Send a heartbeat MavLink message to the MavLink router.
-            let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
-                type_: MavType::Gcs,
-                mavlink_version: Message::version().unwrap_or_default(),
-                system_status: MavState::Active,
-                ..Default::default()
-            }));
-            if let Err(err) = mavlink_clone.send(heartbeat_message).await {
-                log::error!("Error whilst sending heartbeat mavlink message: {err}")
-            };
+    let remotes = config
+        .remotes
+        .iter()
+        .map(|(key, rc_config)| {
+            (key.clone(), RwLock::new(RemoteComputer::new(rc_config.clone(), config.clone(), broadcast.clone())))
+        })
+        .collect::<HashMap<_, _>>();
+    let remotes = Arc::new(remotes);
 
-            log::debug!("Successfully sent heartbeat message");
-
-            // Sleep for a second.
-            tokio::time::sleep(Duration::from_secs(1)).await
-        }
-    });
+    let state = State::new(remotes.clone());
 
     HttpServer::new(move || {
         let app = App::new()
             .wrap(Cors::permissive())
-            .wrap(middleware::Logger::default())
+            .wrap(middleware::Logger::default().log_level(log::Level::Debug))
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
-            .app_data(Data::from(mavlink.clone()))
+            .app_data(Data::from(remotes.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
@@ -158,14 +121,12 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
     cfg.service(web::info)
         .service(web::config_schema)
         .service(web::subscribe_events)
+        .service(web::remotes)
+        .service(web::active_remote)
+        .service(web::deactivate_active_remote)
+        .service(web::change_active_remote)
         .service(web::state_machine)
-        .service(web::active_scenario)
-        .service(web::change_scenario)
-        .service(web::all_scenarios)
-        .service(web::state_machine)
-        .service(web::all_state_machines)
-        .service(web::pss_information)
-        .service(web::all_pss_infos)
+        .service(web::pss)
         .service(web::send_message);
 }
 
