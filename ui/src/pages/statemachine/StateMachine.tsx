@@ -13,6 +13,7 @@ import {
   ActionIcon,
   Affix,
   Alert,
+  Badge,
   Box,
   Flex,
   Loader,
@@ -24,7 +25,7 @@ import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
 import { useMavlinkMessage } from "@asteria/hooks/EventContext";
-import { useToggle } from "@mantine/hooks";
+import { useInterval, useToggle } from "@mantine/hooks";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -48,7 +49,9 @@ function StateMachine() {
   const [pathIndex, setPathIndex] = useState<number>(0);
   // By default the states should not be highlighted.
   const [highlightStates, toggleHighlightStates] = useToggle([false, true]);
-  const [activeState, setActiveState] = useState<string | null>();
+  const [[activeState, transitionTimestamp], setActiveState] = useState<
+    [string | null, number]
+  >([null, Date.now()]);
   const board = stateMachine
     ? stateMachine.kind == "fc"
       ? "FlightComputer"
@@ -71,7 +74,7 @@ function StateMachine() {
   );
 
   useEffect(() => {
-    setActiveState(stateMachine?.initialState ?? null);
+    setActiveState([stateMachine?.initialState ?? null, Date.now()]);
     toggleHighlightStates(false);
   }, [stateMachine]);
 
@@ -89,7 +92,7 @@ function StateMachine() {
     }
 
     setPathIndex(pathIndex);
-    setActiveState(targetState);
+    setActiveState([targetState, Date.now()]);
   }, [manualStateTransitionMessage]);
 
   useEffect(() => {
@@ -212,13 +215,6 @@ function StateMachine() {
             color: "red",
           });
         },
-        onSuccess: () => {
-          notifications.show({
-            title: "Manual transition sent",
-            message: `Sent message for manual state transition into '${state}'`,
-            color: "green",
-          });
-        },
       },
     );
   }
@@ -291,12 +287,7 @@ function StateMachine() {
   }
 
   return (
-    <Flex
-      direction={"column"}
-      justify={"center"}
-      align={"center"}
-      w={"100%"}
-    >
+    <Flex direction={"column"} justify={"center"} align={"center"} w={"100%"}>
       {stateMachine && (
         <Affix position={{ top: "5rem", right: "lg" }}>
           <Flex gap={"xs"}>
@@ -320,6 +311,15 @@ function StateMachine() {
       </Affix>
       <Affix position={{ bottom: "lg", left: "lg" }}>
         {isSending && <Loader size={"sm"} />}
+      </Affix>
+      <Affix position={{ bottom: "lg", right: "lg" }}>
+        {activeState && (
+          <StateStats
+            pathIndex={pathIndex}
+            stateName={activeState}
+            transitionTimestamp={transitionTimestamp}
+          />
+        )}
       </Affix>
       {stateMachine ? (
         <Box w={"100%"}>
@@ -420,6 +420,68 @@ function StateMachineSelector(props: StateMachineSelectorProps) {
       rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
       rightSectionWidth={40}
     />
+  );
+}
+
+const SECOND_MS: number = 1000;
+const MINUTE_MS: number = 60 * SECOND_MS;
+const HOUR_MS: number = 60 * MINUTE_MS;
+
+interface StateStatsProps {
+  pathIndex: number;
+  stateName: string;
+  transitionTimestamp: number;
+}
+
+function StateStats({
+  pathIndex,
+  stateName,
+  transitionTimestamp,
+}: StateStatsProps) {
+  const [inStateSince, setInStateSince] = useState<number>(0);
+
+  useInterval(
+    () => {
+      setInStateSince(Date.now() - transitionTimestamp);
+    },
+    50,
+    { autoInvoke: true },
+  );
+
+  const formatDuration = (durationMs: number) => {
+    if (durationMs >= HOUR_MS) {
+      const hours = (durationMs / HOUR_MS).toFixed(3);
+      return [hours, "hours"];
+    }
+    if (durationMs >= MINUTE_MS) {
+      const minutes = (durationMs / MINUTE_MS).toFixed(3);
+      return [minutes, "minutes"];
+    }
+    if (durationMs >= SECOND_MS) {
+      const seconds = (durationMs / SECOND_MS).toFixed(3);
+      return [seconds, "seconds"];
+    }
+    return [durationMs, "milliseconds"];
+  };
+
+  const [duration, unit] = formatDuration(inStateSince);
+
+  return (
+    <Flex direction="row" gap="xs" align={"flex-end"}>
+      <Tooltip label={`The current state is '${stateName}'`}>
+        <Badge color="teal">{stateName}</Badge>
+      </Tooltip>
+      <Tooltip label={`The current path index is ${pathIndex}`}>
+        <Badge color="cyan">Path index {pathIndex}</Badge>
+      </Tooltip>
+      <Tooltip
+        label={`The state transition into '${stateName}' at path index ${pathIndex} occurred ${duration} ${unit} ago`}
+      >
+        <Badge color="gray">
+          <code>{duration}</code> {unit}
+        </Badge>
+      </Tooltip>
+    </Flex>
   );
 }
 
