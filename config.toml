@@ -1,7 +1,9 @@
+configs_repository_path = "./remote-computers"
+
 [mavlink]
 system_id = 222
 
-[remotes.docker-fc]
+[remote.docker-fc]
 kind = "flight computer"
 description = "Flight computer running in a docker container. Only needed for development purposes!"
 mavlink = { protocol = "tcp", remote = "localhost:5766" }
@@ -9,7 +11,7 @@ ssh = { host = "localhost", port = 2222, user = "root", authentication = { type 
 # only temporary until remote computer broadcasts config hash
 config_path = "remote-computers/flight-computer/configs/drop_test_campaign/drogue_out_drop_test_template.toml"
 
-[remotes.hermes-2]
+[remote.hermes-2]
 kind = "flight computer"
 description = "Flight computer running on raspberry pi."
 mavlink = { protocol = "tcp", remote = "hermes2.local:5766" }

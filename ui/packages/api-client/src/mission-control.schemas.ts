@@ -157,6 +157,22 @@ export interface DatapointInformation {
   name: string;
 }
 
+/**
+ * Telemetry statistics for a downlink.
+ */
+export interface DownlinkTelemetryStats {
+  /**
+   * The total number of bytes sent.
+   * @minimum 0
+   */
+  numBytesSent: number;
+  /**
+   * The total number of messages sent.
+   * @minimum 0
+   */
+  numMessagesSent: number;
+}
+
 export interface EngineBayTemperature {
   /** Oxidizer Runline temperature in °C. */
   ossRnlT: Celsius;
@@ -497,6 +513,37 @@ export interface StateMachineState {
 }
 
 /**
+ * UTC timestamp given in microseconds since the Unix epoch (`1970-01-01T00:00:00Z`).
+ * @minimum 0
+ */
+export type InstantUs = number;
+
+/**
+ * Telemetry health statistics for an uplink.
+ */
+export interface UplinkTelemetryHealth {
+  /**
+   * The number of message that were inferred to have been lost by the sequence number.
+   * @minimum 0
+   */
+  numMsgLost: number;
+  /**
+   * The number of the messages received that have been understood and processed successfully.
+   * @minimum 0
+   */
+  numMsgProcessed: number;
+  /**
+   * The total number of the messages received, including malformed ones.
+   * @minimum 0
+   */
+  numMsgReceived: number;
+  /** The timestamp of the last message received, including malformed ones. */
+  timeOfLastMsg: InstantUs;
+  /** The timestamp of the last message that has been understood and processed successfully. */
+  timeOfLastProcessedMsg: InstantUs;
+}
+
+/**
  * Shared manual state transition used by the FC and RFSC.
  */
 export interface ManualStateTransition {
@@ -591,6 +638,22 @@ export type FlightComputerMessage =
       /** The current state of the flight computer state machine. */
       content: StateMachineState;
       type: "StateMachineState";
+    }
+  | {
+      /** Statistics about the health of the telemetry uplink received by the Flight Computer.
+
+  Emitted periodically by the flight computer.
+  Can be used to calculate the throughput and loss rate. */
+      content: UplinkTelemetryHealth;
+      type: "UplinkTelemetryHealth";
+    }
+  | {
+      /** Statistics about the telemetry downlink sent by the Flight Computer.
+
+  Emitted periodically by the flight computer.
+  Can be used to calculate the throughput and loss rate. */
+      content: DownlinkTelemetryStats;
+      type: "DownlinkTelemetryStats";
     }
   | {
       /** Command a manual state transition on the FC.
@@ -1093,12 +1156,6 @@ export interface Info {
   /** Git version of the mission control server. */
   version: string;
 }
-
-/**
- * UTC timestamp given in microseconds since the Unix epoch (`1970-01-01T00:00:00Z`).
- * @minimum 0
- */
-export type InstantUs = number;
 
 export interface MagnetometerData {
   /** Magnetic field along Down axis in μT. Range: ±4915.2 μT */

@@ -1,9 +1,13 @@
 use crate::{
+    NamedPssDatapointValue,
     config::{Config, MavlinkAddress, RemoteComputerConfig, RemoteComputerKind},
     mavlink::{MavlinkError, MavlinkSender},
     web::broadcast::Broadcast,
 };
-use asteria_messages::Message;
+use actix_web_lab::sse::{Data, Event};
+use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_messages::{Message, datapoints::dp_flight_computer};
+use futures::{StreamExt, stream::FuturesUnordered};
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::{RwLock, broadcast::Sender};
 
@@ -28,10 +32,9 @@ pub struct RemoteComputer {
     pub description: String,
     mavlink_address: MavlinkAddress,
     mavlink_system_id: u8,
-    broadcast: Arc<Broadcast>,
     mavlink_tx: Option<Arc<MavlinkSender>>,
     stop_tx: Option<Sender<()>>,
-
+    broadcast: Arc<Broadcast>,
     pub config_path: PathBuf,
 }
 
@@ -42,10 +45,9 @@ impl RemoteComputer {
             description: rc_config.description,
             mavlink_address: rc_config.mavlink_address,
             mavlink_system_id: config.mavlink.system_id,
-            broadcast,
             mavlink_tx: None,
             stop_tx: None,
-
+            broadcast,
             config_path: rc_config.config_path,
         }
     }
@@ -62,14 +64,14 @@ impl RemoteComputer {
         let (stop_tx, mut stop_rx) = tokio::sync::broadcast::channel(1);
         self.stop_tx = Some(stop_tx);
 
-        let (mavlink_tx, mavlink_rx) =
-            crate::mavlink::tx_rx(self.mavlink_system_id, self.mavlink_address.clone(), self.broadcast.clone());
-        let mavlink_tx = Arc::new(mavlink_tx);
+        let (msg_tx, mut msg_rx) = tokio::sync::mpsc::channel(10);
+        let (mavlink_sender, mavlink_receiver) = crate::mavlink::tx_rx(self.mavlink_system_id, self.mavlink_address.clone());
+        let mavlink_sender = Arc::new(mavlink_sender);
 
         let mut receive_stop_rx = stop_rx.resubscribe();
         tokio::spawn(async move {
             loop {
-                let Err(err) = mavlink_rx.run_message_proxy(&mut receive_stop_rx).await else {
+                let Err(err) = mavlink_receiver.run_message_proxy(&mut receive_stop_rx, msg_tx.clone()).await else {
                     // The message proxy was stopped because the remote computer got deactivated.
                     return;
                 };
@@ -88,11 +90,12 @@ impl RemoteComputer {
             }
         });
 
-        let heartbeat_tx = mavlink_tx.clone();
+        let heartbeat_sender = mavlink_sender.clone();
+        let mut heartbeat_stop_rx = stop_rx.resubscribe();
         tokio::spawn(async move {
             loop {
                 // Send a heartbeat MavLink message to the MavLink router in a 1Hz interval.
-                if let Err(err) = heartbeat_tx.send_heartbeat().await {
+                if let Err(err) = heartbeat_sender.send_heartbeat().await {
                     log::error!("Error whilst sending heartbeat mavlink message: {err}")
                 };
 
@@ -102,7 +105,7 @@ impl RemoteComputer {
                     // Sleep for a second.
                     _ = tokio::time::sleep(Duration::from_secs(1)) => continue,
                     // Stop because remote computer got deactivated.
-                    _ = stop_rx.recv() => {
+                    _ = heartbeat_stop_rx.recv() => {
                         log::debug!("Stopped mavlink heartbeat");
                         return
                     },
@@ -110,7 +113,51 @@ impl RemoteComputer {
             }
         });
 
-        self.mavlink_tx = Some(mavlink_tx);
+        let broadcast = self.broadcast.clone();
+        tokio::spawn(async move {
+            loop {
+                let message = tokio::select! {
+                    Some(message) = msg_rx.recv() => message,
+                    _ = stop_rx.recv() => {
+                        log::debug!("Stopped mavlink message receiver");
+                        return;
+                    }
+                };
+
+                if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(git_hash)) = &message {}
+
+                let mut events = Vec::new();
+
+                let datapoint_events = message
+                    .get_datapoint_values()
+                    .into_iter()
+                    .filter_map(|value| match Data::new_json(NamedPssDatapointValue::from(value)) {
+                        Ok(data) => Some(Event::Data(data.event("pss-data"))),
+                        Err(err) => {
+                            log::warn!("Unable to serialize PSS datapoint value: {err}");
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
+                events.extend(datapoint_events);
+
+                match Data::new_json(message) {
+                    Ok(data) => events.push(Event::Data(data.event("mavlink-message"))),
+                    Err(err) => log::warn!("Unable to serialize mavlink message to json: {err}"),
+                };
+
+                if !events.is_empty() {
+                    let broadcast = broadcast.clone();
+                    tokio::spawn(async move {
+                        FuturesUnordered::from_iter(events.into_iter().map(|event| broadcast.broadcast(event)))
+                            .collect::<Vec<_>>()
+                            .await
+                    });
+                }
+            }
+        });
+
+        self.mavlink_tx = Some(mavlink_sender);
 
         Ok(())
     }

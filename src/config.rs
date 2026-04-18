@@ -2,7 +2,7 @@ use crate::CONFIG_PATH;
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
-    collections::{BTreeMap},
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -21,7 +21,14 @@ pub enum ConfigError {
 pub struct Config {
     /// MavLink related configuration.
     pub mavlink: MavlinkConfig,
+    /// Path to a local repository which is used to get the remote computer configs from.
+    ///
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined onto the config file path.
+    #[serde(deserialize_with = "deserialize_relative_path", alias = "configs_repository")]
+    pub configs_repository_path: PathBuf,
     /// Available remote computers for the mission control.
+    #[serde(rename = "remote")]
     pub remotes: BTreeMap<String, RemoteComputerConfig>,
 }
 

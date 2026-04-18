@@ -1,24 +1,17 @@
-use crate::{
-    NamedPssDatapointValue, config::MavlinkAddress, mavlink::transport::AsyncTransportStream, web::broadcast::Broadcast,
-};
-use actix_web_lab::sse::{Data, Event};
-use asteria_datapoint_information::datapoint::DatapointHolder;
+use crate::{config::MavlinkAddress, mavlink::transport::AsyncTransportStream};
 use asteria_messages::{
     Message,
     datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType},
 };
-use futures::stream::FuturesUnordered;
 use mavio::{
     AsyncReceiver, AsyncSender, Dialect, Endpoint,
     io::{TokioReader, TokioWriter},
     prelude::V2,
 };
-use std::sync::Arc;
 use tokio::{
     select,
-    sync::{Mutex, RwLock, broadcast::Receiver},
+    sync::{Mutex, RwLock, broadcast::Receiver, mpsc::Sender},
 };
-use tokio_stream::StreamExt;
 
 mod transport;
 
@@ -39,14 +32,14 @@ pub enum MavlinkError {
 }
 
 /// Get a new MavLink sender and receiver for a given MavLink address.
-pub fn tx_rx(system_id: u8, address: MavlinkAddress, broadcast: Arc<Broadcast>) -> (MavlinkSender, MavlinkReceiver) {
+pub fn tx_rx(system_id: u8, address: MavlinkAddress) -> (MavlinkSender, MavlinkReceiver) {
     let sender = MavlinkSender {
         address: address.clone(),
         endpoint: Endpoint::v2(mavio::MavLinkId { system: system_id, component: 0 }),
         sender: RwLock::new(None),
     };
 
-    let receiver = MavlinkReceiver { address, broadcast, errors: Mutex::new(0) };
+    let receiver = MavlinkReceiver { address, errors: Mutex::new(0) };
 
     (sender, receiver)
 }
@@ -106,7 +99,6 @@ impl MavlinkSender {
 
 pub struct MavlinkReceiver {
     address: MavlinkAddress,
-    broadcast: Arc<Broadcast>,
     errors: Mutex<u32>,
 }
 
@@ -114,8 +106,8 @@ impl MavlinkReceiver {
     /// Listen to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
     /// subscribed clients.
     ///
-    /// **Important**: This method only returns when an error during the receiving process of a message occurs.
-    pub async fn run_message_proxy(&self, stop_rx: &mut Receiver<()>) -> Result<(), MavlinkError> {
+    /// Returns [`Ok`] when the receiving end of the message channel closed or a stop signal was received.
+    pub async fn run_message_proxy(&self, stop_rx: &mut Receiver<()>, tx: Sender<Message>) -> Result<(), MavlinkError> {
         let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
@@ -163,36 +155,10 @@ impl MavlinkReceiver {
                 }
             };
 
-            let datapoint_result = message
-                .get_datapoint_values()
-                .into_iter()
-                .map(|value| {
-                    let data = Data::new_json(NamedPssDatapointValue::from(value))?;
-                    let event = Event::Data(data.event("pss-data"));
-                    Ok(self.broadcast.broadcast(event))
-                })
-                .collect::<Result<Vec<_>, serde_json::Error>>();
-            match datapoint_result {
-                Ok(futures) => {
-                    // Wait until all pss-data events are sent.
-                    FuturesUnordered::from_iter(futures).collect::<Vec<_>>().await;
-                }
-                Err(err) => {
-                    log::warn!("Unable to serialize at least one PSS datapoint value: {err}")
-                    // We don't continue here to also try broadcasting the MavLink message.
-                }
+            if tx.send(message).await.is_err() {
+                log::warn!("Message receiver is closed, shutting down message proxy!");
+                return Ok(());
             }
-
-            match Data::new_json(message) {
-                Ok(data) => {
-                    let event = Event::Data(data.event("mavlink-message"));
-                    self.broadcast.broadcast(event).await
-                }
-                Err(err) => {
-                    log::warn!("Unable to serialize mavlink message to json: {err}");
-                    continue;
-                }
-            };
         }
     }
 }

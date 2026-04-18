@@ -3,9 +3,11 @@ use crate::{
         pss::{Pss, PssError},
         statemachine::{StateMachine, StateMachineError},
     },
-    remote::{RemoteComputer, Remotes}, web::{self, broadcast::Broadcast},
+    remote::{RemoteComputer, Remotes},
+    web::{self, broadcast::Broadcast},
 };
 use std::{collections::HashMap, sync::Arc};
+use asteria_messages::datapoints::dp_flight_computer::__message_meta_types::ConfigHash;
 use tokio::sync::RwLock;
 
 pub type StateInstance = Arc<RwLock<State>>;
@@ -84,4 +86,5 @@ impl State {
     }
 
     // TODO: Add `set_config_path` method which then parses the PSS and state machine.
+    pub async fn set_config_hash(&mut self, config_hash: &ConfigHash) {}
 }

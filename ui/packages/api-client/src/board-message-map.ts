@@ -17,6 +17,14 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
+      type: "UplinkTelemetryHealth",
+      hasContent: true,
+    },
+    {
+      type: "DownlinkTelemetryStats",
+      hasContent: true,
+    },
+    {
       type: "ManualStateTransition",
       hasContent: true,
     },

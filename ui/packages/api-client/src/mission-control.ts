@@ -928,7 +928,7 @@ export function useActiveRemote<
 
 /**
  * **Events**:
-- `remote-change` with id `null`
+- `remote-change` with body containing `null`
 - `state-machine-change` with body containing `null`
 - `pss-change` with body containing `null`
  * @summary Deactivate the currently active remote computer.
@@ -1016,7 +1016,7 @@ export const useDeactivateActiveRemote = <
 
 /**
  * **Events**:
-- `remote-change` with id containing the name of the newly activated remote
+- `remote-change` with body containing the name of the newly activated remote
 - `mavlink-message` with body containing JSON-serialized MavLink [`Message`]
 - `state-machine-change` with body containing the JSON-serialized [`StateMachine`]
 - `pss-change` with body containing the JSON-serialized vector of [`Pss`]
