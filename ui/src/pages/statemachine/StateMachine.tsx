@@ -1,13 +1,10 @@
 import {
   ManualStateTransition,
   Message,
-  StateMachine as StateMachineDefintion,
-  useActiveScenario,
-  useAllStateMachines,
+  RemoteComputerKind,
   useSendMessage,
-  useStateMachine,
 } from "@asteria/mission-control-client";
-import React, { RefObject, useEffect, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   ActionIcon,
@@ -17,15 +14,15 @@ import {
   Box,
   Flex,
   Loader,
-  Select,
   Tooltip,
 } from "@mantine/core";
 import classes from "./StateMachine.module.css";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
-import { useMavlinkMessage } from "@asteria/hooks/EventContext";
 import { useInterval, useToggle } from "@mantine/hooks";
+import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
+import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -43,17 +40,19 @@ const MANUALLLY_REACHABLE_ATTR: string = "data-manually-reachable-state";
 const ABORT_TRANSITION_ATTR: string = "data-abort-transition";
 
 function StateMachine() {
-  const [stateMachine, setStateMachine] =
-    useState<StateMachineDefintion | null>();
+  const { remoteComputer, stateMachine } = useRemoteComputer();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pathIndex, setPathIndex] = useState<number>(0);
+  // We need to also store the path index in a ref because the `handleManualStateTransition` method
+  // is called from a callback function and otherwise it just copies the initial path index.
+  const pathIndexRef = useRef<number>(0);
   // By default the states should not be highlighted.
   const [highlightStates, toggleHighlightStates] = useToggle([false, true]);
   const [[activeState, transitionTimestamp], setActiveState] = useState<
     [string | null, number]
-  >([null, Date.now()]);
-  const board = stateMachine
-    ? stateMachine.kind == "fc"
+    >([null, Date.now()]);
+  const board = remoteComputer
+    ? remoteComputer.kind == RemoteComputerKind.flight_computer
       ? "FlightComputer"
       : "RfsComputer"
     : null;
@@ -77,6 +76,10 @@ function StateMachine() {
     setActiveState([stateMachine?.initialState ?? null, Date.now()]);
     toggleHighlightStates(false);
   }, [stateMachine]);
+
+  useEffect(() => {
+    pathIndexRef.current = pathIndex;
+  }, [pathIndex])
 
   useEffect(() => {
     if (!manualStateTransitionMessage) return;
@@ -199,7 +202,7 @@ function StateMachine() {
     const transition: ManualStateTransition = {
       // Exactly 30 bytes; Pad on the right with zeroes.
       state: Array.from([...bytes, ...new Array(30).fill(0)]).slice(0, 30),
-      transitionIndex: pathIndex + 1,
+      transitionIndex: pathIndexRef.current + 1,
     };
     const message: Message = {
       board: board as any,
@@ -306,14 +309,11 @@ function StateMachine() {
           </Flex>
         </Affix>
       )}
-      <Affix position={{ top: "5rem", left: "lg" }}>
-        <StateMachineSelector onChange={setStateMachine} />
-      </Affix>
       <Affix position={{ bottom: "lg", left: "lg" }}>
         {isSending && <Loader size={"sm"} />}
       </Affix>
       <Affix position={{ bottom: "lg", right: "lg" }}>
-        {activeState && (
+        {stateMachine && activeState && (
           <StateStats
             pathIndex={pathIndex}
             stateName={activeState}
@@ -329,10 +329,26 @@ function StateMachine() {
             ref={containerRef}
           />
         </Box>
+      ) : remoteComputer ? (
+        <Flex p={"lg"} justify={"center"} align={"center"}>
+          <Alert
+            variant="light"
+            color="yellow"
+            title="No state machine for remote computer"
+          >
+            Until now, no state machine has been received for the active remote
+            computer
+          </Alert>
+        </Flex>
       ) : (
         <Flex p={"lg"} justify={"center"} align={"center"}>
-          <Alert variant="light" color="blue" title="No state machine selected">
-            You need to select a state machine to start
+          <Alert
+            variant="light"
+            color="yellow"
+            title="No active remote computer"
+          >
+            You need to activate a remote computer before you can interact with
+            a state machine.
           </Alert>
         </Flex>
       )}
@@ -362,65 +378,6 @@ function calculateAndSetRectDasharray(
   const gap = actualPatternLen * (gapWidth / totalWidth);
   rect.style.setProperty("--dasharray", `${dash} ${gap}`);
   rect.style.setProperty("--smooth-offset", actualPatternLen.toString());
-}
-
-interface StateMachineSelectorProps {
-  // eslint-disable-next-line no-unused-vars
-  onChange: (stateMachine: StateMachineDefintion | null) => void;
-}
-
-function StateMachineSelector(props: StateMachineSelectorProps) {
-  const [selected, setSelected] = useState<string | null>();
-  const { data: activeScenario, ...active } = useActiveScenario();
-  const { data: allStateMachines = [], ...all } = useAllStateMachines(
-    activeScenario?.id as string,
-  );
-  const { data: stateMachine, ...machine } = useStateMachine(
-    activeScenario?.id as string,
-    selected as string,
-  );
-
-  useEffect(() => {
-    if (!selected) props.onChange(null);
-  }, [selected]);
-
-  useEffect(() => {
-    if (!activeScenario) return;
-    setSelected(null);
-  }, [activeScenario]);
-
-  useEffect(() => {
-    if (!stateMachine) return;
-    props.onChange(stateMachine);
-  }, [stateMachine]);
-
-  useEffect(() => {
-    if (!machine.error) return;
-    setSelected(null);
-  }, [machine.error]);
-
-  const handleStateMachineChange = (value: string | null) => {
-    setSelected(value);
-  };
-
-  const loading = active.isPending || all.isPending || machine.isLoading;
-
-  return (
-    <Select
-      placeholder={"Select a state machine"}
-      data={allStateMachines.map(({ id, name }) => ({
-        label: name,
-        value: id,
-      }))}
-      disabled={loading}
-      value={selected}
-      onChange={handleStateMachineChange}
-      clearable
-      allowDeselect
-      rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
-      rightSectionWidth={40}
-    />
-  );
 }
 
 const SECOND_MS: number = 1000;

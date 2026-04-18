@@ -3,7 +3,7 @@ use crate::{
         pss::{Pss, PssError},
         statemachine::{StateMachine, StateMachineError},
     },
-    remote::{RemoteComputer, Remotes},
+    remote::{RemoteComputer, Remotes}, web::{self, broadcast::Broadcast},
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
@@ -25,11 +25,12 @@ pub struct State {
     active_remote: Option<String>,
     pub state_machine: Option<Result<StateMachine, StateMachineError>>,
     pub pss: Option<HashMap<String, Result<Pss, PssError>>>,
+    broadcast: Arc<Broadcast>,
 }
 
 impl State {
-    pub fn new(remotes: Arc<Remotes>) -> StateInstance {
-        let instance = Self { remotes, active_remote: None, state_machine: None, pss: None };
+    pub fn new(remotes: Arc<Remotes>, broadcast: Arc<Broadcast>) -> StateInstance {
+        let instance = Self { remotes, active_remote: None, state_machine: None, pss: None, broadcast };
         Arc::new(RwLock::new(instance))
     }
 
@@ -60,7 +61,10 @@ impl State {
         // This code is only temporary as the state machine and PSS stuff gets read from the
         // RC config. For this we need the config hash from the RC.
         // TODO: `state-machine-change` and `pss-change` events are never emitted.
-        self.state_machine = Some(StateMachine::new(&remote_guard.diagram_path, &remote_guard.config_path));
+        self.state_machine = Some(StateMachine::new(&remote_guard.config_path));
+        if let Some(Ok(state_machine)) = &self.state_machine {
+            self.broadcast.broadcast(web::Event::StateMachineChange(Some(state_machine.clone()))).await;
+        }
         self.pss = Some(HashMap::new());
 
         Ok(remote)
@@ -71,6 +75,13 @@ impl State {
         let remote = self.remotes.get(&old_active).expect("Active remote name should exist");
         log::info!("Deactivating remote '{old_active}'");
         remote.write().await.deactivate().expect("Remote should be active");
+        self.state_machine = None;
+        self.broadcast.broadcast(web::Event::StateMachineChange(None)).await;
+        self.pss = None;
+        self.broadcast.broadcast(web::Event::PssChange(None)).await;
+
         Ok(())
     }
+
+    // TODO: Add `set_config_path` method which then parses the PSS and state machine.
 }

@@ -32,7 +32,6 @@ pub struct RemoteComputer {
     mavlink_tx: Option<Arc<MavlinkSender>>,
     stop_tx: Option<Sender<()>>,
 
-    pub diagram_path: PathBuf,
     pub config_path: PathBuf,
 }
 
@@ -47,7 +46,6 @@ impl RemoteComputer {
             mavlink_tx: None,
             stop_tx: None,
 
-            diagram_path: rc_config.diagram_path,
             config_path: rc_config.config_path,
         }
     }

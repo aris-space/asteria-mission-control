@@ -1,5 +1,6 @@
 export type ActuatorKind =
   | {
+      default_enabled: boolean;
       kind: "digital";
     }
   | {
@@ -105,6 +106,13 @@ A temperature in degrees Celsius.
  */
 export type Celsius = number;
 
+/**
+ * First 5 hex characters of the config file Git Object Hash
+ */
+export interface ConfigHash {
+  hash: number[];
+}
+
 export type DPRValve =
   | {
       /** Enabled with pressure setpoint in Barg. 0-60. */
@@ -124,6 +132,9 @@ export type SensorKind =
     }
   | {
       kind: "digital";
+      value: {
+        default_enabled: boolean;
+      };
     };
 
 export type DatapointKind =
@@ -535,6 +546,26 @@ export type FlightComputerMessage =
   Receivers may log or display the firmware version and build metadata. */
       content: BuildInformationCommon;
       type: "BuildInfo";
+    }
+  | {
+      /** # `FlightComputerConfigHash`
+  First 5 hex characters of the config file Git Object Hash currently
+  loaded by the Flight Computer.
+
+  ## Type
+  - `Periodic @ 0.2 Hz`
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Allows Flight Computer config file tracking.
+
+  ## Reaction
+  Receivers may log or display the config hash. */
+      content: ConfigHash;
+      type: "ConfigHash";
     }
   | {
       /** # `FlightComputerStatus`
@@ -1059,8 +1090,6 @@ export interface ImuData {
 }
 
 export interface Info {
-  /** Default scenario from current configuration file. */
-  default_scenario: string;
   /** Git version of the mission control server. */
   version: string;
 }
@@ -2258,14 +2287,6 @@ collected at compile time and from the diagram about the datapoint.
  */
 export type PssDatapointInfo = { [key: string]: ExtendedDatapointInformation };
 
-export type RemoteComputerKind =
-  (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
-
-export const RemoteComputerKind = {
-  fc: "fc",
-  rfs: "rfs",
-} as const;
-
 /**
  * Representation of a PSS diagram.
  */
@@ -2275,23 +2296,23 @@ export interface Pss {
   datapointInfo: PssDatapointInfo;
   /** PSS diagram SVG without the drawio XML content. */
   diagram: string;
-  /** Kind of remote computer this PSS infomration is for. */
+}
+
+export type RemoteComputerKind =
+  (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
+
+export const RemoteComputerKind = {
+  flight_computer: "flight computer",
+  rfs_computer: "rfs computer",
+} as const;
+
+export interface RemoteComputerInfo {
+  /** Description about the remote. */
+  description: string;
+  /** What kind of remote computer this is. */
   kind: RemoteComputerKind;
-  /** Display name of the PSS information. */
-  name: string;
-}
-
-export interface PssInfo {
-  /** Identifier of the PSS information. */
-  id: string;
-  /** Display name of the PSS information. */
-  name: string;
-}
-
-export interface ScenarioInfo {
-  /** Identifier of the scenario. */
-  id: string;
-  /** Display name of the scenario. */
+  /** Name of the remote.
+  This is used as the identifier. */
   name: string;
 }
 
@@ -2316,20 +2337,11 @@ export interface StateMachine {
   diagram: string;
   /** Initial state of the state machine. */
   initialState: string;
-  /** Kind of remote computer this state machine diagram is for. */
-  kind: RemoteComputerKind;
   /** Allowed manual transitions for every state and whether they
   are an abort transition. */
   manualTransitions: StateMachineManualTransitions;
-  /** Display name of the state machine. */
-  name: string;
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
 }
 
-export interface StateMachineInfo {
-  /** Identifier of the state machine. */
-  id: string;
-  /** Display name of the state machine. */
-  name: string;
-}
+export type Pss200 = { [key: string]: Pss };

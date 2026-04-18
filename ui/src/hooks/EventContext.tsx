@@ -1,4 +1,3 @@
-import { Message as MavlinkMessage } from "@asteria/mission-control-client";
 import { useId } from "@mantine/hooks";
 import {
   createContext,
@@ -17,42 +16,51 @@ const API_URL = import.meta.env.VITE_API_URL;
 // receiving an error
 const EVENTS_RECONNECT_TIMEOUT = 2000;
 
+type EventCallback<T = any> = (message: MessageEvent<T>) => void;
+
 interface EventContextDefinition {
   latency: number;
-  addNotifier: (
-    name: string,
-    board: string,
-    messageType: string,
-    cb: (message: MavlinkMessage) => void,
-  ) => void;
-  removeNotifier: (name: string) => void;
-  getMessage(board: string, messageType: string): MavlinkMessage | undefined;
-  getLastMessageTimestamp: () => number;
+  addListener: (id: string, eventType: string, cb: EventCallback) => void;
+  removeListener: (id: string) => void;
 }
 
 const defaultValue: EventContextDefinition = {
   latency: Infinity,
-  addNotifier: () => {},
-  removeNotifier: () => {},
-  getMessage: () => undefined,
-  getLastMessageTimestamp: () => NaN,
+  addListener: () => {},
+  removeListener: () => {},
 };
 
 const EventContext = createContext<EventContextDefinition>(defaultValue);
 
 export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
-  const [latency, setLatency] = useState<number>(Infinity);
-  // For every mavlink message type we just store the latest received message.
-  // The messages are stored in a ref to prevent triggering a re-render for every received message.
-  // To minimize the number of re-renders, we store callback functions for all `useMavlinkMessage`
-  // hooks which are currently active and only trigger state updates inside those hooks.
-  const mavlinkMessages = useRef<Record<string, MavlinkMessage>>({});
-  const notifiers = useRef<
-    Record<string, [string, (message: MavlinkMessage) => void]>
-  >({});
-  const lastMessageTimestamp = useRef<number>(NaN);
+  // Every `useEvent` instance has an unique id from `useId` which is used as key in this record.
+  // The value for each key is the event type the `useEvent` instance is interested in and the
+  // callback function which should called when such an event is received.
+  const listeners = useRef<Record<string, [string, EventCallback]>>({});
 
+  const [latency, setLatency] = useState<number>(Infinity);
+
+  useEffect(() => {
+    setupEventSource();
+  }, []);
+
+  useEffect(() => {
+    if (source) {
+      // We got a new source, so we should re-add all registered listeners.
+      Object.values(listeners.current).forEach(([eventType, cb]) =>
+        source.addEventListener(eventType, cb),
+      );
+    }
+
+    return () => {
+      source?.close();
+    };
+  }, [source]);
+
+  /**
+   * Create a new event source and store it in local state.
+   */
   const setupEventSource = () => {
     const eventSource = new EventSource(`${API_URL}/api/events`);
     setSource((src) => {
@@ -75,19 +83,6 @@ export function EventProvider(props: PropsWithChildren) {
       );
     });
 
-    eventSource.addEventListener("mavlink-message", (data) => {
-      lastMessageTimestamp.current = Date.now();
-      const mavlinkMessage = JSON.parse(data.data) as MavlinkMessage;
-      const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
-      mavlinkMessages.current = {
-        [messageId]: mavlinkMessage,
-        ...mavlinkMessages.current,
-      };
-      Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
-        if (cbMessageId == messageId) cb(mavlinkMessage);
-      });
-    });
-
     eventSource.addEventListener("error", (data) => {
       console.error(
         "Event source unexpectedly closed. View debug logs to see the full error.",
@@ -102,6 +97,10 @@ export function EventProvider(props: PropsWithChildren) {
     });
   };
 
+  /**
+   * Reconnect the event source once the `EVENTS_RECONNECT_TIMEOUT`
+   * timeout expired.
+   */
   const reconnectEventSource = () => {
     setTimeout(() => {
       console.log("Attempting to reconnect to events");
@@ -110,55 +109,40 @@ export function EventProvider(props: PropsWithChildren) {
   };
 
   /**
-   * Add a callback function which get's called once a matching MavLink message is received. The
-   * `name` is used as an identifier of this callback method such that it can be removed later on.
-   * @param name identifier of the callback function
-   * @param board board from which the message originates
-   * @param messageType the type of message we're interested
-   * @param cb the callback function which is called when a matching function is received
+   * Add a new listener to the event source.
+   * @param id unique id of the listener
+   * @param eventType the type of event the listener is interested in
+   * @param cb the callback function to call when an event occurs
    */
-  const addNotifier = (
-    name: string,
-    board: string,
-    messageType: string,
-    cb: (message: MavlinkMessage) => void,
-  ) => {
-    notifiers.current[name] = [`${board}-${messageType}`, cb];
+  const addListener = (id: string, eventType: string, cb: EventCallback) => {
+    if (source) {
+      // We need to add the listener to the existing source.
+      source.addEventListener(eventType, cb);
+    }
+    listeners.current = { ...listeners.current, [id]: [eventType, cb] };
   };
 
   /**
-   * Remove a message callback function.
-   * @param name identifier of the callback function
+   * Remove a listener from the event source.
+   * @param id unique id of the listener
    */
-  const removeNotifier = (name: string) => {
-    const copy = notifiers.current;
-    delete copy[name];
-    notifiers.current = copy;
+  const removeListener = (id: string) => {
+    const listener = listeners.current[id];
+    if (listener && source) {
+      // We need to remove the listener from the existing source.
+      source.removeEventListener(listener[0], listener[1]);
+    }
+    const copy = { ...listeners.current };
+    delete copy[id];
+    listeners.current = copy;
   };
-
-  const getMessage = (board: string, messageType: string) => {
-    const messageId = `${board}-${messageType}`;
-    return mavlinkMessages.current[messageId];
-  };
-
-  useEffect(() => {
-    setupEventSource();
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      source?.close();
-    };
-  }, [source]);
 
   return (
     <EventContext.Provider
       value={{
         latency,
-        addNotifier,
-        removeNotifier,
-        getMessage,
-        getLastMessageTimestamp: () => lastMessageTimestamp.current,
+        addListener,
+        removeListener,
       }}
     >
       {props.children}
@@ -167,84 +151,41 @@ export function EventProvider(props: PropsWithChildren) {
 }
 
 /**
- * Get the lantecy to the backend server.
- * @returns latency in milliseconds or Infinity should the client not yet have received a ping
+ * Hook to get the latency to the backend in milliseconds.
+ * The latency is updated every ~10s through the `ping` message.
+ * @returns latency to the backend in milliseconds
  */
 export function useBackendLatency(): number {
   const context = useContext(EventContext);
-  if (!context)
+  if (!context) {
     throw new Error(
-      "useBackendLatency must only be used within a EventProvider",
+      "useBackendLatency must only be used within an EventProvider",
     );
+  }
+
   return context.latency;
 }
 
-interface TelemetryHealthHook {
-  getLastMessageTimestamp: () => number;
-}
-
 /**
- * Hook to get health information about the MavLink telemetry.
+ * Hook to subscribe to SSE events.
+ * @param eventType type of SSE event to subscribe to
+ * @param cb callback function which gets executed for every received event
  */
-export function useTelemetryHealth(): TelemetryHealthHook {
-  const context = useContext(EventContext);
-  if (!context)
-    throw new Error(
-      "useTelemetryHealth must only be used within a EventProvider",
-    );
-
-  return {
-    getLastMessageTimestamp: context.getLastMessageTimestamp,
-  };
-}
-
-/**
- * Get the latest mavlink message of a certain type.
- * @param type message type to get
- * @returns latest mavlink message of this type or null if no message of this type was received until now
- */
-export function useMavlinkMessage<
-  B extends MavlinkMessage["board"],
-  T extends Extract<MavlinkMessage, { board: B }>["message"]["type"],
->(
-  board: B,
-  type: T,
-): (MavlinkMessage & { board: B; message: { type: T } }) | null {
+export function useEvent<T = any>(eventType: string, cb: EventCallback<T>) {
   const id = useId();
   const context = useContext(EventContext);
-  if (!context)
-    throw new Error(
-      "useMavlinkMessage must only be used within a EventProvider",
-    );
 
-  // Store current message in ref for comparison in callback function. This is needed
-  // because of weird react behavior when just usting the state value.
-  const currentMessage = useRef<MavlinkMessage>(undefined);
-  const [message, setMessage] = useState<MavlinkMessage>();
+  if (!context) {
+    throw new Error("useEvent must only be used within an EventProvider");
+  }
 
   useEffect(() => {
-    setMessage(context.getMessage(board, type));
-    const cb = (newMessage: MavlinkMessage) => {
-      if (
-        JSON.stringify(currentMessage.current) != JSON.stringify(newMessage)
-      ) {
-        setMessage(newMessage);
-      }
-    };
-    context.addNotifier(id, board, type, cb);
+    if (!eventType) return;
+
+    context.addListener(id, eventType, cb);
+
     return () => {
-      context.removeNotifier(id);
+      context.removeListener(id);
     };
-  }, [board, type]);
-
-  useEffect(() => {
-    currentMessage.current = message;
-  }, [message]);
-
-  return (
-    (message as MavlinkMessage & {
-      board: B;
-      message: { type: T };
-    }) ?? null
-  );
+  }, [eventType]);
 }

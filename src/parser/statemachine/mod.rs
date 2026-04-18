@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 use utoipa::ToSchema;
 
@@ -12,12 +12,12 @@ pub mod config;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineError {
-    #[error("Error whilst reading state machine config: {0}")]
-    ConfigRead(std::io::Error),
+    #[error("Error whilst reading state machine config at '{0}': {1}")]
+    ConfigRead(String, std::io::Error),
     #[error("Error whilst deserializing state machine config: {0}")]
     ConfigParse(toml::de::Error),
-    #[error("Error whilst reading state machine diagram: {0}")]
-    DiagramRead(std::io::Error),
+    #[error("Error whilst reading state machine diagram at '{0}': {1}")]
+    DiagramRead(String, std::io::Error),
     #[error("State machine config references the following undefined states: {0:?}")]
     ConfigMissingStates(Vec<String>),
     #[error("Error whilst parsing state machine diagram: {0}")]
@@ -46,11 +46,20 @@ pub struct StateMachine {
 }
 
 impl StateMachine {
-    pub fn new(diagram_path: &PathBuf, rc_config_path: &PathBuf) -> Result<Self, StateMachineError> {
-        let config_str = fs::read_to_string(rc_config_path).map_err(StateMachineError::ConfigRead)?;
-        let diagram_str = fs::read_to_string(diagram_path).map_err(StateMachineError::DiagramRead)?;
-
+    pub fn new(rc_config_path: &PathBuf) -> Result<Self, StateMachineError> {
+        let config_str = fs::read_to_string(rc_config_path)
+            .map_err(|err| StateMachineError::ConfigRead(rc_config_path.display().to_string(), err))?;
         let rc_config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
+
+        let raw_diagram_path = rc_config_path.parent().unwrap_or(Path::new("/")).join(&rc_config.state_machine.diagram_path);
+        let diagram_path = match fs::canonicalize(&raw_diagram_path) {
+            Ok(path) => path,
+            Err(err) => return Err(StateMachineError::DiagramRead(raw_diagram_path.display().to_string(), err)),
+        };
+
+        let diagram_str = fs::read_to_string(&diagram_path)
+            .map_err(|err| StateMachineError::DiagramRead(diagram_path.display().to_string(), err))?;
+
         // Read the state machine config and ensure that all manual transitions are valid.
         // This means that the source and the target of a transition need to be defined in
         // the config.

@@ -1,4 +1,3 @@
-import { useMavlinkMessage } from "@asteria/hooks/EventContext";
 import { CodeHighlight } from "@mantine/code-highlight";
 import {
   ActionIcon,
@@ -24,6 +23,7 @@ import {
 } from "@tabler/icons-react";
 import { Message, BOARD_MESSAGE_MAP } from "@asteria/mission-control-client";
 import { useEffect, useState } from "react";
+import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 // Key to store visible datapoints in local storage.
 const HEALTH_DATAPOINT_STORAGE_KEY = "HEALTH_DATAPOINTS";
@@ -225,7 +225,7 @@ function Datapoint<
           <Text size="sm" fw={600} style={{ minWidth: 120 }}>
             {board} – {message}
           </Text>
-          <ActionIcon size="sm" onClick={() => onRemove()}>
+          <ActionIcon color="red" size="sm" onClick={() => onRemove()}>
             <IconTrash />
           </ActionIcon>
         </Group>

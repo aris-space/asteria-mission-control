@@ -60,7 +60,6 @@ pub struct Pss {
 }
 
 impl Pss {
-    #[expect(unused)]
     pub fn new(diagram_path: &PathBuf) -> Result<Self, PssError> {
         let diagram_str = fs::read_to_string(diagram_path).map_err(PssError::DiagramRead)?;
 

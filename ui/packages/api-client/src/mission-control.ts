@@ -17,11 +17,9 @@ import type {
 import type {
   Info,
   Message,
-  Pss,
-  PssInfo,
-  ScenarioInfo,
+  Pss200,
+  RemoteComputerInfo,
   StateMachine,
-  StateMachineInfo,
 } from "./mission-control.schemas";
 
 import { customAxiosInstance } from "./api/mutator/custom-axios-instance";
@@ -30,7 +28,7 @@ import type { ErrorType } from "./api/mutator/custom-axios-instance";
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Get basic information about the running API server
+ * @summary Get general information about the running API server.
  */
 export const info = (
   options?: SecondParameter<typeof customAxiosInstance>,
@@ -131,6 +129,9 @@ export function useInfo<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @summary Get general information about the running API server.
+ */
 
 export function useInfo<
   TData = Awaited<ReturnType<typeof info>>,
@@ -157,7 +158,7 @@ export function useInfo<
 }
 
 /**
- * Get the TOML schema for the config
+ * @summary Get the TOML schema for the config file.
  */
 export const configSchema = (
   options?: SecondParameter<typeof customAxiosInstance>,
@@ -260,6 +261,9 @@ export function useConfigSchema<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @summary Get the TOML schema for the config file.
+ */
 
 export function useConfigSchema<
   TData = Awaited<ReturnType<typeof configSchema>>,
@@ -286,7 +290,9 @@ export function useConfigSchema<
 }
 
 /**
- * Subscribe to API event stream using SSE
+ * Endpoints triggering SSE events specify which events are to be
+expected as a consequence of calling the endpoint.
+ * @summary Subscribe to API events using SSE.
  */
 export const subscribeEvents = (
   options?: SecondParameter<typeof customAxiosInstance>,
@@ -401,6 +407,9 @@ export function useSubscribeEvents<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @summary Subscribe to API events using SSE.
+ */
 
 export function useSubscribeEvents<
   TData = Awaited<ReturnType<typeof subscribeEvents>>,
@@ -431,7 +440,7 @@ export function useSubscribeEvents<
 }
 
 /**
- * Send a message which will be proxied by the backend as a MavLink message
+ * @summary Send JSON-serialized MavLink message to the active remote computer.
  */
 export const sendMessage = (
   message: Message,
@@ -451,7 +460,7 @@ export const sendMessage = (
 };
 
 export const getSendMessageMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<string>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -492,9 +501,12 @@ export type SendMessageMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendMessage>>
 >;
 export type SendMessageMutationBody = Message;
-export type SendMessageMutationError = ErrorType<unknown>;
+export type SendMessageMutationError = ErrorType<string>;
 
-export const useSendMessage = <TError = ErrorType<unknown>, TContext = unknown>(
+/**
+ * @summary Send JSON-serialized MavLink message to the active remote computer.
+ */
+export const useSendMessage = <TError = ErrorType<string>, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof sendMessage>>,
@@ -515,362 +527,68 @@ export const useSendMessage = <TError = ErrorType<unknown>, TContext = unknown>(
 };
 
 /**
- * Get all available PSS infos of a specific scenario
+ * Since the active remote transmits the used configuration asynchronously, it could
+be that this endpoint returns [`ErrorNotFound`] despite there being an active remote. In
+that case, just retry calling the endpoint a bit later.
+
+If the endpoint returns [`ErrorInternalServerError`], the error body contains information about
+why the PSS parsing failed.
+ * @summary Get the PSS configurations of the active remote.
  */
-export const allPssInfos = (
-  scenarioId: string,
+export const pss = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<PssInfo[]>(
-    { url: `/api/pss/scenario/${scenarioId}`, method: "GET", signal },
+  return customAxiosInstance<Pss200>(
+    { url: `/api/pss`, method: "GET", signal },
     options,
   );
 };
 
-export const getAllPssInfosQueryKey = (scenarioId: string) => {
-  return [`/api/pss/scenario/${scenarioId}`] as const;
+export const getPssQueryKey = () => {
+  return [`/api/pss`] as const;
 };
 
-export const getAllPssInfosQueryOptions = <
-  TData = Awaited<ReturnType<typeof allPssInfos>>,
+export const getPssQueryOptions = <
+  TData = Awaited<ReturnType<typeof pss>>,
   TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey = queryOptions?.queryKey ?? getAllPssInfosQueryKey(scenarioId);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof allPssInfos>>> = ({
-    signal,
-  }) => allPssInfos(scenarioId, requestOptions, signal);
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!scenarioId,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof allPssInfos>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type AllPssInfosQueryResult = NonNullable<
-  Awaited<ReturnType<typeof allPssInfos>>
->;
-export type AllPssInfosQueryError = ErrorType<string>;
-
-export function useAllPssInfos<
-  TData = Awaited<ReturnType<typeof allPssInfos>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options: {
-    query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof allPssInfos>>,
-          TError,
-          Awaited<ReturnType<typeof allPssInfos>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useAllPssInfos<
-  TData = Awaited<ReturnType<typeof allPssInfos>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof allPssInfos>>,
-          TError,
-          Awaited<ReturnType<typeof allPssInfos>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useAllPssInfos<
-  TData = Awaited<ReturnType<typeof allPssInfos>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-
-export function useAllPssInfos<
-  TData = Awaited<ReturnType<typeof allPssInfos>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allPssInfos>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-} {
-  const queryOptions = getAllPssInfosQueryOptions(scenarioId, options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * Get a specific PSS information for a scenario
- */
-export const pssInformation = (
-  scenarioId: string,
-  pssId: string,
-  options?: SecondParameter<typeof customAxiosInstance>,
-  signal?: AbortSignal,
-) => {
-  return customAxiosInstance<Pss>(
-    { url: `/api/pss/scenario/${scenarioId}/${pssId}`, method: "GET", signal },
-    options,
-  );
-};
-
-export const getPssInformationQueryKey = (
-  scenarioId: string,
-  pssId: string,
-) => {
-  return [`/api/pss/scenario/${scenarioId}/${pssId}`] as const;
-};
-
-export const getPssInformationQueryOptions = <
-  TData = Awaited<ReturnType<typeof pssInformation>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  pssId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getPssInformationQueryKey(scenarioId, pssId);
-
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof pssInformation>>> = ({
-    signal,
-  }) => pssInformation(scenarioId, pssId, requestOptions, signal);
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!(scenarioId && pssId),
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof pssInformation>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-};
-
-export type PssInformationQueryResult = NonNullable<
-  Awaited<ReturnType<typeof pssInformation>>
->;
-export type PssInformationQueryError = ErrorType<string>;
-
-export function usePssInformation<
-  TData = Awaited<ReturnType<typeof pssInformation>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  pssId: string,
-  options: {
-    query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof pssInformation>>,
-          TError,
-          Awaited<ReturnType<typeof pssInformation>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function usePssInformation<
-  TData = Awaited<ReturnType<typeof pssInformation>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  pssId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof pssInformation>>,
-          TError,
-          Awaited<ReturnType<typeof pssInformation>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function usePssInformation<
-  TData = Awaited<ReturnType<typeof pssInformation>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  pssId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-
-export function usePssInformation<
-  TData = Awaited<ReturnType<typeof pssInformation>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  pssId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pssInformation>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-} {
-  const queryOptions = getPssInformationQueryOptions(
-    scenarioId,
-    pssId,
-    options,
-  );
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-/**
- * Get the active scenario
- */
-export const activeScenario = (
-  options?: SecondParameter<typeof customAxiosInstance>,
-  signal?: AbortSignal,
-) => {
-  return customAxiosInstance<ScenarioInfo>(
-    { url: `/api/scenario`, method: "GET", signal },
-    options,
-  );
-};
-
-export const getActiveScenarioQueryKey = () => {
-  return [`/api/scenario`] as const;
-};
-
-export const getActiveScenarioQueryOptions = <
-  TData = Awaited<ReturnType<typeof activeScenario>>,
-  TError = ErrorType<unknown>,
 >(options?: {
   query?: Partial<
-    UseQueryOptions<Awaited<ReturnType<typeof activeScenario>>, TError, TData>
+    UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
   >;
   request?: SecondParameter<typeof customAxiosInstance>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getActiveScenarioQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getPssQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof activeScenario>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof pss>>> = ({
     signal,
-  }) => activeScenario(requestOptions, signal);
+  }) => pss(requestOptions, signal);
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof activeScenario>>,
+    Awaited<ReturnType<typeof pss>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type ActiveScenarioQueryResult = NonNullable<
-  Awaited<ReturnType<typeof activeScenario>>
->;
-export type ActiveScenarioQueryError = ErrorType<unknown>;
+export type PssQueryResult = NonNullable<Awaited<ReturnType<typeof pss>>>;
+export type PssQueryError = ErrorType<string>;
 
-export function useActiveScenario<
-  TData = Awaited<ReturnType<typeof activeScenario>>,
-  TError = ErrorType<unknown>,
+export function usePss<
+  TData = Awaited<ReturnType<typeof pss>>,
+  TError = ErrorType<string>,
 >(
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof activeScenario>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof activeScenario>>,
+          Awaited<ReturnType<typeof pss>>,
           TError,
-          Awaited<ReturnType<typeof activeScenario>>
+          Awaited<ReturnType<typeof pss>>
         >,
         "initialData"
       >;
@@ -880,19 +598,19 @@ export function useActiveScenario<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useActiveScenario<
-  TData = Awaited<ReturnType<typeof activeScenario>>,
-  TError = ErrorType<unknown>,
+export function usePss<
+  TData = Awaited<ReturnType<typeof pss>>,
+  TError = ErrorType<string>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof activeScenario>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof activeScenario>>,
+          Awaited<ReturnType<typeof pss>>,
           TError,
-          Awaited<ReturnType<typeof activeScenario>>
+          Awaited<ReturnType<typeof pss>>
         >,
         "initialData"
       >;
@@ -902,13 +620,13 @@ export function useActiveScenario<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useActiveScenario<
-  TData = Awaited<ReturnType<typeof activeScenario>>,
-  TError = ErrorType<unknown>,
+export function usePss<
+  TData = Awaited<ReturnType<typeof pss>>,
+  TError = ErrorType<string>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof activeScenario>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
@@ -916,14 +634,17 @@ export function useActiveScenario<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @summary Get the PSS configurations of the active remote.
+ */
 
-export function useActiveScenario<
-  TData = Awaited<ReturnType<typeof activeScenario>>,
-  TError = ErrorType<unknown>,
+export function usePss<
+  TData = Awaited<ReturnType<typeof pss>>,
+  TError = ErrorType<string>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof activeScenario>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
@@ -931,7 +652,7 @@ export function useActiveScenario<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getActiveScenarioQueryOptions(options);
+  const queryOptions = getPssQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -942,64 +663,64 @@ export function useActiveScenario<
 }
 
 /**
- * Get all available scenarios
+ * @summary Get all available remote computers.
  */
-export const allScenarios = (
+export const remotes = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<ScenarioInfo[]>(
-    { url: `/api/scenario/all`, method: "GET", signal },
+  return customAxiosInstance<RemoteComputerInfo[]>(
+    { url: `/api/remotes`, method: "GET", signal },
     options,
   );
 };
 
-export const getAllScenariosQueryKey = () => {
-  return [`/api/scenario/all`] as const;
+export const getRemotesQueryKey = () => {
+  return [`/api/remotes`] as const;
 };
 
-export const getAllScenariosQueryOptions = <
-  TData = Awaited<ReturnType<typeof allScenarios>>,
+export const getRemotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof remotes>>,
   TError = ErrorType<unknown>,
 >(options?: {
   query?: Partial<
-    UseQueryOptions<Awaited<ReturnType<typeof allScenarios>>, TError, TData>
+    UseQueryOptions<Awaited<ReturnType<typeof remotes>>, TError, TData>
   >;
   request?: SecondParameter<typeof customAxiosInstance>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getAllScenariosQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getRemotesQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof allScenarios>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof remotes>>> = ({
     signal,
-  }) => allScenarios(requestOptions, signal);
+  }) => remotes(requestOptions, signal);
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof allScenarios>>,
+    Awaited<ReturnType<typeof remotes>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type AllScenariosQueryResult = NonNullable<
-  Awaited<ReturnType<typeof allScenarios>>
+export type RemotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof remotes>>
 >;
-export type AllScenariosQueryError = ErrorType<unknown>;
+export type RemotesQueryError = ErrorType<unknown>;
 
-export function useAllScenarios<
-  TData = Awaited<ReturnType<typeof allScenarios>>,
+export function useRemotes<
+  TData = Awaited<ReturnType<typeof remotes>>,
   TError = ErrorType<unknown>,
 >(
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allScenarios>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof remotes>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof allScenarios>>,
+          Awaited<ReturnType<typeof remotes>>,
           TError,
-          Awaited<ReturnType<typeof allScenarios>>
+          Awaited<ReturnType<typeof remotes>>
         >,
         "initialData"
       >;
@@ -1009,19 +730,19 @@ export function useAllScenarios<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useAllScenarios<
-  TData = Awaited<ReturnType<typeof allScenarios>>,
+export function useRemotes<
+  TData = Awaited<ReturnType<typeof remotes>>,
   TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allScenarios>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof remotes>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof allScenarios>>,
+          Awaited<ReturnType<typeof remotes>>,
           TError,
-          Awaited<ReturnType<typeof allScenarios>>
+          Awaited<ReturnType<typeof remotes>>
         >,
         "initialData"
       >;
@@ -1031,13 +752,13 @@ export function useAllScenarios<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function useAllScenarios<
-  TData = Awaited<ReturnType<typeof allScenarios>>,
+export function useRemotes<
+  TData = Awaited<ReturnType<typeof remotes>>,
   TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allScenarios>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof remotes>>, TError, TData>
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
@@ -1045,14 +766,17 @@ export function useAllScenarios<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @summary Get all available remote computers.
+ */
 
-export function useAllScenarios<
-  TData = Awaited<ReturnType<typeof allScenarios>>,
+export function useRemotes<
+  TData = Awaited<ReturnType<typeof remotes>>,
   TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof allScenarios>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof remotes>>, TError, TData>
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
@@ -1060,7 +784,7 @@ export function useAllScenarios<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getAllScenariosQueryOptions(options);
+  const queryOptions = getRemotesQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1071,37 +795,172 @@ export function useAllScenarios<
 }
 
 /**
- * Change the active scenario. Emits a `scenario-change` event with the id of the new scenario to all clients
+ * @summary Get the active remote computer, if one is currently active.
  */
-export const changeScenario = (
-  scenarioId: string,
+export const activeRemote = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<string>(
-    { url: `/api/scenario/${scenarioId}`, method: "PUT", signal },
+  return customAxiosInstance<null | RemoteComputerInfo>(
+    { url: `/api/remotes/active`, method: "GET", signal },
     options,
   );
 };
 
-export const getChangeScenarioMutationOptions = <
+export const getActiveRemoteQueryKey = () => {
+  return [`/api/remotes/active`] as const;
+};
+
+export const getActiveRemoteQueryOptions = <
+  TData = Awaited<ReturnType<typeof activeRemote>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof activeRemote>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getActiveRemoteQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof activeRemote>>> = ({
+    signal,
+  }) => activeRemote(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof activeRemote>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ActiveRemoteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof activeRemote>>
+>;
+export type ActiveRemoteQueryError = ErrorType<unknown>;
+
+export function useActiveRemote<
+  TData = Awaited<ReturnType<typeof activeRemote>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof activeRemote>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof activeRemote>>,
+          TError,
+          Awaited<ReturnType<typeof activeRemote>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useActiveRemote<
+  TData = Awaited<ReturnType<typeof activeRemote>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof activeRemote>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof activeRemote>>,
+          TError,
+          Awaited<ReturnType<typeof activeRemote>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useActiveRemote<
+  TData = Awaited<ReturnType<typeof activeRemote>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof activeRemote>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the active remote computer, if one is currently active.
+ */
+
+export function useActiveRemote<
+  TData = Awaited<ReturnType<typeof activeRemote>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof activeRemote>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getActiveRemoteQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * **Events**:
+- `remote-change` with id `null`
+- `state-machine-change` with body containing `null`
+- `pss-change` with body containing `null`
+ * @summary Deactivate the currently active remote computer.
+ */
+export const deactivateActiveRemote = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<unknown>(
+    { url: `/api/remotes/active`, method: "DELETE", signal },
+    options,
+  );
+};
+
+export const getDeactivateActiveRemoteMutationOptions = <
   TError = ErrorType<string>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof changeScenario>>,
+    Awaited<ReturnType<typeof deactivateActiveRemote>>,
     TError,
-    { scenarioId: string },
+    void,
     TContext
   >;
   request?: SecondParameter<typeof customAxiosInstance>;
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof changeScenario>>,
+  Awaited<ReturnType<typeof deactivateActiveRemote>>,
   TError,
-  { scenarioId: string },
+  void,
   TContext
 > => {
-  const mutationKey = ["changeScenario"];
+  const mutationKey = ["deactivateActiveRemote"];
   const { mutation: mutationOptions, request: requestOptions } = options
     ? options.mutation &&
       "mutationKey" in options.mutation &&
@@ -1111,266 +970,185 @@ export const getChangeScenarioMutationOptions = <
     : { mutation: { mutationKey }, request: undefined };
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof changeScenario>>,
-    { scenarioId: string }
-  > = (props) => {
-    const { scenarioId } = props ?? {};
-
-    return changeScenario(scenarioId, requestOptions);
+    Awaited<ReturnType<typeof deactivateActiveRemote>>,
+    void
+  > = () => {
+    return deactivateActiveRemote(requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
-export type ChangeScenarioMutationResult = NonNullable<
-  Awaited<ReturnType<typeof changeScenario>>
+export type DeactivateActiveRemoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deactivateActiveRemote>>
 >;
 
-export type ChangeScenarioMutationError = ErrorType<string>;
+export type DeactivateActiveRemoteMutationError = ErrorType<string>;
 
-export const useChangeScenario = <
+/**
+ * @summary Deactivate the currently active remote computer.
+ */
+export const useDeactivateActiveRemote = <
   TError = ErrorType<string>,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof changeScenario>>,
+      Awaited<ReturnType<typeof deactivateActiveRemote>>,
       TError,
-      { scenarioId: string },
+      void,
       TContext
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof changeScenario>>,
+  Awaited<ReturnType<typeof deactivateActiveRemote>>,
   TError,
-  { scenarioId: string },
+  void,
   TContext
 > => {
-  return useMutation(getChangeScenarioMutationOptions(options), queryClient);
+  return useMutation(
+    getDeactivateActiveRemoteMutationOptions(options),
+    queryClient,
+  );
 };
 
 /**
- * Get all available state machines of a specific scenario
+ * **Events**:
+- `remote-change` with id containing the name of the newly activated remote
+- `mavlink-message` with body containing JSON-serialized MavLink [`Message`]
+- `state-machine-change` with body containing the JSON-serialized [`StateMachine`]
+- `pss-change` with body containing the JSON-serialized vector of [`Pss`]
+- `state-machine-error` with body containing state machine parse error string
+- `pss-error` with body containing PSS parse error string
+ * @summary Change the active remote computer.
  */
-export const allStateMachines = (
-  scenarioId: string,
+export const changeActiveRemote = (
+  name: string,
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<StateMachineInfo[]>(
-    { url: `/api/statemachine/scenario/${scenarioId}`, method: "GET", signal },
+  return customAxiosInstance<unknown>(
+    { url: `/api/remotes/active/${name}`, method: "PUT", signal },
     options,
   );
 };
 
-export const getAllStateMachinesQueryKey = (scenarioId: string) => {
-  return [`/api/statemachine/scenario/${scenarioId}`] as const;
-};
-
-export const getAllStateMachinesQueryOptions = <
-  TData = Awaited<ReturnType<typeof allStateMachines>>,
+export const getChangeActiveRemoteMutationOptions = <
   TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof allStateMachines>>,
-        TError,
-        TData
-      >
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-
-  const queryKey =
-    queryOptions?.queryKey ?? getAllStateMachinesQueryKey(scenarioId);
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof allStateMachines>>
-  > = ({ signal }) => allStateMachines(scenarioId, requestOptions, signal);
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!scenarioId,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof allStateMachines>>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changeActiveRemote>>,
     TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
+    { name: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changeActiveRemote>>,
+  TError,
+  { name: string },
+  TContext
+> => {
+  const mutationKey = ["changeActiveRemote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changeActiveRemote>>,
+    { name: string }
+  > = (props) => {
+    const { name } = props ?? {};
+
+    return changeActiveRemote(name, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
 };
 
-export type AllStateMachinesQueryResult = NonNullable<
-  Awaited<ReturnType<typeof allStateMachines>>
+export type ChangeActiveRemoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof changeActiveRemote>>
 >;
-export type AllStateMachinesQueryError = ErrorType<string>;
 
-export function useAllStateMachines<
-  TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof allStateMachines>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof allStateMachines>>,
-          TError,
-          Awaited<ReturnType<typeof allStateMachines>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useAllStateMachines<
-  TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof allStateMachines>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof allStateMachines>>,
-          TError,
-          Awaited<ReturnType<typeof allStateMachines>>
-        >,
-        "initialData"
-      >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-export function useAllStateMachines<
-  TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof allStateMachines>>,
-        TError,
-        TData
-      >
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-};
-
-export function useAllStateMachines<
-  TData = Awaited<ReturnType<typeof allStateMachines>>,
-  TError = ErrorType<string>,
->(
-  scenarioId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof allStateMachines>>,
-        TError,
-        TData
-      >
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>;
-} {
-  const queryOptions = getAllStateMachinesQueryOptions(scenarioId, options);
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
+export type ChangeActiveRemoteMutationError = ErrorType<string>;
 
 /**
- * Get a specific state machine for a scenario
+ * @summary Change the active remote computer.
+ */
+export const useChangeActiveRemote = <
+  TError = ErrorType<string>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof changeActiveRemote>>,
+      TError,
+      { name: string },
+      TContext
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof changeActiveRemote>>,
+  TError,
+  { name: string },
+  TContext
+> => {
+  return useMutation(
+    getChangeActiveRemoteMutationOptions(options),
+    queryClient,
+  );
+};
+
+/**
+ * Since the active remote transmits the used configuration asynchronously, it could
+be that this endpoint returns [`ErrorNotFound`] despite there being an active remote. In
+that case, just retry calling the endpoint a bit later.
+
+If the endpoint returns [`ErrorInternalServerError`], the error body contains information about
+why the state machine parsing failed.
+ * @summary Get the state machine of the active remote.
  */
 export const stateMachine = (
-  scenarioId: string,
-  stateMachineId: string,
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
   return customAxiosInstance<StateMachine>(
-    {
-      url: `/api/statemachine/scenario/${scenarioId}/${stateMachineId}`,
-      method: "GET",
-      signal,
-    },
+    { url: `/api/state-machine`, method: "GET", signal },
     options,
   );
 };
 
-export const getStateMachineQueryKey = (
-  scenarioId: string,
-  stateMachineId: string,
-) => {
-  return [
-    `/api/statemachine/scenario/${scenarioId}/${stateMachineId}`,
-  ] as const;
+export const getStateMachineQueryKey = () => {
+  return [`/api/state-machine`] as const;
 };
 
 export const getStateMachineQueryOptions = <
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
->(
-  scenarioId: string,
-  stateMachineId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
-    >;
-    request?: SecondParameter<typeof customAxiosInstance>;
-  },
-) => {
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey =
-    queryOptions?.queryKey ??
-    getStateMachineQueryKey(scenarioId, stateMachineId);
+  const queryKey = queryOptions?.queryKey ?? getStateMachineQueryKey();
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof stateMachine>>> = ({
     signal,
-  }) => stateMachine(scenarioId, stateMachineId, requestOptions, signal);
+  }) => stateMachine(requestOptions, signal);
 
-  return {
-    queryKey,
-    queryFn,
-    enabled: !!(scenarioId && stateMachineId),
-    ...queryOptions,
-  } as UseQueryOptions<
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof stateMachine>>,
     TError,
     TData
@@ -1386,8 +1164,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
-  stateMachineId: string,
   options: {
     query: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1410,8 +1186,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
-  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1434,8 +1208,6 @@ export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
-  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1446,13 +1218,14 @@ export function useStateMachine<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
+/**
+ * @summary Get the state machine of the active remote.
+ */
 
 export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
   TError = ErrorType<string>,
 >(
-  scenarioId: string,
-  stateMachineId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1463,11 +1236,7 @@ export function useStateMachine<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getStateMachineQueryOptions(
-    scenarioId,
-    stateMachineId,
-    options,
-  );
+  const queryOptions = getStateMachineQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

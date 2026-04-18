@@ -1,19 +1,25 @@
-import React, { useEffect, useState, type PropsWithChildren } from "react";
-import { useBackendLatency, useTelemetryHealth } from "./hooks/EventContext";
+import { useState, type PropsWithChildren } from "react";
+import { useBackendLatency } from "@asteria/hooks/EventContext";
+import { useMavlinkTelemetryHealth } from "@asteria/hooks/MavlinkContext";
 import {
+  ActionIcon,
   AppShell,
   Badge,
+  Box,
+  Card,
+  Divider,
   Flex,
+  Group,
   Image,
-  Loader,
-  Select,
+  Modal,
   SimpleGrid,
+  Text,
   Tooltip,
+  useMantineTheme,
 } from "@mantine/core";
 import {
-  useActiveScenario,
-  useAllScenarios,
-  useChangeScenario,
+  useChangeActiveRemote,
+  useDeactivateActiveRemote,
   useInfo,
 } from "@asteria/mission-control-client";
 import {
@@ -21,76 +27,164 @@ import {
   IconPlugX,
   IconRocket,
   IconRocketOff,
+  IconSettings,
 } from "@tabler/icons-react";
-import { notifications } from "@mantine/notifications";
 import { useInterval } from "@mantine/hooks";
+import { useRemoteComputer } from "./hooks/RemoteComputerContext";
 
 export function Layout(props: PropsWithChildren) {
+  const [remoteComputerDialogVisible, setRemoteComputerDialogVisible] =
+    useState<boolean>(false);
   return (
-    <AppShell
-      padding="0"
-      header={{ height: "4rem" }}
-      style={{ minHeight: "100vh" }}
-    >
-      <AppShell.Header>
-        <SimpleGrid py={"xs"} px={"sm"} cols={2}>
-          <Flex align={"center"} justify={"start"} gap={"lg"}>
-            <Image src={"/logo.png"} h={"3rem"} mt={"-0.25rem"} w={"3rem"} />
-            <ScenarioSelector />
-          </Flex>
-          <Flex align={"center"} justify={"end"}>
-            <Flex gap={"md"}>
-              <TelemetryHealth />
-              <BackendLatency />
-              <BackendVersion />
+    <>
+      <Modal
+        size={"xl"}
+        opened={remoteComputerDialogVisible}
+        onClose={() => setRemoteComputerDialogVisible(false)}
+        title="Available remote computers"
+      >
+        <RemoteComputersDialog />
+      </Modal>
+      <AppShell
+        padding="0"
+        header={{ height: "4rem" }}
+        style={{ minHeight: "100vh" }}
+      >
+        <AppShell.Header>
+          <SimpleGrid py={"xs"} px={"sm"} cols={2}>
+            <Flex align={"center"} justify={"start"} gap={"lg"}>
+              <Image src={"/logo.png"} h={"3rem"} mt={"-0.25rem"} w={"3rem"} />
+              <ActiveRemoteComputer
+                onDialogOpen={() => setRemoteComputerDialogVisible(true)}
+              />
             </Flex>
-          </Flex>
-        </SimpleGrid>
-      </AppShell.Header>
-      <AppShell.Main style={{ display: "flex" }} w={"100%"} h={"100%"}>
-        {props.children}
-      </AppShell.Main>
-    </AppShell>
+            <Flex align={"center"} justify={"end"}>
+              <Flex gap={"md"}>
+                <MavlinkTelemetryHealth />
+                <BackendLatency />
+                <BackendVersion />
+              </Flex>
+            </Flex>
+          </SimpleGrid>
+        </AppShell.Header>
+        <AppShell.Main style={{ display: "flex" }} w={"100%"} h={"100%"}>
+          {props.children}
+        </AppShell.Main>
+      </AppShell>
+    </>
   );
 }
 
-function ScenarioSelector() {
-  const { data: activeScenario, ...active } = useActiveScenario();
-  const { data: allScenarios = [] } = useAllScenarios();
-  const { mutate: changeScenario, ...change } = useChangeScenario();
+interface ActiveRemoteComputerProps {
+  onDialogOpen: () => void;
+}
 
-  useEffect(() => {
-    if (!change.isSuccess) return;
-    const scenario = allScenarios.find(({ id }) => id == change.data);
-    if (scenario) {
-      notifications.show({
-        title: "Scenario change",
-        message: `Successfully changed to scenario "${scenario.name}"`,
-        color: "green",
-      });
-      active.refetch();
-    }
-  }, [change.isSuccess]);
-
-  const handleScenarioChange = (value: string | null) => {
-    if (!value) return;
-    changeScenario({ scenarioId: value });
-  };
-
-  const loading = change.isPending || active.isPending;
+function ActiveRemoteComputer({ onDialogOpen }: ActiveRemoteComputerProps) {
+  const theme = useMantineTheme();
+  const { remoteComputer } = useRemoteComputer();
 
   return (
-    <Select
-      data={allScenarios.map(({ id, name }) => ({
-        label: name,
-        value: id,
-      }))}
-      disabled={loading}
-      value={activeScenario?.id}
-      onChange={handleScenarioChange}
-      rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
-      rightSectionWidth={40}
-    />
+    <Group
+      gap={0}
+      h={30}
+      wrap="nowrap"
+      bd="1px solid var(--mantine-color-default-border)"
+      style={{ overflow: "hidden", borderRadius: theme.radius.md }}
+    >
+      <Tooltip
+        label={
+          remoteComputer
+            ? `The '${remoteComputer.name}' remote computer is currently active`
+            : "No remote computer is currently active"
+        }
+      >
+        <Badge mx={"4px"} color={remoteComputer ? "blue" : "red"}>
+          {remoteComputer?.name ?? "no remote"}
+        </Badge>
+      </Tooltip>
+
+      <Divider orientation="vertical" h="100%" />
+
+      <Tooltip label="Change active remote computer">
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="lg"
+          h="100%"
+          w={30}
+          radius={0}
+          onClick={() => onDialogOpen()}
+        >
+          <IconSettings size={18} stroke={1.5} />
+        </ActionIcon>
+      </Tooltip>
+    </Group>
+  );
+}
+
+function RemoteComputersDialog() {
+  const theme = useMantineTheme();
+  const {
+    availableRemoteComputers,
+    remoteComputer: activeRemote,
+    isRemoteComputerLoading,
+  } = useRemoteComputer();
+
+  const changeActive = useChangeActiveRemote();
+  const deactivateActive = useDeactivateActiveRemote();
+
+  const isLoading =
+    isRemoteComputerLoading ||
+    changeActive.isPending ||
+    deactivateActive.isPending;
+
+  return (
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+        gap: theme.spacing.sm,
+      }}
+    >
+      {availableRemoteComputers.map((remote) => {
+        const isActive = remote.name == activeRemote?.name;
+        const additionalProps = isActive
+          ? {
+              bd: "1px solid blue",
+              bg: "blue.0",
+            }
+          : {};
+
+        const handleClick = () => {
+          if (isActive) {
+            deactivateActive.mutate();
+          } else {
+            changeActive.mutate({ name: remote.name });
+          }
+        };
+
+        return (
+          <Card
+            onClick={handleClick}
+            withBorder
+            style={{
+              userSelect: "none",
+              cursor: isLoading ? "default" : "pointer",
+            }}
+            {...additionalProps}
+          >
+            <Group mb="xs" justify="space-between">
+              <Text fw={600}>{remote.name}</Text>
+              <Badge variant="light" color={"gray"}>
+                {remote.kind}
+              </Badge>
+            </Group>
+
+            <Text>{remote.description}</Text>
+          </Card>
+        );
+      })}
+    </Box>
   );
 }
 
@@ -139,8 +233,8 @@ function BackendLatency() {
   );
 }
 
-function TelemetryHealth() {
-  const { getLastMessageTimestamp } = useTelemetryHealth();
+function MavlinkTelemetryHealth() {
+  const { getLastMessageTimestamp } = useMavlinkTelemetryHealth();
   const [timeSinceLastMessage, setTimeSinceLastMessage] =
     useState<number>(Infinity);
 

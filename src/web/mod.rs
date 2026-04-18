@@ -20,15 +20,24 @@ use tokio_stream::StreamExt;
 
 pub mod broadcast;
 
+#[expect(clippy::enum_variant_names)]
 pub enum Event {
     RemoteChange(Option<String>),
+    StateMachineChange(Option<StateMachine>),
+    PssChange(Option<HashMap<String, Pss>>),
 }
 
 impl From<Event> for SseEvent {
     fn from(event: Event) -> Self {
         match event {
-            Event::RemoteChange(Some(name)) => Self::Data(SseData::new("null").event("remote-change").id(name)),
+            Event::RemoteChange(Some(name)) => Self::Data(SseData::new(name).event("remote-change")),
             Event::RemoteChange(None) => Self::Data(SseData::new("null").event("remote-change")),
+            Event::StateMachineChange(state_machine_data) => Self::Data(
+                SseData::new_json(&state_machine_data).expect("should be serializable").event("state-machine-change"),
+            ),
+            Event::PssChange(pss_data) => {
+                Self::Data(SseData::new_json(&pss_data).expect("should be serializable").event("pss-change"))
+            }
         }
     }
 }
@@ -112,7 +121,7 @@ pub async fn active_remote(state: Data<StateInstance>) -> actix_web::Result<Json
 /// Deactivate the currently active remote computer.
 ///
 /// **Events**:
-/// - `remote-change` with id `null`
+/// - `remote-change` with body containing `null`
 /// - `state-machine-change` with body containing `null`
 /// - `pss-change` with body containing `null`
 #[utoipa::path(responses((status = OK, body = ()), (status = BAD_REQUEST, body = String)))]
@@ -131,7 +140,7 @@ pub async fn deactivate_active_remote(
 /// Change the active remote computer.
 ///
 /// **Events**:
-/// - `remote-change` with id containing the name of the newly activated remote
+/// - `remote-change` with body containing the name of the newly activated remote
 /// - `mavlink-message` with body containing JSON-serialized MavLink [`Message`]
 /// - `state-machine-change` with body containing the JSON-serialized [`StateMachine`]
 /// - `pss-change` with body containing the JSON-serialized vector of [`Pss`]
@@ -183,7 +192,7 @@ pub async fn state_machine(state: Data<StateInstance>) -> actix_web::Result<Json
 ///
 /// If the endpoint returns [`ErrorInternalServerError`], the error body contains information about
 /// why the PSS parsing failed.
-#[utoipa::path(responses((status = OK, body = Vec<HashMap<String, Pss>>), (status = NOT_FOUND, body = String), (status = INTERNAL_SERVER_ERROR, body = String)))]
+#[utoipa::path(responses((status = OK, body = HashMap<String, Pss>), (status = NOT_FOUND, body = String), (status = INTERNAL_SERVER_ERROR, body = String)))]
 #[get("/pss")]
 pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<HashMap<String, Pss>>> {
     let state = state.read().await;

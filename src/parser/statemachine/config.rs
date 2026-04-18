@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Deserialize)]
 pub struct RemoteComputerConfig {
@@ -8,6 +8,7 @@ pub struct RemoteComputerConfig {
 
 #[derive(Deserialize)]
 pub struct StateMachineConfig {
+    pub diagram_path: PathBuf,
     pub initial_state: String,
     pub states: HashMap<String, StateMachineStateConfig>,
 }

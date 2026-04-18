@@ -1,9 +1,6 @@
 import {
   ExtendedDatapointInformation,
   Pss,
-  useActiveScenario,
-  useAllPssInfos,
-  usePssInformation,
 } from "@asteria/mission-control-client";
 import React, {
   CSSProperties,
@@ -30,6 +27,7 @@ import classes from "./PSS.module.css";
 import DatapointKind from "./kind";
 import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
 import { notifications } from "@mantine/notifications";
+import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -235,52 +233,36 @@ function PSS() {
 }
 
 interface PssSelectorProps {
-  // eslint-disable-next-line no-unused-vars
   onChange: (pss: Pss | null) => void;
 }
 
 function PssSelector(props: PssSelectorProps) {
   const [selected, setSelected] = useState<string | null>();
-  const { data: activeScenario, ...active } = useActiveScenario();
-  const { data: allPssInfos = [], ...all } = useAllPssInfos(
-    activeScenario?.id as string,
-  );
-  const { data: pssInfo, ...pss } = usePssInformation(
-    activeScenario?.id as string,
-    selected as string,
-  );
+  const { remoteComputer, isRemoteComputerLoading, pss, isPssLoading } =
+    useRemoteComputer();
 
   useEffect(() => {
-    if (!selected) props.onChange(null);
+    if (!selected || !pss) return props.onChange(null);
+    props.onChange(pss[selected]);
   }, [selected]);
 
   useEffect(() => {
-    if (!activeScenario) return;
+    if (!remoteComputer) return;
     setSelected(null);
-  }, [activeScenario]);
-
-  useEffect(() => {
-    if (!pssInfo) return;
-    props.onChange(pssInfo);
-  }, [pssInfo]);
-
-  useEffect(() => {
-    if (!pss.error) return;
-    setSelected(null);
-  }, [pss.error]);
+  }, [remoteComputer]);
 
   const handleStateMachineChange = (value: string | null) => {
     setSelected(value);
   };
 
-  const loading = active.isPending || all.isPending || pss.isLoading;
+  const loading = isRemoteComputerLoading || isPssLoading;
 
   return (
     <Select
       placeholder={"Select a PSS configuration"}
-      data={allPssInfos.map(({ id, name }) => ({
+      data={Object.keys(pss || {}).map((name) => ({
         label: name,
-        value: id,
+        value: name,
       }))}
       disabled={loading}
       value={selected}

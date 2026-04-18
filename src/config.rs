@@ -2,7 +2,7 @@ use crate::CONFIG_PATH;
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap},
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -22,7 +22,7 @@ pub struct Config {
     /// MavLink related configuration.
     pub mavlink: MavlinkConfig,
     /// Available remote computers for the mission control.
-    pub remotes: HashMap<String, RemoteComputerConfig>,
+    pub remotes: BTreeMap<String, RemoteComputerConfig>,
 }
 
 impl Config {
@@ -57,14 +57,6 @@ pub struct RemoteComputerConfig {
     #[expect(unused)]
     pub ssh: SshConfig,
 
-    // This is only until the PR for the remote-computers is merged, which
-    // broadcasts the config hash.
-    /// Path to the drawio SVG+XML file of the state machine.
-    ///
-    /// **Important**: If this path is relative, it needs to be relative to the location
-    ///                of the config file and will be joined onto the config file path.
-    #[serde(alias = "diagram", deserialize_with = "deserialize_relative_path")]
-    pub diagram_path: PathBuf,
     /// Path to the remote computers config which specifies the valid
     /// state transitions of this state machine.
     ///

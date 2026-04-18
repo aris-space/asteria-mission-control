@@ -88,7 +88,7 @@ async fn main() {
         .collect::<HashMap<_, _>>();
     let remotes = Arc::new(remotes);
 
-    let state = State::new(remotes.clone());
+    let state = State::new(remotes.clone(), broadcast.clone());
 
     HttpServer::new(move || {
         let app = App::new()

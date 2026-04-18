@@ -5,6 +5,10 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
+      type: "ConfigHash",
+      hasContent: true,
+    },
+    {
       type: "Status",
       hasContent: true,
     },
