@@ -6,8 +6,15 @@ use crate::{
 };
 use actix_web_lab::sse::{Data, Event};
 use asteria_datapoint_information::datapoint::DatapointHolder;
-use asteria_messages::{Message, datapoints::dp_flight_computer};
+use asteria_messages::{
+    Message,
+    datapoints::{
+        dp_flight_computer,
+        dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType},
+    },
+};
 use futures::{StreamExt, stream::FuturesUnordered};
+use mavio::Dialect;
 use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 use tokio::sync::{RwLock, broadcast::Sender};
 
@@ -69,10 +76,11 @@ impl RemoteComputer {
         let mavlink_sender = Arc::new(mavlink_sender);
 
         let mut receive_stop_rx = stop_rx.resubscribe();
+        // Start the thread which forwards the incoming MavLink messages until the remote computer gets deactivated.
         tokio::spawn(async move {
             loop {
-                let Err(err) = mavlink_receiver.run_message_proxy(&mut receive_stop_rx, msg_tx.clone()).await else {
-                    // The message proxy was stopped because the remote computer got deactivated.
+                let Err(err) = mavlink_receiver.forward(&mut receive_stop_rx, msg_tx.clone()).await else {
+                    // The remote computer got deactivated.
                     return;
                 };
 
@@ -90,30 +98,11 @@ impl RemoteComputer {
             }
         });
 
-        let heartbeat_sender = mavlink_sender.clone();
-        let mut heartbeat_stop_rx = stop_rx.resubscribe();
-        tokio::spawn(async move {
-            loop {
-                // Send a heartbeat MavLink message to the MavLink router in a 1Hz interval.
-                if let Err(err) = heartbeat_sender.send_heartbeat().await {
-                    log::error!("Error whilst sending heartbeat mavlink message: {err}")
-                };
-
-                log::debug!("Successfully sent heartbeat message");
-
-                tokio::select! {
-                    // Sleep for a second.
-                    _ = tokio::time::sleep(Duration::from_secs(1)) => continue,
-                    // Stop because remote computer got deactivated.
-                    _ = heartbeat_stop_rx.recv() => {
-                        log::debug!("Stopped mavlink heartbeat");
-                        return
-                    },
-                }
-            }
-        });
-
         let broadcast = self.broadcast.clone();
+        // Start the thread which handles the incoming MavLink messages.
+        // - Every message is proxied in JSON serialized form through SSE with the `mavlink-message` event
+        // - If the message contains any PSS datapoints, the datapoint values are broadcast in JSON serialized form
+        //   through SEE with the `pss-data` event.
         tokio::spawn(async move {
             loop {
                 let message = tokio::select! {
@@ -182,5 +171,20 @@ impl RemoteComputer {
         let mavlink_tx = self.mavlink_tx.as_ref().ok_or(RemoteComputerError::NotActive)?;
         mavlink_tx.send(message).await.map_err(RemoteComputerError::MavLink)
         // TODO: I think here would be the right place to do retransmission of the message
+    }
+
+    /// Shorthand function for sending a MavLink heartbeat message to the remote computer.
+    ///
+    /// It internally calls [`send_mavlink_message`] with a message containing a [`Heartbeat`].
+    pub async fn send_heartbeat_message(&self) -> Result<usize, RemoteComputerError> {
+        let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
+            type_: MavType::Gcs,
+            mavlink_version: Message::version().unwrap_or_default(),
+            system_status: MavState::Active,
+            autopilot: MavAutopilot::Invalid,
+            base_mode: 0,
+            custom_mode: 0,
+        }));
+        self.send_mavlink_message(heartbeat_message).await
     }
 }

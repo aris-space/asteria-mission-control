@@ -1,10 +1,7 @@
 use crate::{config::MavlinkAddress, mavlink::transport::AsyncTransportStream};
-use asteria_messages::{
-    Message,
-    datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType},
-};
+use asteria_messages::Message;
 use mavio::{
-    AsyncReceiver, AsyncSender, Dialect, Endpoint,
+    AsyncReceiver, AsyncSender, Endpoint,
     io::{TokioReader, TokioWriter},
     prelude::V2,
 };
@@ -80,21 +77,6 @@ impl MavlinkSender {
             Ok(bytes)
         }
     }
-
-    /// Shorthand function for sending a MavLink heartbeat message out.
-    ///
-    /// It internally calls [`MavlinkSender::send`] with a message containing a [`Heartbeat`].
-    pub async fn send_heartbeat(&self) -> Result<usize, MavlinkError> {
-        let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
-            type_: MavType::Gcs,
-            mavlink_version: Message::version().unwrap_or_default(),
-            system_status: MavState::Active,
-            autopilot: MavAutopilot::Invalid,
-            base_mode: 0,
-            custom_mode: 0,
-        }));
-        self.send(heartbeat_message).await
-    }
 }
 
 pub struct MavlinkReceiver {
@@ -103,11 +85,10 @@ pub struct MavlinkReceiver {
 }
 
 impl MavlinkReceiver {
-    /// Listen to incoming messages and broadcast them using [`Broadcast::broadcast`] to all
-    /// subscribed clients.
+    /// Listen to incoming messages and forward them into the channel where `tx` is a sender.
     ///
     /// Returns [`Ok`] when the receiving end of the message channel closed or a stop signal was received.
-    pub async fn run_message_proxy(&self, stop_rx: &mut Receiver<()>, tx: Sender<Message>) -> Result<(), MavlinkError> {
+    pub async fn forward(&self, stop_rx: &mut Receiver<()>, tx: Sender<Message>) -> Result<(), MavlinkError> {
         let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
@@ -140,7 +121,7 @@ impl MavlinkReceiver {
                 _ = stop_rx.recv() => return Ok(())
             };
 
-            log::trace!("received mavlink frame: {frame:?}");
+            log::trace!("Received mavlink frame: {frame:?}");
 
             if let Err(err) = frame.validate_checksum::<Message>() {
                 log::warn!("Received mavlink message with invalid checksum: {err}");

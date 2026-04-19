@@ -10,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     process::exit,
     sync::{Arc, OnceLock},
+    time::Duration,
 };
 use tokio::sync::RwLock;
 use utoipa::{OpenApi, ToSchema};
@@ -26,6 +27,9 @@ mod web;
 
 /// Global variable containing the path where the config file is located.
 pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+/// Interval at which a MavLink heartbeat message should be sent to the active remote.
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -89,6 +93,25 @@ async fn main() {
     let remotes = Arc::new(remotes);
 
     let state = State::new(remotes.clone(), broadcast.clone());
+
+    let heartbeat_state = state.clone();
+    // Start the heartbeat thread which periodically sends a MavLink heartbeat message
+    // to the active remote, if one is currently active.
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
+        loop {
+            let state_guard = heartbeat_state.read().await;
+            if let Ok((name, remote_computer)) = state_guard.get_active_remote() {
+                let rc_guard = remote_computer.read().await;
+                if let Err(err) = rc_guard.send_heartbeat_message().await {
+                    log::warn!("Unable to send heartbeat message to remote '{name}': {err}")
+                }
+            } else {
+                log::trace!("No active remote, skipping heartbeat!");
+            }
+            interval.tick().await;
+        }
+    });
 
     HttpServer::new(move || {
         let app = App::new()
