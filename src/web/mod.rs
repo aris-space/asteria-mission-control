@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use crate::config::RemoteComputerKind;
 use crate::parser::pss::Pss;
 use crate::remote::Remotes;
-use crate::{config::Config, parser::statemachine::StateMachine, state::StateInstance};
+use crate::web::state::StateInstance;
+use crate::{config::Config, parser::statemachine::StateMachine};
 use actix_web::{
     Responder,
     error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound},
@@ -19,6 +20,7 @@ use serde::Serialize;
 use tokio_stream::StreamExt;
 
 pub mod broadcast;
+pub mod state;
 
 #[expect(clippy::enum_variant_names)]
 pub enum Event {
@@ -121,9 +123,9 @@ pub async fn active_remote(state: Data<StateInstance>) -> actix_web::Result<Json
 /// Deactivate the currently active remote computer.
 ///
 /// **Events**:
-/// - `remote-change` with body containing `null`
-/// - `state-machine-change` with body containing `null`
-/// - `pss-change` with body containing `null`
+/// - `remote-change` with body containing `null`.
+/// - `state-machine-change` with body containing `null`.
+/// - `pss-change` with body containing `null`.
 #[utoipa::path(responses((status = OK, body = ()), (status = BAD_REQUEST, body = String)))]
 #[delete("/remotes/active")]
 pub async fn deactivate_active_remote(
@@ -140,12 +142,12 @@ pub async fn deactivate_active_remote(
 /// Change the active remote computer.
 ///
 /// **Events**:
-/// - `remote-change` with body containing the name of the newly activated remote
-/// - `mavlink-message` with body containing JSON-serialized MavLink [`Message`]
-/// - `state-machine-change` with body containing the JSON-serialized [`StateMachine`]
-/// - `pss-change` with body containing the JSON-serialized vector of [`Pss`]
-/// - `state-machine-error` with body containing state machine parse error string
-/// - `pss-error` with body containing PSS parse error string
+/// - `remote-change` with body containing the name of the newly activated remote.
+/// - `mavlink-message` with body containing JSON-serialized MavLink [`Message`].
+/// - `state-machine-change` with body containing the JSON-serialized [`StateMachine`].
+/// - `pss-change` with body containing the JSON-serialized vector of [`Pss`].
+/// - `state-machine-error` with body containing state machine parse error string.
+/// - `pss-error` with body containing PSS parse error string.
 #[utoipa::path(responses((status = OK, body = RemoteComputerInfo, status = BAD_REQUEST, body = String)))]
 #[put("/remotes/active/{name}")]
 pub async fn change_active_remote(
@@ -155,10 +157,16 @@ pub async fn change_active_remote(
 ) -> actix_web::Result<Json<RemoteComputerInfo>> {
     let remote_name = remote_name.into_inner();
     let mut state = state.write().await;
-    let remote = state.set_active_remote(&remote_name).await.map_err(|err| ErrorBadRequest(err.to_string()))?.read().await;
+    let remote = state.set_active_remote(&remote_name).await.map_err(|err| ErrorBadRequest(err.to_string()))?;
 
     broadcast.broadcast(Event::RemoteChange(Some(remote_name.clone()))).await;
-    Ok(Json(RemoteComputerInfo { name: remote_name, description: remote.description.clone(), kind: remote.kind.clone() }))
+
+    let remote_guard = remote.read().await;
+    Ok(Json(RemoteComputerInfo {
+        name: remote_name,
+        description: remote_guard.description.clone(),
+        kind: remote_guard.kind.clone(),
+    }))
 }
 
 /// Get the state machine of the active remote.

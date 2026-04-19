@@ -63,14 +63,6 @@ pub struct RemoteComputerConfig {
     /// to the remote computer.
     #[expect(unused)]
     pub ssh: SshConfig,
-
-    /// Path to the remote computers config which specifies the valid
-    /// state transitions of this state machine.
-    ///
-    /// **Important**: If this path is relative, it needs to be relative to the location
-    ///                of the config file and will be joined onto the config file path.
-    #[serde(alias = "config", deserialize_with = "deserialize_relative_path")]
-    pub config_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

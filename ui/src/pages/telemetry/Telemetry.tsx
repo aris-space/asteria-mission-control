@@ -7,7 +7,7 @@ import type {
   SteeringPositions,
   VelocityData,
 } from "@asteria/mission-control-client";
-import { useMavlinkMessage } from "../../hooks/EventContext";
+import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 function fmt(value: number | undefined, decimals = 3): string {
   if (value == undefined || value == null) return "--";

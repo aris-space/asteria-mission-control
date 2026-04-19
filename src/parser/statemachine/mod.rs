@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    path::{Path, PathBuf},
+    path::Path,
 };
 use utoipa::ToSchema;
 
@@ -12,8 +12,6 @@ pub mod config;
 
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineError {
-    #[error("Error whilst reading state machine config at '{0}': {1}")]
-    ConfigRead(String, std::io::Error),
     #[error("Error whilst deserializing state machine config: {0}")]
     ConfigParse(toml::de::Error),
     #[error("Error whilst reading state machine diagram at '{0}': {1}")]
@@ -46,12 +44,9 @@ pub struct StateMachine {
 }
 
 impl StateMachine {
-    pub fn new(rc_config_path: &PathBuf) -> Result<Self, StateMachineError> {
-        let config_str = fs::read_to_string(rc_config_path)
-            .map_err(|err| StateMachineError::ConfigRead(rc_config_path.display().to_string(), err))?;
-        let rc_config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
-
-        let raw_diagram_path = rc_config_path.parent().unwrap_or(Path::new("/")).join(&rc_config.state_machine.diagram_path);
+    pub fn new(configs_repository_path: &Path, rc_config_bytes: &[u8]) -> Result<Self, StateMachineError> {
+        let rc_config = toml::from_slice::<RemoteComputerConfig>(rc_config_bytes).map_err(StateMachineError::ConfigParse)?;
+        let raw_diagram_path = configs_repository_path.join(&rc_config.state_machine.diagram_path);
         let diagram_path = match fs::canonicalize(&raw_diagram_path) {
             Ok(path) => path,
             Err(err) => return Err(StateMachineError::DiagramRead(raw_diagram_path.display().to_string(), err)),

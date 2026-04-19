@@ -2,7 +2,6 @@ use actix_web_lab::sse::{Data, Event, Sse};
 use actix_web_lab::util::InfallibleStream;
 use chrono::Utc;
 use futures::future::join_all;
-use log::trace;
 use serde::Serialize;
 use std::sync::Arc;
 use std::time::Duration;
@@ -56,7 +55,7 @@ impl Broadcast {
         let (tx, rx) = tokio::sync::mpsc::channel::<Event>(10);
         let mut subscriptions = self.subscriptions.lock().await;
         if let Err(err) = tx.send(BroadcastEvent::Ping.into()).await {
-            log::warn!("unable to send initial ping to new subscription: {err}");
+            log::warn!("Unable to send initial ping to new subscription: {err}");
         }
         subscriptions.push(tx.clone());
 
@@ -68,7 +67,7 @@ impl Broadcast {
         // Clone such that lock is dropped immediately.
         let subscriptions = self.subscriptions.lock().await.clone();
 
-        trace!("notifying {} receivers of new event", subscriptions.len());
+        log::trace!("Notifying {} receivers of new event", subscriptions.len());
 
         let sse_event: Event = event.into();
         for receiver in subscriptions {

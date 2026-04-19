@@ -7,7 +7,7 @@ use mavio::{
 };
 use tokio::{
     select,
-    sync::{Mutex, RwLock, broadcast::Receiver, mpsc::Sender},
+    sync::{Mutex, RwLock, broadcast::Receiver, mpsc::{UnboundedSender}},
 };
 
 mod transport;
@@ -88,7 +88,7 @@ impl MavlinkReceiver {
     /// Listen to incoming messages and forward them into the channel where `tx` is a sender.
     ///
     /// Returns [`Ok`] when the receiving end of the message channel closed or a stop signal was received.
-    pub async fn forward(&self, stop_rx: &mut Receiver<()>, tx: Sender<Message>) -> Result<(), MavlinkError> {
+    pub async fn forward(&self, stop_rx: &mut Receiver<()>, msg_tx: &UnboundedSender<Message>) -> Result<(), MavlinkError> {
         let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
@@ -136,7 +136,7 @@ impl MavlinkReceiver {
                 }
             };
 
-            if tx.send(message).await.is_err() {
+            if msg_tx.send(message).is_err() {
                 log::warn!("Message receiver is closed, shutting down message proxy!");
                 return Ok(());
             }
