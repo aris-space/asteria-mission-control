@@ -6,8 +6,10 @@ use crate::{
     remote::{RemoteComputer, Remotes},
     web::{self, broadcast::Broadcast},
 };
+use futures::stream::FuturesUnordered;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{RwLock, broadcast::Sender};
+use tokio_stream::StreamExt;
 
 pub type StateInstance = Arc<RwLock<State>>;
 
@@ -83,12 +85,10 @@ impl State {
 
     pub async fn set_state_machine(&mut self, state_machine: Option<RemoteStateMachine>) {
         self.state_machine = state_machine;
-        println!("setting state machine: {:?}", self.state_machine);
         match &self.state_machine {
             Some(Ok(state_machine)) => self.broadcast.broadcast(web::Event::StateMachineChange(Some(state_machine.clone()))),
             Some(Err(err)) => {
-                log::error!("state machine err = {err}");
-                todo!("broadcast state errors")
+                self.broadcast.broadcast(web::Event::StateError(format!("Unable to parse state machine: {err}")))
             }
             None => self.broadcast.broadcast(web::Event::StateMachineChange(None)),
         }
@@ -110,7 +110,12 @@ impl State {
                 }
             })
             .collect::<HashMap<_, _>>();
-        // TODO: Handle error broadcasting
+
+        FuturesUnordered::from_iter(
+            errors.iter().map(|err| self.broadcast.broadcast(web::Event::StateError(format!("Unable to parse PSS: {err}")))),
+        )
+        .collect::<Vec<_>>()
+        .await;
         self.broadcast.broadcast(web::Event::PssChange(Some(valid_pss))).await
     }
 }

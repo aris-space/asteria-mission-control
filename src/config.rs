@@ -2,7 +2,7 @@ use crate::CONFIG_PATH;
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
-    collections::{HashMap},
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     sync::Arc,
@@ -29,7 +29,7 @@ pub struct Config {
     pub configs_repository_path: PathBuf,
     /// Available remote computers for the mission control.
     #[serde(rename = "remote")]
-    pub remotes: HashMap<String, RemoteComputerConfig>,
+    pub remotes: BTreeMap<String, RemoteComputerConfig>,
 }
 
 impl Config {

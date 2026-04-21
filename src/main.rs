@@ -3,7 +3,7 @@ use crate::{
     config::Config,
     datatypes::NamedPssDatapointValue,
     parser::statemachine::StateMachine,
-    remote::RemoteComputer,
+    remote::{RemoteComputer, Remotes},
     web::{
         broadcast::Broadcast,
         state::{State, StateInstance},
@@ -19,7 +19,6 @@ use env_logger::Env;
 use futures::{StreamExt, stream::FuturesUnordered};
 use gix::ThreadSafeRepository as Repository;
 use std::{
-    collections::BTreeMap,
     path::{Path, PathBuf},
     process::exit,
     sync::{Arc, OnceLock},
@@ -101,7 +100,7 @@ async fn main() {
         .map(|(key, rc_config)| {
             (key.clone(), Arc::new(RwLock::new(RemoteComputer::new(rc_config.clone(), config.clone(), msg_tx.clone()))))
         })
-        .collect::<BTreeMap<_, _>>();
+        .collect::<Remotes>();
     let remotes = Arc::new(remotes);
 
     let state = State::new(remotes.clone(), broadcast.clone());

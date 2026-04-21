@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use crate::config::RemoteComputerKind;
 use crate::parser::pss::Pss;
-use crate::remote::Remotes;
 use crate::web::state::StateInstance;
 use crate::{config::Config, parser::statemachine::StateMachine};
 use actix_web::{
@@ -15,18 +14,16 @@ use actix_web::{delete, web};
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use asteria_messages::Message;
 use broadcast::Broadcast;
-use futures::stream::FuturesUnordered;
 use serde::Serialize;
-use tokio_stream::StreamExt;
 
 pub mod broadcast;
 pub mod state;
 
-#[expect(clippy::enum_variant_names)]
 pub enum Event {
     RemoteChange(Option<String>),
     StateMachineChange(Option<StateMachine>),
     PssChange(Option<HashMap<String, Pss>>),
+    StateError(String),
 }
 
 impl From<Event> for SseEvent {
@@ -40,6 +37,7 @@ impl From<Event> for SseEvent {
             Event::PssChange(pss_data) => {
                 Self::Data(SseData::new_json(&pss_data).expect("should be serializable").event("pss-change"))
             }
+            Event::StateError(error_string) => Self::Data(SseData::new(error_string).event("state-error")),
         }
     }
 }
@@ -89,27 +87,33 @@ struct RemoteComputerInfo {
 /// Get all available remote computers.
 #[utoipa::path(responses((status = OK, body = Vec<RemoteComputerInfo>)))]
 #[get("/remotes")]
-pub async fn remotes(remotes: Data<Remotes>) -> actix_web::Result<Json<Vec<RemoteComputerInfo>>> {
-    let futures = remotes
+pub async fn remotes(config: Data<Config>) -> actix_web::Result<Json<Vec<RemoteComputerInfo>>> {
+    let remotes = config
+        .remotes
         .iter()
-        .map(async |(name, remote)| {
-            let remote = remote.read().await;
-            RemoteComputerInfo { name: name.clone(), description: remote.description.clone(), kind: remote.kind.clone() }
+        .map(|(name, remote_config)| RemoteComputerInfo {
+            name: name.clone(),
+            description: remote_config.description.clone(),
+            kind: remote_config.kind.clone(),
         })
         .collect::<Vec<_>>();
-
-    let remotes = FuturesUnordered::from_iter(futures).collect::<Vec<_>>().await;
     Ok(Json(remotes))
 }
 
 /// Get the active remote computer, if one is currently active.
 #[utoipa::path(responses((status = OK, body = Option<RemoteComputerInfo>)))]
 #[get("/remotes/active")]
-pub async fn active_remote(state: Data<StateInstance>) -> actix_web::Result<Json<Option<RemoteComputerInfo>>> {
+pub async fn active_remote(
+    state: Data<StateInstance>,
+    config: Data<Config>,
+) -> actix_web::Result<Json<Option<RemoteComputerInfo>>> {
     let state = state.read().await;
 
-    if let Ok((name, remote)) = state.get_active_remote() {
-        let remote = remote.read().await;
+    if let Ok((name, _)) = state.get_active_remote() {
+        // Because [`StateInstance`] contains an [`Remotes`] instance which holds the same
+        // remotes as in the [`Config`], we use the remote from the config to not compete
+        // on the remote computer lock.
+        let remote = config.remotes.get(name).expect("Remote should exist");
         Ok(Json(Some(RemoteComputerInfo {
             name: name.clone(),
             description: remote.description.clone(),
@@ -133,7 +137,7 @@ pub async fn deactivate_active_remote(
     broadcast: Data<Broadcast>,
 ) -> actix_web::Result<Json<()>> {
     let mut state = state.write().await;
-    state.remove_active_remote().await.map_err(|err| ErrorBadRequest(err.to_string()))?;
+    state.remove_active_remote().await.map_err(ErrorBadRequest)?;
 
     broadcast.broadcast(Event::RemoteChange(None)).await;
     Ok(Json(()))
@@ -146,27 +150,26 @@ pub async fn deactivate_active_remote(
 /// - `mavlink-message` with body containing JSON-serialized MavLink [`Message`].
 /// - `state-machine-change` with body containing the JSON-serialized [`StateMachine`].
 /// - `pss-change` with body containing the JSON-serialized vector of [`Pss`].
-/// - `state-machine-error` with body containing state machine parse error string.
-/// - `pss-error` with body containing PSS parse error string.
+/// - `state-error` with body containing error string from either state machine or PSS parsing.
 #[utoipa::path(responses((status = OK, body = RemoteComputerInfo, status = BAD_REQUEST, body = String)))]
 #[put("/remotes/active/{name}")]
 pub async fn change_active_remote(
-    remote_name: web::Path<String>,
+    name: web::Path<String>,
     state: Data<StateInstance>,
+    config: Data<Config>,
     broadcast: Data<Broadcast>,
 ) -> actix_web::Result<Json<RemoteComputerInfo>> {
-    let remote_name = remote_name.into_inner();
+    let name = name.into_inner();
     let mut state = state.write().await;
-    let remote = state.set_active_remote(&remote_name).await.map_err(|err| ErrorBadRequest(err.to_string()))?;
+    state.set_active_remote(&name).await.map_err(ErrorBadRequest)?;
 
-    broadcast.broadcast(Event::RemoteChange(Some(remote_name.clone()))).await;
+    broadcast.broadcast(Event::RemoteChange(Some(name.clone()))).await;
 
-    let remote_guard = remote.read().await;
-    Ok(Json(RemoteComputerInfo {
-        name: remote_name,
-        description: remote_guard.description.clone(),
-        kind: remote_guard.kind.clone(),
-    }))
+    // Because [`StateInstance`] contains an [`Remotes`] instance which holds the same
+    // remotes as in the [`Config`], we use the remote from the config to not compete
+    // on the remote computer lock.
+    let remote = config.remotes.get(&name).expect("Remote should exist");
+    Ok(Json(RemoteComputerInfo { name, description: remote.description.clone(), kind: remote.kind.clone() }))
 }
 
 /// Get the state machine of the active remote.
@@ -183,7 +186,7 @@ pub async fn state_machine(state: Data<StateInstance>) -> actix_web::Result<Json
     let state = state.read().await;
 
     // Ensure that we have an active remote.
-    state.get_active_remote().map_err(|err| ErrorBadRequest(err.to_string()))?;
+    state.get_active_remote().map_err(ErrorBadRequest)?;
 
     match &state.state_machine {
         Some(Ok(state_machine)) => Ok(Json(state_machine.clone())),
@@ -206,7 +209,7 @@ pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<HashMap<S
     let state = state.read().await;
 
     // Ensure that we have an active remote.
-    state.get_active_remote().map_err(|err| ErrorBadRequest(err.to_string()))?;
+    state.get_active_remote().map_err(ErrorBadRequest)?;
 
     let Some(pss) = &state.pss else {
         return Err(ErrorNotFound(String::from("There is no PSS configuration for the active remote computer")));
