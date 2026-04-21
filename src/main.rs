@@ -19,7 +19,7 @@ use env_logger::Env;
 use futures::{StreamExt, stream::FuturesUnordered};
 use gix::ThreadSafeRepository as Repository;
 use std::{
-    collections::HashMap,
+    collections::BTreeMap,
     path::{Path, PathBuf},
     process::exit,
     sync::{Arc, OnceLock},
@@ -101,7 +101,7 @@ async fn main() {
         .map(|(key, rc_config)| {
             (key.clone(), Arc::new(RwLock::new(RemoteComputer::new(rc_config.clone(), config.clone(), msg_tx.clone()))))
         })
-        .collect::<HashMap<_, _>>();
+        .collect::<BTreeMap<_, _>>();
     let remotes = Arc::new(remotes);
 
     let state = State::new(remotes.clone(), broadcast.clone());
@@ -153,20 +153,21 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
 /// to the active remote, if one is currently active.
 fn start_heartbeat(state: StateInstance) {
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
         loop {
             let state_guard = state.read().await;
             if let Ok((name, remote_computer)) = state_guard.get_active_remote().map(|(name, rc)| (name.clone(), rc)) {
-                tokio::spawn(async move {
-                    let rc_guard = remote_computer.read().await;
-                    if let Err(err) = rc_guard.send_heartbeat_message().await {
-                        log::warn!("Unable to send heartbeat message to remote '{name}': {err}")
-                    }
-                });
+                drop(state_guard);
+                let rc_guard = remote_computer.read().await;
+                if let Err(err) = rc_guard.send_heartbeat_message().await {
+                    log::warn!("Unable to send heartbeat message to remote '{name}': {err}")
+                }
             } else {
                 log::trace!("No active remote, skipping heartbeat!");
             }
-            interval.tick().await;
+
+            // We don't use a tokio interval here because we don't want to queue
+            // up heartbeats if one couldn't be sent.
+            tokio::time::sleep(HEARTBEAT_INTERVAL).await
         }
     });
 }
@@ -185,6 +186,7 @@ fn start_mavlink_message_handler(
     tokio::spawn(async move {
         let mut config_hash = Option::<[u8; 5]>::None;
 
+        // FIXME: We need to somehow clear this `config_hash` cache when the active remote computer changes.
         while let Some(message) = msg_rx.recv().await {
             if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash)) = &message
                 && config_hash.is_none_or(|old_hash| old_hash != hash.hash)

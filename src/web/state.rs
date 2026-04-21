@@ -7,7 +7,7 @@ use crate::{
     web::{self, broadcast::Broadcast},
 };
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, broadcast::Sender};
 
 pub type StateInstance = Arc<RwLock<State>>;
 
@@ -26,7 +26,7 @@ pub type RemotePss = HashMap<String, Result<Pss, PssError>>;
 
 pub struct State {
     remotes: Arc<Remotes>,
-    active_remote: Option<String>,
+    active_remote: Option<(String, Sender<()>)>,
     pub state_machine: Option<RemoteStateMachine>,
     pub pss: Option<RemotePss>,
     broadcast: Arc<Broadcast>,
@@ -39,7 +39,7 @@ impl State {
     }
 
     pub fn get_active_remote(&self) -> Result<(&String, Arc<RwLock<RemoteComputer>>), StateError> {
-        let active_remote_name = self.active_remote.as_ref().ok_or(StateError::NoActiveRemote)?;
+        let (active_remote_name, _) = self.active_remote.as_ref().ok_or(StateError::NoActiveRemote)?;
         let remote = self.remotes.get(active_remote_name).expect("Active remote name should exist").clone();
         Ok((active_remote_name, remote))
     }
@@ -48,58 +48,42 @@ impl State {
         if !self.remotes.contains_key(name) {
             return Err(StateError::RemoteNotFound);
         }
-        if self.active_remote.as_ref().is_some_and(|active_name| active_name == name) {
+        if self.active_remote.as_ref().is_some_and(|(active_name, _)| active_name == name) {
             return Err(StateError::RemoteAlreadyActive);
         };
 
-        if let Some(old_active) = &self.active_remote {
-            let remote = self.remotes.get(old_active).expect("Active remote name should exist");
-            log::info!("Deactivating remote '{old_active}'");
-            remote.write().await.deactivate().expect("Remote should be active");
-
-            // Clear the active state machine and the active PSS because we're
-            // changing the active remote.
-            self.set_state_machine(None).await;
-            self.set_pss(None).await;
+        if self.active_remote.is_some() {
+            self.remove_active_remote().await?;
         }
 
         // We ensured that the remote exists at function entry. Since we never add/remove any remotes
         // during runtime, we can expect that this remote still exists here.
         let remote = self.remotes.get(name).expect("Remotes should not change").clone();
-        let mut remote_guard = remote.write().await;
         log::info!("Activating remote '{name}'");
-        remote_guard.activate().expect("Remote should not already be active");
+        let stop_tx = remote.write().await.activate().expect("Remote should not already be active");
 
-        self.active_remote = Some(name.clone());
-
-        // This code is only temporary as the state machine and PSS stuff gets read from the
-        // RC config. For this we need the config hash from the RC.
-        // TODO: `state-machine-change` and `pss-change` events are never emitted.
-        // self.state_machine = Some(StateMachine::new(&remote_guard.config_path));
-        // if let Some(Ok(state_machine)) = &self.state_machine {
-        // self.broadcast.broadcast(web::Event::StateMachineChange(Some(state_machine.clone()))).await;
-        // }
-        // self.pss = Some(HashMap::new());
-
-        drop(remote_guard);
+        self.active_remote = Some((name.clone(), stop_tx));
 
         Ok(remote)
     }
 
     pub async fn remove_active_remote(&mut self) -> Result<(), StateError> {
-        let old_active = self.active_remote.take().ok_or(StateError::NoActiveRemote)?;
+        let (old_active, stop_tx) = self.active_remote.take().ok_or(StateError::NoActiveRemote)?;
         let remote = self.remotes.get(&old_active).expect("Active remote name should exist");
+
         log::info!("Deactivating remote '{old_active}'");
+        stop_tx.send(()).expect("Receivers should never be dropped before the stop signal transmission");
         remote.write().await.deactivate().expect("Remote should be active");
+
         self.set_state_machine(None).await;
-        self.pss = None;
-        self.broadcast.broadcast(web::Event::PssChange(None)).await;
+        self.set_pss(None).await;
 
         Ok(())
     }
 
     pub async fn set_state_machine(&mut self, state_machine: Option<RemoteStateMachine>) {
         self.state_machine = state_machine;
+        println!("setting state machine: {:?}", self.state_machine);
         match &self.state_machine {
             Some(Ok(state_machine)) => self.broadcast.broadcast(web::Event::StateMachineChange(Some(state_machine.clone()))),
             Some(Err(err)) => {

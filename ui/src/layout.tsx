@@ -165,6 +165,7 @@ function RemoteComputersDialog() {
 
         return (
           <Card
+            key={remote.name}
             onClick={handleClick}
             withBorder
             style={{

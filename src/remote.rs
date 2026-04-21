@@ -7,10 +7,14 @@ use asteria_messages::{
     datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType},
 };
 use mavio::Dialect;
-use std::{collections::HashMap, sync::Arc, time::Duration};
-use tokio::sync::{RwLock, broadcast::{Sender, Receiver}, mpsc::{UnboundedSender}};
+use std::{collections::{BTreeMap}, sync::Arc, time::Duration};
+use tokio::sync::{
+    RwLock,
+    broadcast::{Receiver, Sender},
+    mpsc::UnboundedSender,
+};
 
-pub type Remotes = HashMap<String, Arc<RwLock<RemoteComputer>>>;
+pub type Remotes = BTreeMap<String, Arc<RwLock<RemoteComputer>>>;
 
 /// Duration after which a restart of the MavLink
 /// message proxy should be attempted.
@@ -22,8 +26,6 @@ pub enum RemoteComputerError {
     AlreadyActive,
     #[error("The remote computer is not active")]
     NotActive,
-    #[error("The remote computer got deactivated")]
-    Deactivated,
     #[error(transparent)]
     MavLink(MavlinkError),
 }
@@ -34,7 +36,7 @@ pub struct RemoteComputer {
     mavlink_address: MavlinkAddress,
     mavlink_system_id: u8,
     mavlink_sender: Option<Arc<MavlinkSender>>,
-    stop: Option<(Sender<()>, Receiver<()>)>,
+    stop_rx: Option<Receiver<()>>,
     msg_tx: UnboundedSender<Message>,
 }
 
@@ -46,7 +48,7 @@ impl RemoteComputer {
             mavlink_address: rc_config.mavlink_address,
             mavlink_system_id: config.mavlink.system_id,
             mavlink_sender: None,
-            stop: None,
+            stop_rx: None,
             msg_tx,
         }
     }
@@ -56,13 +58,13 @@ impl RemoteComputer {
     /// After activation, MavLink messages
     /// After activation, MavLink messages from the remote computers are proxied into the global [`Broadcast`]
     /// and MavLink heartbeat messages are sent to the remote computer.
-    pub fn activate(&mut self) -> Result<(), RemoteComputerError> {
-        if self.stop.is_some() {
+    pub fn activate(&mut self) -> Result<Sender<()>, RemoteComputerError> {
+        if self.stop_rx.is_some() {
             return Err(RemoteComputerError::AlreadyActive);
         }
 
         let (stop_tx, mut stop_rx) = tokio::sync::broadcast::channel(1);
-        self.stop = Some((stop_tx, stop_rx.resubscribe()));
+        self.stop_rx = Some(stop_rx.resubscribe());
 
         let (mavlink_sender, mavlink_receiver) = crate::mavlink::tx_rx(self.mavlink_system_id, self.mavlink_address.clone());
         let mavlink_sender = Arc::new(mavlink_sender);
@@ -71,12 +73,13 @@ impl RemoteComputer {
         // Start the thread which forwards the incoming MavLink messages until the remote computer gets deactivated.
         tokio::spawn(async move {
             loop {
-                let Err(err) = mavlink_receiver.forward(&mut stop_rx, &msg_tx).await else {
+                let err = match mavlink_receiver.forward(&mut stop_rx, &msg_tx).await {
                     // The remote computer got deactivated.
-                    return;
+                    Ok(_) | Err(MavlinkError::Stopped) => return,
+                    Err(err) => err,
                 };
 
-                log::error!("Error whilst starting mavlink message proxy: {err}");
+                log::error!("Error whilst starting mavlink message forwarding: {err}");
 
                 tokio::select! {
                     // Await restart timeout and then attempt restart in next iteration.
@@ -92,18 +95,13 @@ impl RemoteComputer {
 
         self.mavlink_sender = Some(mavlink_sender);
 
-        Ok(())
+        Ok(stop_tx)
     }
 
     /// Deactivate the remote computer.
-    ///
-    /// MavLink messages from the remote computer are no longer proxied into the global [`Broadcast`] and
-    /// heartbeat messages are no longer sent to the remote computer.
     pub fn deactivate(&mut self) -> Result<(), RemoteComputerError> {
-        let (stop_tx, _) = self.stop.take().ok_or(RemoteComputerError::NotActive)?;
+        let _ = self.stop_rx.take().ok_or(RemoteComputerError::NotActive)?;
         let _ = self.mavlink_sender.take().ok_or(RemoteComputerError::NotActive)?;
-
-        stop_tx.send(()).expect("Receivers should never be dropped before the stop signal transmission");
 
         Ok(())
     }
@@ -112,14 +110,11 @@ impl RemoteComputer {
     ///
     /// Internally uses [`MavlinkSender::send`].
     pub async fn send_mavlink_message(&self, message: Message) -> Result<usize, RemoteComputerError> {
-        let (_, stop_rx) = self.stop.as_ref().ok_or(RemoteComputerError::NotActive)?;
+        let stop_rx = self.stop_rx.as_ref().ok_or(RemoteComputerError::NotActive)?;
         let mut stop_rx = stop_rx.resubscribe();
         let mavlink_tx = self.mavlink_sender.as_ref().ok_or(RemoteComputerError::NotActive)?;
 
-        tokio::select! {
-            result = mavlink_tx.send(message) => result.map_err(RemoteComputerError::MavLink),
-            _ = stop_rx.recv() => Err(RemoteComputerError::Deactivated)
-        }
+        mavlink_tx.send(&mut stop_rx, message).await.map_err(RemoteComputerError::MavLink)
 
         // TODO: I think here would be the right place to do retransmission of the message
     }

@@ -42,9 +42,9 @@ const RemoteComputerContext =
 
 export function RemoteComputerProvider(props: PropsWithChildren) {
   const remotes = useRemotes();
-  const active = useActiveRemote();
-  const stateMachine = useStateMachine();
-  const pss = usePss();
+  const active = useActiveRemote({ query: { retry: false } });
+  const stateMachine = useStateMachine({ query: { retry: false } });
+  const pss = usePss({ query: { retry: false } });
 
   const [currentActive, setCurrentActive] = useState<RemoteComputerInfo | null>(
     null,
@@ -78,7 +78,7 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
       });
     }
 
-    const remote = remotes?.data?.find(rc => rc.name == newActive);
+    const remote = remotes?.data?.find((rc) => rc.name == newActive);
     setCurrentActive(remote || null);
     active.refetch();
   });
