@@ -8,8 +8,9 @@ use crate::{
 };
 use futures::stream::FuturesUnordered;
 use std::{collections::HashMap, sync::Arc};
-use tokio::sync::{RwLock, broadcast::Sender};
+use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
+use tokio_util::sync::CancellationToken;
 
 pub type StateInstance = Arc<RwLock<State>>;
 
@@ -28,9 +29,9 @@ pub type RemotePss = HashMap<String, Result<Pss, PssError>>;
 
 pub struct State {
     remotes: Arc<Remotes>,
-    active_remote: Option<(String, Sender<()>)>,
-    pub state_machine: Option<RemoteStateMachine>,
-    pub pss: Option<RemotePss>,
+    active_remote: Option<(String, CancellationToken)>,
+    state_machine: Option<RemoteStateMachine>,
+    pss: Option<RemotePss>,
     broadcast: Arc<Broadcast>,
 }
 
@@ -62,19 +63,22 @@ impl State {
         // during runtime, we can expect that this remote still exists here.
         let remote = self.remotes.get(name).expect("Remotes should not change").clone();
         log::info!("Activating remote '{name}'");
-        let stop_tx = remote.write().await.activate().expect("Remote should not already be active");
+        let token = remote.write().await.activate().expect("Remote should not already be active");
 
-        self.active_remote = Some((name.clone(), stop_tx));
+        self.active_remote = Some((name.clone(), token));
 
         Ok(remote)
     }
 
     pub async fn remove_active_remote(&mut self) -> Result<(), StateError> {
-        let (old_active, stop_tx) = self.active_remote.take().ok_or(StateError::NoActiveRemote)?;
+        let (old_active, token) = self.active_remote.take().ok_or(StateError::NoActiveRemote)?;
         let remote = self.remotes.get(&old_active).expect("Active remote name should exist");
 
         log::info!("Deactivating remote '{old_active}'");
-        stop_tx.send(()).expect("Receivers should never be dropped before the stop signal transmission");
+        // Cancel all tasks belonging to the remote computer. This is needed because
+        // otherwise some tasks might hold the lock for the remote computer and thus the
+        // deactivation can take quite some time.
+        token.cancel();
         remote.write().await.deactivate().expect("Remote should be active");
 
         self.set_state_machine(None).await;
@@ -93,6 +97,10 @@ impl State {
             None => self.broadcast.broadcast(web::Event::StateMachineChange(None)),
         }
         .await;
+    }
+
+    pub fn get_state_machine(&self) -> &Option<RemoteStateMachine> {
+        &self.state_machine
     }
 
     pub async fn set_pss(&mut self, pss: Option<RemotePss>) {
@@ -117,5 +125,9 @@ impl State {
         .collect::<Vec<_>>()
         .await;
         self.broadcast.broadcast(web::Event::PssChange(Some(valid_pss))).await
+    }
+
+    pub fn get_pss(&self) -> &Option<RemotePss> {
+        &self.pss
     }
 }

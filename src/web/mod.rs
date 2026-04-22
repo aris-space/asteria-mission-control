@@ -188,7 +188,7 @@ pub async fn state_machine(state: Data<StateInstance>) -> actix_web::Result<Json
     // Ensure that we have an active remote.
     state.get_active_remote().map_err(ErrorBadRequest)?;
 
-    match &state.state_machine {
+    match state.get_state_machine() {
         Some(Ok(state_machine)) => Ok(Json(state_machine.clone())),
         Some(Err(err)) => Err(ErrorInternalServerError(err.to_string())),
         None => Err(ErrorNotFound(String::from("There is no state machine for the active remote computer"))),
@@ -211,7 +211,7 @@ pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<HashMap<S
     // Ensure that we have an active remote.
     state.get_active_remote().map_err(ErrorBadRequest)?;
 
-    let Some(pss) = &state.pss else {
+    let Some(pss) = state.get_pss() else {
         return Err(ErrorNotFound(String::from("There is no PSS configuration for the active remote computer")));
     };
 
