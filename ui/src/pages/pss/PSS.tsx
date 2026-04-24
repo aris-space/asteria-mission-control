@@ -238,12 +238,17 @@ interface PssSelectorProps {
 
 function PssSelector(props: PssSelectorProps) {
   const [selected, setSelected] = useState<string | null>();
-  const { remoteComputer, isRemoteComputerLoading, pss, isPssLoading } =
-    useRemoteComputer();
+  const {
+    remoteComputer,
+    isRemoteComputerLoading,
+    rocketPss,
+    rfsPss: _rfsPss,
+    isPssLoading,
+  } = useRemoteComputer();
 
   useEffect(() => {
-    if (!selected || !pss) return props.onChange(null);
-    props.onChange(pss[selected]);
+    if (!selected || !rocketPss) return props.onChange(null);
+    props.onChange(rocketPss);
   }, [selected]);
 
   useEffect(() => {
@@ -260,10 +265,7 @@ function PssSelector(props: PssSelectorProps) {
   return (
     <Select
       placeholder={"Select a PSS configuration"}
-      data={Object.keys(pss || {}).map((name) => ({
-        label: name,
-        value: name,
-      }))}
+      data={[{ label: "Rocket", value: "rocket" }]}
       disabled={loading}
       value={selected}
       onChange={handleStateMachineChange}

@@ -50,13 +50,13 @@ function StateMachine() {
   const [highlightStates, toggleHighlightStates] = useToggle([false, true]);
   const [[activeState, transitionTimestamp], setActiveState] = useState<
     [string | null, number]
-    >([null, Date.now()]);
+  >([null, Date.now()]);
   const board = remoteComputer
     ? remoteComputer.kind == RemoteComputerKind.flight_computer
       ? "FlightComputer"
       : "RfsComputer"
     : null;
-  const manualStateTransitionMessage = useMavlinkMessage(
+  const stateMachineStateMessage = useMavlinkMessage(
     board as any,
     "StateMachineState",
   );
@@ -73,18 +73,23 @@ function StateMachine() {
   );
 
   useEffect(() => {
-    setActiveState([stateMachine?.initialState ?? null, Date.now()]);
+    if (!stateMachine) setActiveState([null, Date.now()]);
+    else
+      setActiveState(([state]) => [
+        state ?? stateMachine?.initialState ?? null,
+        Date.now(),
+      ]);
     toggleHighlightStates(false);
   }, [stateMachine]);
 
   useEffect(() => {
     pathIndexRef.current = pathIndex;
-  }, [pathIndex])
+  }, [pathIndex]);
 
   useEffect(() => {
-    if (!manualStateTransitionMessage) return;
+    if (!stateMachineStateMessage) return;
 
-    const { state, pathIndex } = manualStateTransitionMessage.message.content;
+    const { state, pathIndex } = stateMachineStateMessage.message.content;
 
     const decoder = new TextDecoder();
     const bytes = new Uint8Array(state.filter(Boolean));
@@ -96,7 +101,7 @@ function StateMachine() {
 
     setPathIndex(pathIndex);
     setActiveState([targetState, Date.now()]);
-  }, [manualStateTransitionMessage]);
+  }, [stateMachineStateMessage]);
 
   useEffect(() => {
     highlightActiveState();
@@ -104,9 +109,7 @@ function StateMachine() {
     highlightAvailableStates();
     removeStateListeners();
     setupStateListeners();
-
-    return () => {};
-  }, [activeState, stateMachine]);
+  }, [activeState, stateMachine, svgRef.current]);
 
   /**
    * Get the name of the state how it's present in the diagram. If no (postfixed) version of the

@@ -72,7 +72,7 @@ function useDiagramSvg(
     }
 
     svg.setAttribute("width", "100%");
-    svg.setAttribute("height", "calc(100vh - var(--app-shell-header-height))");
+    svg.setAttribute("height", "100%");
 
     setReady(true);
   };

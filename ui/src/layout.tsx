@@ -1,18 +1,23 @@
-import { useState, type PropsWithChildren } from "react";
+import { useEffect, useState, type PropsWithChildren } from "react";
 import { useBackendLatency } from "@asteria/hooks/EventContext";
 import { useMavlinkTelemetryHealth } from "@asteria/hooks/MavlinkContext";
 import {
   ActionIcon,
+  Alert,
   AppShell,
   Badge,
   Box,
+  Button,
   Card,
+  Code,
   Divider,
   Flex,
   Group,
   Image,
   Modal,
+  ModalProps,
   SimpleGrid,
+  Stack,
   Text,
   Tooltip,
   useMantineTheme,
@@ -23,6 +28,7 @@ import {
   useInfo,
 } from "@asteria/mission-control-client";
 import {
+  IconAlertCircle,
   IconPlug,
   IconPlugX,
   IconRocket,
@@ -30,21 +36,34 @@ import {
   IconSettings,
 } from "@tabler/icons-react";
 import { useInterval } from "@mantine/hooks";
-import { useRemoteComputer } from "./hooks/RemoteComputerContext";
+import {
+  useRemoteComputer,
+  useRemoteComputerErrors,
+} from "./hooks/RemoteComputerContext";
 
 export function Layout(props: PropsWithChildren) {
   const [remoteComputerDialogVisible, setRemoteComputerDialogVisible] =
     useState<boolean>(false);
+  const [errorsVisible, setErrorsVisible] = useState<boolean>(false);
+  const { errors, dismissAllErrors, dismissError } = useRemoteComputerErrors();
+
+  useEffect(() => {
+    if (errors.length == 0) setErrorsVisible(false);
+  }, [errors.length]);
+
   return (
     <>
-      <Modal
-        size={"xl"}
+      <RemoteComputersModal
         opened={remoteComputerDialogVisible}
         onClose={() => setRemoteComputerDialogVisible(false)}
-        title="Available remote computers"
-      >
-        <RemoteComputersDialog />
-      </Modal>
+      />
+      <ErrorModal
+        opened={errorsVisible}
+        onClose={() => setErrorsVisible(false)}
+        dismiss={dismissError}
+        dismissAll={dismissAllErrors}
+        errors={errors}
+      />
       <AppShell
         padding="0"
         header={{ height: "4rem" }}
@@ -57,6 +76,12 @@ export function Layout(props: PropsWithChildren) {
               <ActiveRemoteComputer
                 onDialogOpen={() => setRemoteComputerDialogVisible(true)}
               />
+              {errors.length > 0 && (
+                <Errors
+                  errors={errors}
+                  onDialogOpen={() => setErrorsVisible(true)}
+                />
+              )}
             </Flex>
             <Flex align={"center"} justify={"end"}>
               <Flex gap={"md"}>
@@ -122,7 +147,65 @@ function ActiveRemoteComputer({ onDialogOpen }: ActiveRemoteComputerProps) {
   );
 }
 
-function RemoteComputersDialog() {
+interface ErrorsProps {
+  errors: Array<string>;
+  onDialogOpen: () => void;
+}
+
+function Errors({ onDialogOpen, errors }: ErrorsProps) {
+  return (
+    <Button size="xs" color="red" onClick={onDialogOpen}>
+      <Group px={0} gap={"xs"}>
+        {<IconAlertCircle size="1rem" />}
+        {errors.length == 1 ? "Got an error" : `Got ${errors.length} errors`}
+      </Group>
+    </Button>
+  );
+}
+
+interface ErrorModalProps extends ModalProps {
+  errors: Array<string>;
+  dismiss: (idx: number) => void;
+  dismissAll: () => void;
+}
+
+function ErrorModal({
+  opened,
+  onClose,
+  errors,
+  dismiss,
+  dismissAll,
+}: ErrorModalProps) {
+  return (
+    <Modal
+      opened={opened}
+      onClose={onClose}
+      title="Remote computer errors"
+      size="xl"
+    >
+      <Stack>
+        {errors.map((error, index) => (
+          <Alert
+            key={index}
+            icon={<IconAlertCircle />}
+            color="red"
+            withCloseButton
+            closeButtonLabel="Dismiss"
+            onClose={() => dismiss(index)}
+          >
+            <Code bg={"transparent"}>{error}</Code>
+          </Alert>
+        ))}
+
+        <Button color="red" variant="outline" onClick={dismissAll}>
+          Dismiss all errors
+        </Button>
+      </Stack>
+    </Modal>
+  );
+}
+
+function RemoteComputersModal({ opened, onClose }: ModalProps) {
   const theme = useMantineTheme();
   const {
     availableRemoteComputers,
@@ -139,53 +222,64 @@ function RemoteComputersDialog() {
     deactivateActive.isPending;
 
   return (
-    <Box
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-        gap: theme.spacing.sm,
-      }}
+    <Modal
+      size={"xl"}
+      onClose={onClose}
+      opened={opened}
+      title="Available remote computers"
     >
-      {availableRemoteComputers.map((remote) => {
-        const isActive = remote.name == activeRemote?.name;
-        const additionalProps = isActive
-          ? {
-              bd: "1px solid blue",
-              bg: "blue.0",
+      <Box
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: theme.spacing.sm,
+        }}
+      >
+        {availableRemoteComputers.map((remote) => {
+          const isActive = remote.name == activeRemote?.name;
+          const additionalProps = isActive
+            ? {
+                bd: "1px solid blue",
+                bg: "blue.0",
+              }
+            : isLoading
+              ? {
+                  bg: "gray.0",
+                }
+              : {};
+
+          const handleClick = () => {
+            if (isActive) {
+              deactivateActive.mutate();
+            } else {
+              changeActive.mutate({ name: remote.name });
             }
-          : {};
+          };
 
-        const handleClick = () => {
-          if (isActive) {
-            deactivateActive.mutate();
-          } else {
-            changeActive.mutate({ name: remote.name });
-          }
-        };
+          return (
+            <Card
+              key={remote.name}
+              onClick={handleClick}
+              withBorder
+              style={{
+                userSelect: "none",
+                cursor: isLoading ? "default" : "pointer",
+              }}
+              {...additionalProps}
+            >
+              <Group mb="xs" justify="space-between">
+                <Text fw={600}>{remote.name}</Text>
+                <Badge variant="light" color={"gray"}>
+                  {remote.kind}
+                </Badge>
+              </Group>
 
-        return (
-          <Card
-            key={remote.name}
-            onClick={handleClick}
-            withBorder
-            style={{
-              userSelect: "none",
-              cursor: isLoading ? "default" : "pointer",
-            }}
-            {...additionalProps}
-          >
-            <Group mb="xs" justify="space-between">
-              <Text fw={600}>{remote.name}</Text>
-              <Badge variant="light" color={"gray"}>
-                {remote.kind}
-              </Badge>
-            </Group>
-
-            <Text>{remote.description}</Text>
-          </Card>
-        );
-      })}
-    </Box>
+              <Text>{remote.description}</Text>
+            </Card>
+          );
+        })}
+      </Box>
+    </Modal>
   );
 }
 

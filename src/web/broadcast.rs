@@ -1,3 +1,5 @@
+use crate::web::event::EventKind;
+
 use actix_web_lab::sse::{Data, Event, Sse};
 use actix_web_lab::util::InfallibleStream;
 use chrono::Utc;
@@ -90,7 +92,9 @@ impl From<BroadcastEvent> for Event {
         match value {
             // The data of the ping event contains the current UTC timestamp in milliseconds such that
             // the client can display some sort of latency to the server.
-            BroadcastEvent::Ping => Event::Data(Data::new(Utc::now().timestamp_millis().to_string()).event("ping")),
+            BroadcastEvent::Ping => {
+                Event::Data(Data::new(Utc::now().timestamp_millis().to_string()).event(EventKind::Ping.to_string()))
+            }
         }
     }
 }

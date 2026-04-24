@@ -1,7 +1,6 @@
-use crate::{
-    config::{Config, MavlinkAddress, RemoteComputerConfig},
-    mavlink::{MavlinkError, MavlinkSender},
-};
+use crate::config::{Config, MavlinkAddress, RemoteComputerConfig};
+use crate::mavlink::{MavlinkError, MavlinkSender};
+
 use asteria_messages::{
     Message,
     datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType},
@@ -10,6 +9,8 @@ use mavio::Dialect;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::sync::{RwLock, mpsc::UnboundedSender};
 use tokio_util::sync::CancellationToken;
+
+pub mod config;
 
 pub type Remotes = HashMap<String, Arc<RwLock<RemoteComputer>>>;
 

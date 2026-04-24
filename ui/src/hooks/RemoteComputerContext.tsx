@@ -1,21 +1,26 @@
 import {
-  Pss,
+  EventKind,
   RemoteComputerInfo,
-  StateMachine,
   useActiveRemote,
   usePss,
   useRemotes,
   useStateMachine,
+  OptionalResultStateMachine,
+  PssDiagrams,
+  StateMachine,
+  Pss,
 } from "@asteria/mission-control-client";
 import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type PropsWithChildren,
 } from "react";
 import { useEvent } from "@asteria/hooks/EventContext";
 import { notifications } from "@mantine/notifications";
+import { useListState } from "@mantine/hooks";
 
 interface RemoteComputerContextDefinition {
   availableRemoteComputers: Array<RemoteComputerInfo>;
@@ -23,8 +28,12 @@ interface RemoteComputerContextDefinition {
   isRemoteComputerLoading: boolean;
   stateMachine: StateMachine | null;
   isStateMachineLoading: boolean;
-  pss: Record<string, Pss> | null;
+  rocketPss: Pss | null;
+  rfsPss: Pss | null;
   isPssLoading: boolean;
+  errors: Array<string>;
+  dismissError: (idx: number) => void;
+  dismissAllErrors: () => void;
 }
 
 const defaultValue: RemoteComputerContextDefinition = {
@@ -33,8 +42,12 @@ const defaultValue: RemoteComputerContextDefinition = {
   isRemoteComputerLoading: false,
   stateMachine: null,
   isStateMachineLoading: false,
-  pss: null,
+  rocketPss: null,
+  rfsPss: null,
   isPssLoading: false,
+  errors: [],
+  dismissError: () => {},
+  dismissAllErrors: () => {},
 };
 
 const RemoteComputerContext =
@@ -42,32 +55,48 @@ const RemoteComputerContext =
 
 export function RemoteComputerProvider(props: PropsWithChildren) {
   const remotes = useRemotes();
-  const active = useActiveRemote({ query: { retry: false } });
-  const stateMachine = useStateMachine({ query: { retry: false } });
-  const pss = usePss({ query: { retry: false } });
+  const remotesRef = useRef<Array<RemoteComputerInfo>>([]);
+  const {
+    data: activeData,
+    isLoading: isRemoteComputerLoading,
+    refetch: refetchActive,
+  } = useActiveRemote({ query: { retry: false } });
+  const { data: stateMachineData, isLoading: isStateMachineLoading } =
+    useStateMachine({ query: { retry: false } });
+  const { data: pssData, isLoading: isPssLoading } = usePss({
+    query: { retry: false },
+  });
+
+  const [errors, errorHandler] = useListState<string>([]);
 
   const [currentActive, setCurrentActive] = useState<RemoteComputerInfo | null>(
     null,
   );
-  const [currentStateMachine, setCurrentStateMachine] =
-    useState<StateMachine | null>(null);
-  const [currentPss, setCurrentPss] = useState<Record<string, Pss> | null>(
-    null,
-  );
+  const [stateMachine, setStateMachine] = useState<StateMachine | null>(null);
+  const [rocketPss, setRocketPss] = useState<Pss | null>(null);
+  const [rfsPss, setRfsPss] = useState<Pss | null>(null);
 
   useEffect(() => {
-    setCurrentActive(active.data || null);
-  }, [active.data]);
+    remotesRef.current = remotes.data || [];
+  }, [remotes.data]);
 
   useEffect(() => {
-    setCurrentStateMachine(stateMachine.data || null);
-  }, [stateMachine.data]);
+    if (currentActive && activeData && activeData != currentActive) {
+      // Clear the errors from the old remote computer.
+      errorHandler.setState([]);
+    }
+    setCurrentActive(activeData || null);
+  }, [activeData]);
 
   useEffect(() => {
-    setCurrentPss(pss.data || null);
-  }, [pss.data]);
+    updateStateMachine(stateMachineData || null);
+  }, [stateMachineData]);
 
-  useEvent<string>("remote-change", (event) => {
+  useEffect(() => {
+    updatePss(pssData || null);
+  }, [pssData]);
+
+  useEvent<string>(EventKind.REMOTE, (event) => {
     const newActive = event.data;
 
     if (!newActive || newActive == "null") {
@@ -78,31 +107,68 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
       });
     }
 
-    const remote = remotes?.data?.find((rc) => rc.name == newActive);
+    const remote = remotesRef.current.find((rc) => rc.name == newActive);
     setCurrentActive(remote || null);
-    active.refetch();
+    // Clear the errors from the old remote computer.
+    errorHandler.setState([]);
+    refetchActive();
   });
 
-  useEvent<string>("state-machine-change", (event) => {
+  useEvent<string>(EventKind.STATE_MACHINE, (event) => {
     const stateMachineJson = JSON.parse(event.data);
-    setCurrentStateMachine(stateMachineJson as StateMachine | null);
+    updateStateMachine(stateMachineJson as OptionalResultStateMachine | null);
   });
 
-  useEvent<string>("pss-change", (event) => {
+  useEvent<string>(EventKind.PSS, (event) => {
     const pssJson = JSON.parse(event.data);
-    setCurrentPss(pssJson as Record<string, Pss> | null);
+    updatePss(pssJson as PssDiagrams | null);
   });
+
+  const updateStateMachine = (result: OptionalResultStateMachine | null) => {
+    if (!result || result.kind == "none") return setStateMachine(null);
+
+    if (result.kind == "some") setStateMachine(result.value);
+    else if (result.kind == "error") errorHandler.append(result.value);
+  };
+
+  const updatePss = (diagrams: PssDiagrams | null) => {
+    if (!diagrams) {
+      setRocketPss(null);
+      setRfsPss(null);
+      return;
+    }
+
+    const { rocket, rfs } = diagrams;
+
+    if (rocket.kind == "some") setRocketPss(rocket.value);
+    else if (rocket.kind == "error") errorHandler.append(rocket.value);
+
+    if (rfs.kind == "some") setRfsPss(rfs.value);
+    else if (rfs.kind == "error") errorHandler.append(rfs.value);
+  };
+
+  /**
+   * Dismiss the error at a given index.
+   * @param idx index of the error
+   */
+  const dismissError = (idx: number) => {
+    errorHandler.remove(idx);
+  };
 
   return (
     <RemoteComputerContext.Provider
       value={{
         availableRemoteComputers: remotes.data || [],
         remoteComputer: currentActive,
-        isRemoteComputerLoading: active.isLoading,
-        stateMachine: currentStateMachine,
-        isStateMachineLoading: stateMachine.isLoading,
-        pss: currentPss,
-        isPssLoading: pss.isLoading,
+        isRemoteComputerLoading,
+        stateMachine,
+        isStateMachineLoading,
+        rocketPss,
+        rfsPss,
+        isPssLoading,
+        errors,
+        dismissError,
+        dismissAllErrors: () => errorHandler.setState([]),
       }}
     >
       {props.children}
@@ -115,7 +181,10 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
  * currently active.
  * @returns information about the currently active remote computer
  */
-export function useRemoteComputer(): RemoteComputerContextDefinition {
+export function useRemoteComputer(): Omit<
+  RemoteComputerContextDefinition,
+  "errors" | "dismissError" | "dismissAllErrors"
+> {
   const context = useContext(RemoteComputerContext);
   if (!context) {
     throw new Error(
@@ -124,4 +193,26 @@ export function useRemoteComputer(): RemoteComputerContextDefinition {
   }
 
   return context;
+}
+
+/**
+ * Handle the errors of the active remote computer.
+ * @returns errors of the current remote computer
+ */
+export function useRemoteComputerErrors(): Pick<
+  RemoteComputerContextDefinition,
+  "errors" | "dismissError" | "dismissAllErrors"
+> {
+  const context = useContext(RemoteComputerContext);
+  if (!context) {
+    throw new Error(
+      "useRemoteComputerErrors must only be used within RemoteComputerProvider",
+    );
+  }
+
+  return {
+    errors: context.errors,
+    dismissError: context.dismissError,
+    dismissAllErrors: context.dismissAllErrors,
+  };
 }

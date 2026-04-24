@@ -1,29 +1,31 @@
-use crate::{
-    cli::Cli,
-    config::Config,
-    datatypes::NamedPssDatapointValue,
-    parser::statemachine::StateMachine,
-    remote::{RemoteComputer, Remotes},
-    web::{
-        broadcast::Broadcast,
-        state::{State, StateInstance},
-    },
+use crate::cli::Cli;
+use crate::config::Config;
+use crate::datatypes::NamedPssDatapointValue;
+use crate::parser::{pss::Pss, statemachine::StateMachine};
+use crate::remote::{RemoteComputer, Remotes, config::RemoteComputerConfig};
+use crate::web::event::Event;
+use crate::web::{
+    broadcast::Broadcast,
+    event::EventKind,
+    state::{State, StateInstance},
 };
+
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
-use actix_web_lab::sse::{Data as EventData, Event};
 use asteria_datapoint_information::datapoint::DatapointHolder;
 use asteria_messages::{Message, datapoints::dp_flight_computer};
 use clap::Parser;
 use env_logger::Env;
 use futures::{StreamExt, stream::FuturesUnordered};
 use gix::ThreadSafeRepository as Repository;
+use std::sync::LazyLock;
 use std::{
     path::{Path, PathBuf},
     process::exit,
     sync::{Arc, OnceLock},
     time::Duration,
 };
+use tokio::sync::Mutex;
 use tokio::sync::{RwLock, mpsc::UnboundedReceiver};
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
@@ -42,6 +44,13 @@ pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 pub static CONFIGS_REPOSITORY: OnceLock<Repository> = OnceLock::new();
 
+/// Global variable containing the name of the active remote, if one is
+/// currently active.
+/// This variable should only be read in as few places as possible because
+/// it's mainly used for invalidating config hashes from deactivated remote
+/// computers. This happens at 0.1 Hz.
+pub static ACTIVE_REMOTE: LazyLock<Arc<Mutex<Option<String>>>> = LazyLock::new(|| Arc::new(Mutex::new(None)));
+
 /// Interval at which a MavLink heartbeat message should be sent to the active remote.
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -53,9 +62,9 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
         version = env!("GIT_VERSION")
     ),
     components(
-        // Manually add this type to the OpenAPI schema since we have no endpoint
-        // using/returning this type. It's only broadcast through SSE.
-        schemas(NamedPssDatapointValue)
+        // Manually add those types to the OpenAPI schema because they not directly
+        // exposed through endpoints.
+        schemas(EventKind, NamedPssDatapointValue, StateMachine, Pss)
     )
 )]
 struct ApiDoc;
@@ -172,9 +181,9 @@ fn start_heartbeat(state: StateInstance) {
 }
 
 /// Start the thread which handles the incoming MavLink messages.
-/// - Every message is proxied in JSON serialized form through SSE with the `mavlink-message` event
+/// - Every message is proxied in JSON serialized form through SSE with the `MAVLINK_MESSAGE` event
 /// - If the message contains any PSS datapoints, the datapoint values are broadcast in JSON serialized form
-///   through SEE with the `pss-data` event.
+///   through SEE with the `PSS_DATA` event.
 /// - If the message contains a new config hash, the state machine and PSS are updated according to the new config
 fn start_mavlink_message_handler(
     mut msg_rx: UnboundedReceiver<Message>,
@@ -183,40 +192,16 @@ fn start_mavlink_message_handler(
     state: StateInstance,
 ) {
     tokio::spawn(async move {
-        let mut config_hash = Option::<[u8; 5]>::None;
-
-        // FIXME: We need to somehow clear this `config_hash` cache when the active remote computer changes.
         while let Some(message) = msg_rx.recv().await {
-            if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash)) = &message
-                && config_hash.is_none_or(|old_hash| old_hash != hash.hash)
-            {
-                // We received a config hash which is not the same as the previously received hash.
-                // We do this check here because the config hash is transmitted at a high interval
-                // and we don't want to always look up the same hash from the configs repository.
-
-                config_hash = Some(hash.hash);
+            if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash)) = &message {
                 handle_config_hash_message(hash.hash, &config.configs_repository_path, &state).await;
             }
 
-            let mut events = Vec::new();
+            let datapoint_events =
+                message.get_datapoint_values().into_iter().map(|value| Event::PssData(value.into())).collect::<Vec<_>>();
 
-            let datapoint_events = message
-                .get_datapoint_values()
-                .into_iter()
-                .filter_map(|value| match EventData::new_json(NamedPssDatapointValue::from(value)) {
-                    Ok(data) => Some(Event::Data(data.event("pss-data"))),
-                    Err(err) => {
-                        log::warn!("Unable to serialize PSS datapoint value: {err}");
-                        None
-                    }
-                })
-                .collect::<Vec<_>>();
+            let mut events = vec![Event::MavlinkMessage(message)];
             events.extend(datapoint_events);
-
-            match EventData::new_json(message) {
-                Ok(data) => events.push(Event::Data(data.event("mavlink-message"))),
-                Err(err) => log::warn!("Unable to serialize mavlink message to json: {err}"),
-            };
 
             if !events.is_empty() {
                 let broadcast = broadcast.clone();
@@ -232,6 +217,7 @@ fn start_mavlink_message_handler(
 
 async fn handle_config_hash_message(hash: [u8; 5], configs_repository_path: &Path, state: &StateInstance) {
     let repository = CONFIGS_REPOSITORY.get().unwrap().to_thread_local();
+    log::debug!("Looking up config file with hash {}", String::from_utf8_lossy(&hash));
 
     let bytes = {
         let Ok(object_id) = repository.rev_parse_single(&hash) else {
@@ -247,7 +233,13 @@ async fn handle_config_hash_message(hash: [u8; 5], configs_repository_path: &Pat
         blob.data.clone()
     };
 
-    let state_machine = StateMachine::new(configs_repository_path, &bytes);
+    let rc_config = match toml::from_slice::<RemoteComputerConfig>(&bytes) {
+        Ok(config) => config,
+        Err(err) => return log::error!("Remote computer config is not valid: {err}"),
+    };
+
+    let state_machine = StateMachine::new(&rc_config, configs_repository_path);
+    // TODO: Also parse PSS configurations here.
 
     let mut state_guard = state.write().await;
     state_guard.set_state_machine(Some(state_machine)).await;

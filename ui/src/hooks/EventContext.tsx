@@ -1,4 +1,5 @@
 import { useId } from "@mantine/hooks";
+import { EventKind } from "@asteria/mission-control-client";
 import {
   createContext,
   useContext,
@@ -73,7 +74,7 @@ export function EventProvider(props: PropsWithChildren) {
       console.log("Successfully connected to events!");
     });
 
-    eventSource.addEventListener("ping", (data) => {
+    eventSource.addEventListener(EventKind.PING, (data) => {
       const timestamp = new Date(parseInt(data.data));
       const now = new Date();
       setLatency(now.getTime() - timestamp.getTime());

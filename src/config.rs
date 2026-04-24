@@ -1,4 +1,5 @@
 use crate::CONFIG_PATH;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{
@@ -59,16 +60,10 @@ pub struct RemoteComputerConfig {
     /// over MavLink.
     #[serde(alias = "mavlink")]
     pub mavlink_address: MavlinkAddress,
-    /// Configuration for establishing a SSH connection
-    /// to the remote computer.
-    #[expect(unused)]
-    pub ssh: SshConfig,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct MavlinkConfig {
-    /// Address under which the MavLink router is available.
-    // pub address: MavlinkAddress,
     /// System id which should be used by the backend when sending messages
     pub system_id: u8,
 }
@@ -80,38 +75,6 @@ pub enum MavlinkAddress {
     Tcp { remote: String },
     /// Path to a serial device together with the baud rate used
     Serial { path: String, baud_rate: u32 },
-}
-
-#[derive(Debug, Deserialize, JsonSchema, Clone)]
-#[expect(unused)]
-pub struct SshConfig {
-    /// Host name of the remote computer.
-    pub host: String,
-    /// Port on which the SSH daemon is running on
-    /// the remote computer.
-    pub port: Option<u16>,
-    /// Name of the user as which the connection should
-    /// be attempted.
-    pub user: Option<String>,
-    /// Authentication to use for the SSH connection.
-    pub authentication: SshAuthentication,
-}
-
-#[derive(Debug, Deserialize, JsonSchema, Clone)]
-#[serde(tag = "type", rename_all = "lowercase")]
-#[expect(unused)]
-pub enum SshAuthentication {
-    /// Use password authentication.
-    Password { password: String },
-    /// Use the public key at the specified path for public-key authentication.
-    PublicKey {
-        /// **Important**: If this path is relative, it needs to be relative to the location
-        ///                of the config file and will be joined onto the config file path.
-        #[serde(deserialize_with = "deserialize_relative_path")]
-        key_path: PathBuf,
-    },
-    /// Use passwordless authentication.
-    None,
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

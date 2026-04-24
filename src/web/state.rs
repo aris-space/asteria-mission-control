@@ -1,15 +1,14 @@
-use crate::{
-    parser::{
-        pss::{Pss, PssError},
-        statemachine::{StateMachine, StateMachineError},
-    },
-    remote::{RemoteComputer, Remotes},
-    web::{self, broadcast::Broadcast},
+use crate::ACTIVE_REMOTE;
+use crate::parser::{pss::*, statemachine::*};
+use crate::remote::{RemoteComputer, Remotes};
+use crate::web::{
+    broadcast::Broadcast,
+    datatypes::{OptionalResult, PssDiagrams},
+    event::Event,
 };
-use futures::stream::FuturesUnordered;
-use std::{collections::HashMap, sync::Arc};
+
+use std::sync::Arc;
 use tokio::sync::RwLock;
-use tokio_stream::StreamExt;
 use tokio_util::sync::CancellationToken;
 
 pub type StateInstance = Arc<RwLock<State>>;
@@ -24,29 +23,39 @@ pub enum StateError {
     NoActiveRemote,
 }
 
-pub type RemoteStateMachine = Result<StateMachine, StateMachineError>;
-pub type RemotePss = HashMap<String, Result<Pss, PssError>>;
-
 pub struct State {
-    remotes: Arc<Remotes>,
+    /// The name of the active remote together with a cancellation token to
+    /// stop the active remote. [`None`] if no remote is currently active.
     active_remote: Option<(String, CancellationToken)>,
-    state_machine: Option<RemoteStateMachine>,
-    pss: Option<RemotePss>,
+    /// The state machine of the active remote. [`None`] if no remote is currently
+    /// active, or the config of the active remote hasn't been received.
+    state_machine: OptionalResult<StateMachine>,
+    pss: PssDiagrams,
+
+    remotes: Arc<Remotes>,
     broadcast: Arc<Broadcast>,
 }
 
 impl State {
     pub fn new(remotes: Arc<Remotes>, broadcast: Arc<Broadcast>) -> StateInstance {
-        let instance = Self { remotes, active_remote: None, state_machine: None, pss: None, broadcast };
+        let instance = Self {
+            remotes,
+            active_remote: None,
+            state_machine: OptionalResult::None,
+            pss: PssDiagrams::default(),
+            broadcast,
+        };
         Arc::new(RwLock::new(instance))
     }
 
+    /// Get the name of the active remote together with a reference to its lock.
     pub fn get_active_remote(&self) -> Result<(&String, Arc<RwLock<RemoteComputer>>), StateError> {
         let (active_remote_name, _) = self.active_remote.as_ref().ok_or(StateError::NoActiveRemote)?;
         let remote = self.remotes.get(active_remote_name).expect("Active remote name should exist").clone();
         Ok((active_remote_name, remote))
     }
 
+    /// Change the active remote to the specified remote.
     pub async fn set_active_remote(&mut self, name: &String) -> Result<Arc<RwLock<RemoteComputer>>, StateError> {
         if !self.remotes.contains_key(name) {
             return Err(StateError::RemoteNotFound);
@@ -62,14 +71,19 @@ impl State {
         // We ensured that the remote exists at function entry. Since we never add/remove any remotes
         // during runtime, we can expect that this remote still exists here.
         let remote = self.remotes.get(name).expect("Remotes should not change").clone();
+
         log::info!("Activating remote '{name}'");
         let token = remote.write().await.activate().expect("Remote should not already be active");
+
+        // Update the global active remote.
+        ACTIVE_REMOTE.lock().await.replace(name.clone());
 
         self.active_remote = Some((name.clone(), token));
 
         Ok(remote)
     }
 
+    /// Deactivate the active remote.
     pub async fn remove_active_remote(&mut self) -> Result<(), StateError> {
         let (old_active, token) = self.active_remote.take().ok_or(StateError::NoActiveRemote)?;
         let remote = self.remotes.get(&old_active).expect("Active remote name should exist");
@@ -81,53 +95,35 @@ impl State {
         token.cancel();
         remote.write().await.deactivate().expect("Remote should be active");
 
-        self.set_state_machine(None).await;
-        self.set_pss(None).await;
+        // Clear the global active remote.
+        ACTIVE_REMOTE.lock().await.take();
+
+        self.set_state_machine(OptionalResult::None).await;
+        self.set_pss((OptionalResult::None, OptionalResult::None)).await;
 
         Ok(())
     }
 
-    pub async fn set_state_machine(&mut self, state_machine: Option<RemoteStateMachine>) {
-        self.state_machine = state_machine;
-        match &self.state_machine {
-            Some(Ok(state_machine)) => self.broadcast.broadcast(web::Event::StateMachineChange(Some(state_machine.clone()))),
-            Some(Err(err)) => {
-                self.broadcast.broadcast(web::Event::StateError(format!("Unable to parse state machine: {err}")))
-            }
-            None => self.broadcast.broadcast(web::Event::StateMachineChange(None)),
+    pub async fn set_state_machine(&mut self, state_machine: impl Into<OptionalResult<StateMachine>>) {
+        let new_state_machine = state_machine.into();
+        if self.state_machine != new_state_machine {
+            // We only update the state machine if it is different from the
+            // currently active one.
+            self.broadcast.broadcast(Event::StateMachine(new_state_machine.clone())).await;
+            self.state_machine = new_state_machine;
         }
-        .await;
     }
 
-    pub fn get_state_machine(&self) -> &Option<RemoteStateMachine> {
+    pub fn get_state_machine(&self) -> &OptionalResult<StateMachine> {
         &self.state_machine
     }
 
-    pub async fn set_pss(&mut self, pss: Option<RemotePss>) {
-        self.pss = pss;
-        let Some(pss) = &self.pss else { return self.broadcast.broadcast(web::Event::PssChange(None)).await };
-
-        let mut errors = Vec::new();
-        let valid_pss = pss
-            .iter()
-            .filter_map(|(key, pss)| match pss {
-                Ok(pss) => Some((key.clone(), pss.clone())),
-                Err(err) => {
-                    errors.push(err);
-                    None
-                }
-            })
-            .collect::<HashMap<_, _>>();
-
-        FuturesUnordered::from_iter(
-            errors.iter().map(|err| self.broadcast.broadcast(web::Event::StateError(format!("Unable to parse PSS: {err}")))),
-        )
-        .collect::<Vec<_>>()
-        .await;
-        self.broadcast.broadcast(web::Event::PssChange(Some(valid_pss))).await
+    pub async fn set_pss(&mut self, pss: (impl Into<OptionalResult<Pss>>, impl Into<OptionalResult<Pss>>)) {
+        self.pss = PssDiagrams { rocket: pss.0.into(), rfs: pss.1.into() };
+        self.broadcast.broadcast(Event::Pss(self.pss.clone())).await;
     }
 
-    pub fn get_pss(&self) -> &Option<RemotePss> {
+    pub fn get_pss(&self) -> &PssDiagrams {
         &self.pss
     }
 }

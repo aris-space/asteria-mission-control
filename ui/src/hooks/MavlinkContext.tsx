@@ -6,7 +6,10 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
-import { Message as MavlinkMessage } from "@asteria/mission-control-client";
+import {
+  EventKind,
+  Message as MavlinkMessage,
+} from "@asteria/mission-control-client";
 import { useId } from "@mantine/hooks";
 import { useEvent } from "@asteria/hooks/EventContext";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
@@ -43,7 +46,7 @@ export function MavlinkProvider(props: PropsWithChildren) {
   >({});
   const lastMessageTimestamp = useRef<number>(NaN);
 
-  useEvent<string>("mavlink-message", (event) => {
+  useEvent<string>(EventKind.MAVLINK_MESSAGE, (event) => {
     lastMessageTimestamp.current = Date.now();
     const mavlinkMessage = JSON.parse(event.data) as MavlinkMessage;
     const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;

@@ -1,4 +1,6 @@
-use crate::parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig};
+use crate::parser::{cut_diagram_xml, parse_diagram_xml};
+use crate::remote::config::RemoteComputerConfig;
+
 use html_parser::Dom;
 use serde::Serialize;
 use std::{
@@ -8,15 +10,11 @@ use std::{
 };
 use utoipa::ToSchema;
 
-pub mod config;
-
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineError {
-    #[error("Error whilst deserializing state machine config: {0}")]
-    ConfigParse(toml::de::Error),
     #[error("Error whilst reading state machine diagram at '{0}': {1}")]
     DiagramRead(String, std::io::Error),
-    #[error("State machine config references the following undefined states: {0:?}")]
+    #[error("Remote computer config references the following undefined states: {0:?}")]
     ConfigMissingStates(Vec<String>),
     #[error("Error whilst parsing state machine diagram: {0}")]
     DiagramParse(quick_xml::de::DeError),
@@ -24,12 +22,12 @@ pub enum StateMachineError {
     DiagramNodeParse(html_parser::Error),
     #[error("State machine diagram contains duplicate state definitions for the following states: {0:#?}")]
     DiagramDuplicateStates(Vec<String>),
-    #[error("State machine diagram config references the following states which are missing in the diagram: {0:#?}")]
+    #[error("Remote computer config references the following states which are missing in the diagram: {0:#?}")]
     DiagramMissingStates(Vec<String>),
 }
 
 /// Representation of a state machine diagram.
-#[derive(Debug, Serialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, ToSchema, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct StateMachine {
     /// State machine diagram SVG without the drawio XML content.
@@ -44,8 +42,7 @@ pub struct StateMachine {
 }
 
 impl StateMachine {
-    pub fn new(configs_repository_path: &Path, rc_config_bytes: &[u8]) -> Result<Self, StateMachineError> {
-        let rc_config = toml::from_slice::<RemoteComputerConfig>(rc_config_bytes).map_err(StateMachineError::ConfigParse)?;
+    pub fn new(rc_config: &RemoteComputerConfig, configs_repository_path: &Path) -> Result<Self, StateMachineError> {
         let raw_diagram_path = configs_repository_path.join(&rc_config.state_machine.diagram_path);
         let diagram_path = match fs::canonicalize(&raw_diagram_path) {
             Ok(path) => path,
@@ -140,7 +137,7 @@ impl StateMachine {
                 match split.as_slice() {
                     [state_name @ .., postfix] if postfix.parse::<u32>().is_ok() => {
                         // State names with postfix (e.g. "Spiral 2") are okay to "miss" as long
-                        // as the same state without postifx exists.
+                        // as the same state without postfix exists.
                         !unique_state_labels.contains(&state_name.join(" "))
                     }
                     // State does not exist and it doesn't have a postfix. This is a real miss.
@@ -160,7 +157,12 @@ impl StateMachine {
         // this is needed as we also treat text boxes as possible nodes.
         state_nodes.retain(|label, _| rc_config.state_machine.states.contains_key(label));
 
-        Ok(Self { diagram: svg, manual_transitions, initial_state: rc_config.state_machine.initial_state, state_nodes })
+        Ok(Self {
+            diagram: svg,
+            manual_transitions,
+            initial_state: rc_config.state_machine.initial_state.clone(),
+            state_nodes,
+        })
     }
 }
 

@@ -480,6 +480,17 @@ export interface EnvironmentalData {
   temperature: Celsius;
 }
 
+export type EventKind = (typeof EventKind)[keyof typeof EventKind];
+
+export const EventKind = {
+  REMOTE: "REMOTE",
+  STATE_MACHINE: "STATE_MACHINE",
+  PSS: "PSS",
+  PSS_DATA: "PSS_DATA",
+  PING: "PING",
+  MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
+} as const;
+
 export type ExtendedDatapointInformation = DatapointInformation & {
   /** Alignment of the replacement element. */
   align: Alignment;
@@ -1150,11 +1161,6 @@ export interface ImuData {
   angularVelocityY: number;
   /** Angular velocity around body Z-axis in °/s. Range: ±2000 °/s */
   angularVelocityZ: number;
-}
-
-export interface Info {
-  /** Git version of the mission control server. */
-  version: string;
 }
 
 export interface MagnetometerData {
@@ -2338,6 +2344,50 @@ export interface NamedPssDatapointValue {
   value: number;
 }
 
+export type OptionalResultPss =
+  | {
+      kind: "some";
+      /** Representation of a PSS diagram. */
+      value: {
+        /** Map of all datapoints defined in the diagram together with information
+  collected at compile time and from the diagram about the datapoint. */
+        datapointInfo: { [key: string]: ExtendedDatapointInformation };
+        /** PSS diagram SVG without the drawio XML content. */
+        diagram: string;
+      };
+    }
+  | {
+      kind: "error";
+      value: string;
+    }
+  | {
+      kind: "none";
+    };
+
+export type OptionalResultStateMachine =
+  | {
+      kind: "some";
+      /** Representation of a state machine diagram. */
+      value: {
+        /** State machine diagram SVG without the drawio XML content. */
+        diagram: string;
+        /** Initial state of the state machine. */
+        initialState: string;
+        /** Allowed manual transitions for every state and whether they
+  are an abort transition. */
+        manualTransitions: { [key: string]: [string, boolean][] };
+        /** Mapping of state names to diagram cell ids. */
+        stateNodes: { [key: string]: string };
+      };
+    }
+  | {
+      kind: "error";
+      value: string;
+    }
+  | {
+      kind: "none";
+    };
+
 /**
  * Map of all datapoints defined in the diagram together with information
 collected at compile time and from the diagram about the datapoint.
@@ -2353,6 +2403,13 @@ export interface Pss {
   datapointInfo: PssDatapointInfo;
   /** PSS diagram SVG without the drawio XML content. */
   diagram: string;
+}
+
+export interface PssDiagrams {
+  /** The PSS of the remote filling station. */
+  rfs: OptionalResultPss;
+  /** The PSS of the rocket. */
+  rocket: OptionalResultPss;
 }
 
 export type RemoteComputerKind =
@@ -2371,6 +2428,11 @@ export interface RemoteComputerInfo {
   /** Name of the remote.
   This is used as the identifier. */
   name: string;
+}
+
+export interface ServerInfo {
+  /** Git version of the mission control server. */
+  version: string;
 }
 
 /**
@@ -2400,5 +2462,3 @@ export interface StateMachine {
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
 }
-
-export type Pss200 = { [key: string]: Pss };

@@ -15,11 +15,11 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
-  Info,
   Message,
-  Pss200,
+  OptionalResultStateMachine,
+  PssDiagrams,
   RemoteComputerInfo,
-  StateMachine,
+  ServerInfo,
 } from "./mission-control.schemas";
 
 import { customAxiosInstance } from "./api/mutator/custom-axios-instance";
@@ -34,7 +34,7 @@ export const info = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<Info>(
+  return customAxiosInstance<ServerInfo>(
     { url: `/api/`, method: "GET", signal },
     options,
   );
@@ -528,18 +528,16 @@ export const useSendMessage = <TError = ErrorType<string>, TContext = unknown>(
 
 /**
  * Since the active remote transmits the used configuration asynchronously, it could
-be that this endpoint returns [`ErrorNotFound`] despite there being an active remote. In
-that case, just retry calling the endpoint a bit later.
-
-If the endpoint returns [`ErrorInternalServerError`], the error body contains information about
-why the PSS parsing failed.
+be that the [`PssDiagrams`] are [`OptionalResult::None`] despite there being said
+PSS configured for the active remote. In that case, just retry calling the
+endpoint a bit later.
  * @summary Get the PSS configurations of the active remote.
  */
 export const pss = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<Pss200>(
+  return customAxiosInstance<PssDiagrams>(
     { url: `/api/pss`, method: "GET", signal },
     options,
   );
@@ -551,7 +549,7 @@ export const getPssQueryKey = () => {
 
 export const getPssQueryOptions = <
   TData = Awaited<ReturnType<typeof pss>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(options?: {
   query?: Partial<
     UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
@@ -574,11 +572,11 @@ export const getPssQueryOptions = <
 };
 
 export type PssQueryResult = NonNullable<Awaited<ReturnType<typeof pss>>>;
-export type PssQueryError = ErrorType<string>;
+export type PssQueryError = ErrorType<unknown>;
 
 export function usePss<
   TData = Awaited<ReturnType<typeof pss>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options: {
     query: Partial<
@@ -600,7 +598,7 @@ export function usePss<
 };
 export function usePss<
   TData = Awaited<ReturnType<typeof pss>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
@@ -622,7 +620,7 @@ export function usePss<
 };
 export function usePss<
   TData = Awaited<ReturnType<typeof pss>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
@@ -640,7 +638,7 @@ export function usePss<
 
 export function usePss<
   TData = Awaited<ReturnType<typeof pss>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
@@ -928,9 +926,9 @@ export function useActiveRemote<
 
 /**
  * **Events**:
-- `remote-change` with body containing `null`
-- `state-machine-change` with body containing `null`
-- `pss-change` with body containing `null`
+- `REMOTE` with body containing `null`.
+- `STATE_MACHINE` with body containing `null`.
+- `PSS` with body containing `null`.
  * @summary Deactivate the currently active remote computer.
  */
 export const deactivateActiveRemote = (
@@ -1016,12 +1014,10 @@ export const useDeactivateActiveRemote = <
 
 /**
  * **Events**:
-- `remote-change` with body containing the name of the newly activated remote
-- `mavlink-message` with body containing JSON-serialized MavLink [`Message`]
-- `state-machine-change` with body containing the JSON-serialized [`StateMachine`]
-- `pss-change` with body containing the JSON-serialized vector of [`Pss`]
-- `state-machine-error` with body containing state machine parse error string
-- `pss-error` with body containing PSS parse error string
+- `REMOTE` with body containing the name of the newly activated remote.
+- `MAVLINK_MESSAGE` with body containing JSON-serialized MavLink [`Message`].
+- `STATE_MACHINE` with body containing the JSON-serialized [`StateMachine`].
+- `PSS` with body containing the JSON-serialized vector of [`Pss`].
  * @summary Change the active remote computer.
  */
 export const changeActiveRemote = (
@@ -1110,18 +1106,15 @@ export const useChangeActiveRemote = <
 
 /**
  * Since the active remote transmits the used configuration asynchronously, it could
-be that this endpoint returns [`ErrorNotFound`] despite there being an active remote. In
-that case, just retry calling the endpoint a bit later.
-
-If the endpoint returns [`ErrorInternalServerError`], the error body contains information about
-why the state machine parsing failed.
+be that this endpoint returns [`OptionalResult::None`] despite there being an active remote
+with a state machine. In that case, just retry calling the endpoint a bit later.
  * @summary Get the state machine of the active remote.
  */
 export const stateMachine = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<StateMachine>(
+  return customAxiosInstance<OptionalResultStateMachine>(
     { url: `/api/state-machine`, method: "GET", signal },
     options,
   );
@@ -1133,7 +1126,7 @@ export const getStateMachineQueryKey = () => {
 
 export const getStateMachineQueryOptions = <
   TData = Awaited<ReturnType<typeof stateMachine>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(options?: {
   query?: Partial<
     UseQueryOptions<Awaited<ReturnType<typeof stateMachine>>, TError, TData>
@@ -1158,11 +1151,11 @@ export const getStateMachineQueryOptions = <
 export type StateMachineQueryResult = NonNullable<
   Awaited<ReturnType<typeof stateMachine>>
 >;
-export type StateMachineQueryError = ErrorType<string>;
+export type StateMachineQueryError = ErrorType<unknown>;
 
 export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options: {
     query: Partial<
@@ -1184,7 +1177,7 @@ export function useStateMachine<
 };
 export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
@@ -1206,7 +1199,7 @@ export function useStateMachine<
 };
 export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
@@ -1224,7 +1217,7 @@ export function useStateMachine<
 
 export function useStateMachine<
   TData = Awaited<ReturnType<typeof stateMachine>>,
-  TError = ErrorType<string>,
+  TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
