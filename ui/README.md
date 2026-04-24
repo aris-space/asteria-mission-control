@@ -10,6 +10,7 @@ Currently, the following views are available under the following paths:
 - **State machine**: The state machine view is available under `/statemachine`
 - **PSS**: The PSS view is available under `/pss`
 - **Health**: The health view is available under `/health`
+- **Telemetry**: The telemetry view is available under `/telemetry`
 
 ## Development setup
 
@@ -18,10 +19,10 @@ To start off, you need to clone the mission control repository locally.
 Everything UI related is located in the `ui` subdirectory. So every command in the following section needs to be run in the `ui` directory unless stated otherwise.
 
 ```bash
-# Install npm packages
+# Install npm packages.
 npm i
 
-# Start development server
+# Start development server.
 npm run dev
 ```
 
@@ -43,7 +44,7 @@ All our API clients are generated from the OpenAPI schema served by the backend.
 To generate the API client for the current backend version, you'll first need to have a local backend running on port `8899` (which is the default). Once you have a backend running, you can generate the API client using
 
 ```bash
-# Generate API client from OpenAPI schema which is served by local backend
+# Generate API client from OpenAPI schema which is served by local backend.
 npm run generate-client
 ```
 

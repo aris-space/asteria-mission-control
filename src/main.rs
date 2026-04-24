@@ -18,14 +18,12 @@ use clap::Parser;
 use env_logger::Env;
 use futures::{StreamExt, stream::FuturesUnordered};
 use gix::ThreadSafeRepository as Repository;
-use std::sync::LazyLock;
 use std::{
     path::{Path, PathBuf},
     process::exit,
     sync::{Arc, OnceLock},
     time::Duration,
 };
-use tokio::sync::Mutex;
 use tokio::sync::{RwLock, mpsc::UnboundedReceiver};
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
@@ -43,13 +41,6 @@ mod web;
 pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 pub static CONFIGS_REPOSITORY: OnceLock<Repository> = OnceLock::new();
-
-/// Global variable containing the name of the active remote, if one is
-/// currently active.
-/// This variable should only be read in as few places as possible because
-/// it's mainly used for invalidating config hashes from deactivated remote
-/// computers. This happens at 0.1 Hz.
-pub static ACTIVE_REMOTE: LazyLock<Arc<Mutex<Option<String>>>> = LazyLock::new(|| Arc::new(Mutex::new(None)));
 
 /// Interval at which a MavLink heartbeat message should be sent to the active remote.
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
@@ -181,10 +172,10 @@ fn start_heartbeat(state: StateInstance) {
 }
 
 /// Start the thread which handles the incoming MavLink messages.
-/// - Every message is proxied in JSON serialized form through SSE with the `MAVLINK_MESSAGE` event
+/// - Every message is proxied in JSON serialized form through SSE with the [`EventKind::MavlinkMessage`] event
 /// - If the message contains any PSS datapoints, the datapoint values are broadcast in JSON serialized form
-///   through SEE with the `PSS_DATA` event.
-/// - If the message contains a new config hash, the state machine and PSS are updated according to the new config
+///   through SEE with the [`EventKind::PssData`] event.
+/// - If the message contains a new config hash, the state machine and PSS are updated according to the new config.
 fn start_mavlink_message_handler(
     mut msg_rx: UnboundedReceiver<Message>,
     config: Arc<Config>,
@@ -215,6 +206,9 @@ fn start_mavlink_message_handler(
     });
 }
 
+/// Look up the config file in the configs repository at `configs_repository_path` and update
+/// the state machine and PSS in the [`StateInstance`] according to how they are defined in
+/// the config file.
 async fn handle_config_hash_message(hash: [u8; 5], configs_repository_path: &Path, state: &StateInstance) {
     let repository = CONFIGS_REPOSITORY.get().unwrap().to_thread_local();
     log::debug!("Looking up config file with hash {}", String::from_utf8_lossy(&hash));
@@ -239,7 +233,7 @@ async fn handle_config_hash_message(hash: [u8; 5], configs_repository_path: &Pat
     };
 
     let state_machine = StateMachine::new(&rc_config, configs_repository_path);
-    // TODO: Also parse PSS configurations here.
+    // TODO: Also parse PSS configurations here once they are ready.
 
     let mut state_guard = state.write().await;
     state_guard.set_state_machine(Some(state_machine)).await;

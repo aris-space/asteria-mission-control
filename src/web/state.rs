@@ -1,11 +1,6 @@
-use crate::ACTIVE_REMOTE;
 use crate::parser::{pss::*, statemachine::*};
 use crate::remote::{RemoteComputer, Remotes};
-use crate::web::{
-    broadcast::Broadcast,
-    datatypes::{OptionalResult, PssDiagrams},
-    event::Event,
-};
+use crate::web::{broadcast::Broadcast, datatypes::OptionalResult, event::Event};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -30,7 +25,10 @@ pub struct State {
     /// The state machine of the active remote. [`None`] if no remote is currently
     /// active, or the config of the active remote hasn't been received.
     state_machine: OptionalResult<StateMachine>,
-    pss: PssDiagrams,
+    /// The PSS configurations of the active remote.
+    /// The tuple contains the PSS configuration for the rocket
+    /// and the PSS configuration of the RFS.
+    pss: (OptionalResult<Pss>, OptionalResult<Pss>),
 
     remotes: Arc<Remotes>,
     broadcast: Arc<Broadcast>,
@@ -42,7 +40,7 @@ impl State {
             remotes,
             active_remote: None,
             state_machine: OptionalResult::None,
-            pss: PssDiagrams::default(),
+            pss: (OptionalResult::None, OptionalResult::None),
             broadcast,
         };
         Arc::new(RwLock::new(instance))
@@ -75,9 +73,6 @@ impl State {
         log::info!("Activating remote '{name}'");
         let token = remote.write().await.activate().expect("Remote should not already be active");
 
-        // Update the global active remote.
-        ACTIVE_REMOTE.lock().await.replace(name.clone());
-
         self.active_remote = Some((name.clone(), token));
 
         Ok(remote)
@@ -94,9 +89,6 @@ impl State {
         // deactivation can take quite some time.
         token.cancel();
         remote.write().await.deactivate().expect("Remote should be active");
-
-        // Clear the global active remote.
-        ACTIVE_REMOTE.lock().await.take();
 
         self.set_state_machine(OptionalResult::None).await;
         self.set_pss((OptionalResult::None, OptionalResult::None)).await;
@@ -119,11 +111,11 @@ impl State {
     }
 
     pub async fn set_pss(&mut self, pss: (impl Into<OptionalResult<Pss>>, impl Into<OptionalResult<Pss>>)) {
-        self.pss = PssDiagrams { rocket: pss.0.into(), rfs: pss.1.into() };
-        self.broadcast.broadcast(Event::Pss(self.pss.clone())).await;
+        self.pss = (pss.0.into(), pss.1.into());
+        self.broadcast.broadcast(Event::Pss(self.pss.clone().into())).await;
     }
 
-    pub fn get_pss(&self) -> &PssDiagrams {
+    pub fn get_pss(&self) -> &(OptionalResult<Pss>, OptionalResult<Pss>) {
         &self.pss
     }
 }

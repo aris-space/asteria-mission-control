@@ -1,7 +1,7 @@
 use crate::{
     datatypes::NamedPssDatapointValue,
     parser::statemachine::StateMachine,
-    web::datatypes::{OptionalResult, PssDiagrams},
+    web::datatypes::{OptionalResult, RemoteComputerPss},
 };
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
@@ -31,7 +31,7 @@ impl Display for EventKind {
 pub enum Event {
     Remote(Option<String>),
     StateMachine(OptionalResult<StateMachine>),
-    Pss(PssDiagrams),
+    Pss(RemoteComputerPss),
     PssData(NamedPssDatapointValue),
     MavlinkMessage(Message),
 }

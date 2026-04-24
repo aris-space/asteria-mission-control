@@ -21,11 +21,17 @@ pub struct RemoteComputerInfo {
 }
 
 #[derive(Serialize, Clone, utoipa::ToSchema, Default)]
-pub struct PssDiagrams {
+pub struct RemoteComputerPss {
     /// The PSS of the rocket.
     pub rocket: OptionalResult<Pss>,
     /// The PSS of the remote filling station.
     pub rfs: OptionalResult<Pss>,
+}
+
+impl From<(OptionalResult<Pss>, OptionalResult<Pss>)> for RemoteComputerPss {
+    fn from(value: (OptionalResult<Pss>, OptionalResult<Pss>)) -> Self {
+        Self { rocket: value.0, rfs: value.1 }
+    }
 }
 
 #[derive(Serialize, Clone, utoipa::ToSchema, Default, PartialEq)]

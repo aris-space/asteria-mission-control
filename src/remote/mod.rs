@@ -51,9 +51,9 @@ impl RemoteComputer {
 
     /// Activate the remote computer.
     ///
-    /// After activation, MavLink messages
-    /// After activation, MavLink messages from the remote computers are proxied into the global [`Broadcast`]
-    /// and MavLink heartbeat messages are sent to the remote computer.
+    /// After activation, MavLink messages from the remote computer are forwarded into the
+    /// global message channel. Additionally, we send periodical heartbeat messages to the
+    /// remote computer.
     pub fn activate(&mut self) -> Result<CancellationToken, RemoteComputerError> {
         if self.token.is_some() {
             return Err(RemoteComputerError::AlreadyActive);
@@ -100,8 +100,7 @@ impl RemoteComputer {
     pub fn deactivate(&mut self) -> Result<(), RemoteComputerError> {
         let token = self.token.take().ok_or(RemoteComputerError::NotActive)?;
         let _ = self.mavlink_sender.take().ok_or(RemoteComputerError::NotActive)?;
-        // Just the remote computer hasn't been cancelled using the token
-        // returned from [`activate`].
+        // Maybe the remote computer hasn't yet been canceled using the token returned from [`activate`].
         token.cancel();
         Ok(())
     }
@@ -113,7 +112,7 @@ impl RemoteComputer {
         let token = self.token.as_ref().ok_or(RemoteComputerError::NotActive)?;
         let mavlink_tx = self.mavlink_sender.as_ref().ok_or(RemoteComputerError::NotActive)?;
 
-        // TODO: I think here would be the right place to do retransmission of the message
+        // TODO: I think here would be the right place to do retransmission of the message.
 
         tokio::select! {
             result = mavlink_tx.send(message) => result.map_err(RemoteComputerError::MavLink),

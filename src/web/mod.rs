@@ -149,15 +149,15 @@ pub async fn state_machine(state: Data<StateInstance>) -> actix_web::Result<Json
 /// be that the [`PssDiagrams`] are [`OptionalResult::None`] despite there being said
 /// PSS configured for the active remote. In that case, just retry calling the
 /// endpoint a bit later.
-#[utoipa::path(responses((status = OK, body = PssDiagrams)))]
+#[utoipa::path(responses((status = OK, body = RemoteComputerPss)))]
 #[get("/pss")]
-pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<PssDiagrams>> {
+pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<RemoteComputerPss>> {
     let state = state.read().await;
 
     // Ensure that we have an active remote.
     state.get_active_remote().map_err(error::ErrorBadRequest)?;
 
-    Ok(Json(state.get_pss().clone()))
+    Ok(Json(state.get_pss().clone().into()))
 }
 
 /// Send JSON-serialized MavLink message to the active remote computer.
