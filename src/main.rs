@@ -195,12 +195,9 @@ fn start_mavlink_message_handler(
             events.extend(datapoint_events);
 
             if !events.is_empty() {
-                let broadcast = broadcast.clone();
-                tokio::spawn(async move {
-                    FuturesUnordered::from_iter(events.into_iter().map(|event| broadcast.broadcast(event)))
-                        .collect::<Vec<_>>()
-                        .await
-                });
+                FuturesUnordered::from_iter(events.into_iter().map(|event| broadcast.broadcast(event)))
+                    .collect::<Vec<_>>()
+                    .await;
             }
         }
     });
