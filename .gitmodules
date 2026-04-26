@@ -3,5 +3,4 @@
 	url = ../asteria-remote-computers.git
 [submodule "data-definitions"]
 	path = data-definitions
-	url = ../asteria-data-definitions
-	branch = "propagate-pss"
+	url = ../asteria-data-definitions.git
