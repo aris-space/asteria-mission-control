@@ -49,8 +49,8 @@ impl MavlinkSender {
     /// Send a mavlink message out.
     ///
     /// If no sender already exists, this lazily initializes a new sender.
-    pub async fn send(&self, message: Message) -> Result<usize, MavlinkError> {
-        let frame = self.endpoint.next_frame(&message).map_err(MavlinkError::Mavio)?;
+    pub async fn send(&self, message: &Message) -> Result<usize, MavlinkError> {
+        let frame = self.endpoint.next_frame(message).map_err(MavlinkError::Mavio)?;
         let mut sender_guard = self.sender.write().await;
 
         if let Some(sender) = sender_guard.as_mut() {

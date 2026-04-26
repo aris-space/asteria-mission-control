@@ -18,6 +18,16 @@ pub type Remotes = HashMap<String, Arc<RwLock<RemoteComputer>>>;
 /// message proxy should be attempted.
 pub const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 
+/// Amount of times a MavLink message should be sent
+/// to the remote computer to "compensate" for unreliable
+/// communication.
+/// This does not apply to heartbeat messages, those are never
+/// sent multiple times!
+pub const MAVLINK_RESEND_ATTEMPTS: usize = 5;
+
+/// Duration to wait between every message resend attempt.
+pub const MAVLINK_RESEND_TIMEOUT: Duration = Duration::from_secs(1);
+
 #[derive(Debug, thiserror::Error)]
 pub enum RemoteComputerError {
     #[error("The remote computer is already active")]
@@ -108,23 +118,38 @@ impl RemoteComputer {
     /// Send a MavLink message to the remote computer.
     ///
     /// Internally uses [`MavlinkSender::send`].
-    pub async fn send_mavlink_message(&self, message: Message) -> Result<usize, RemoteComputerError> {
-        let token = self.token.as_ref().ok_or(RemoteComputerError::NotActive)?;
-        let mavlink_tx = self.mavlink_sender.as_ref().ok_or(RemoteComputerError::NotActive)?;
+    pub async fn send_mavlink_message(&self, message: Message) -> Result<(), RemoteComputerError> {
+        let token = self.token.as_ref().ok_or(RemoteComputerError::NotActive)?.clone();
+        let mavlink_tx = self.mavlink_sender.as_ref().ok_or(RemoteComputerError::NotActive)?.clone();
 
-        // TODO: I think here would be the right place to do retransmission of the message.
+        // Don't attempt to send heartbeat messages multiple times.
+        let should_resend = !matches!(message, Message::SystemManagement(dp_system_management::Message::Heartbeat(..)));
 
-        tokio::select! {
-            result = mavlink_tx.send(message) => result.map_err(RemoteComputerError::MavLink),
-            // A stop signal was received because the remote computer got deactivated.
-            _ = token.cancelled() => Err(RemoteComputerError::Deactivated)
-        }
+        tokio::spawn(async move {
+            let mut attempts = 0;
+            while attempts < MAVLINK_RESEND_ATTEMPTS || attempts == 0 && !should_resend {
+                attempts += 1;
+                let result = tokio::select! {
+                    result = mavlink_tx.send(&message) => result.map_err(RemoteComputerError::MavLink),
+                    // A stop signal was received because the remote computer got deactivated.
+                    _ = token.cancelled() => Err(RemoteComputerError::Deactivated)
+                };
+
+                if let Err(err) = result {
+                    log::warn!("Unable to transmit MavLink message: {err}")
+                };
+
+                tokio::time::sleep(MAVLINK_RESEND_TIMEOUT).await
+            }
+        });
+
+        Ok(())
     }
 
     /// Shorthand function for sending a MavLink heartbeat message to the remote computer.
     ///
     /// It internally calls [`send_mavlink_message`] with a message containing a [`Heartbeat`].
-    pub async fn send_heartbeat_message(&self) -> Result<usize, RemoteComputerError> {
+    pub async fn send_heartbeat_message(&self) -> Result<(), RemoteComputerError> {
         let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
             type_: MavType::Gcs,
             mavlink_version: Message::version().unwrap_or_default(),
