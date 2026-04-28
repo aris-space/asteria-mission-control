@@ -485,7 +485,6 @@ export type EventKind = (typeof EventKind)[keyof typeof EventKind];
 export const EventKind = {
   REMOTE: "REMOTE",
   STATE_MACHINE: "STATE_MACHINE",
-  PSS: "PSS",
   PSS_DATA: "PSS_DATA",
   PING: "PING",
   MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
@@ -691,27 +690,29 @@ export interface FuelControlBoardStatus {
   thermocoupleStatus: SensorStatus;
 }
 
-export interface FuelControlBoardValveStates {
-  /** Fuel DPR Control loop state */
-  fssDpr: DPRValve;
-  /** Fuel Vent Valve state */
-  fssVntVlv: ValveState;
-  /** Pressurization Valve state */
-  przVntVlv: ValveState;
+export interface FuelTankPressure {
+  /** Filtered Fuel Tank pressure used as DPR control loop input in barg. */
+  fuelTankPressureFiltered: BarG;
+  /** Fuel Tank pressure sensor 1 in barg. */
+  fuelTankPressureSensor1: BarG;
+  /** Fuel Tank pressure sensor 2 in barg. */
+  fuelTankPressureSensor2: BarG;
 }
 
 /**
- * Pressurization Proportional Gain in [barg/ms]
-opening_time = kp * (target_pressure - current_pressure), in milliseconds
+ * The state of a valve that is normally open.
  */
-export type PressurizationGain = number;
+export type NormallyOpenValve =
+  (typeof NormallyOpenValve)[keyof typeof NormallyOpenValve];
+
+export const NormallyOpenValve = {
+  open: "open",
+  closed: "closed",
+} as const;
 
 export type FueldControlBoardMessage =
   | {
-      /** # `FuelControlBoardBuildInfo`
-  Firmware build metadata emitted by the Fuel Control Board.
-
-  ## Type
+      /** ## Type
   - `Periodic @ 0.2 Hz`
 
   ## Direction
@@ -727,10 +728,7 @@ export type FueldControlBoardMessage =
       type: "BuildInfo";
     }
   | {
-      /** # `FuelControlBoardStatus`
-  Periodic status message emitted by the Fuel Control Board.
-
-  ## Type
+      /** ## Type
   - `Periodic @ 1 Hz`
 
   ## Direction
@@ -746,10 +744,36 @@ export type FueldControlBoardMessage =
       type: "BoardStatus";
     }
   | {
-      /** # `FuelControlBoardValveStates`
-  Periodic status message emitted by the Fuel Control Board.
+      /** ## Type
+  - `Periodic @ 20 Hz`
 
-  ## Type
+  ## Direction
+  - **Emitted by:** `FuelControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports the pressure of the Pressurization Line (COPV).
+   */
+      content: BarG;
+      type: "PressurizationLinePressure";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `FuelControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports Fuel Tank Pressures.
+  These are mainly used as an input to the Control Loop running on the Fuel Control Board.
+   */
+      content: FuelTankPressure;
+      type: "FuelTankPressure";
+    }
+  | {
+      /** ## Type
   - `Periodic @ 5 Hz`
 
   ## Direction
@@ -757,62 +781,46 @@ export type FueldControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Communicates the Valve State of all Valves controlled by the Fuel Control Board, including the DPR control loop state and setpoint.
+  Communicates the DPR Valve State including setpoint.
 
   ## Reaction
   Receivers may log the data or use it for diagnostics and system health checks. */
-      content: FuelControlBoardValveStates;
-      type: "ValveStates";
+      content: DPRValve;
+      type: "FuelDprValveState";
     }
   | {
-      type: "FuelPressurizationCompleted";
-    }
-  | {
-      /** # `FuelPressurization`
-  Event message sent by the FC.
-
-  ## Type
-  - `Event`: sent by the FC to initiate pressurization on the FuelControlBoard
+      /** ## Type
+  - `Periodic @ 5 Hz`
 
   ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+  - **Emitted by:** `FuelControlBoard`
+  - **Received by:** `unspecified`
 
   ## Purpose
-  Pressurize the Fuel Tank to a desired setpoint
-
+  Communicates the Pressurization Valve State
   ## Reaction
-   */
-      content: BarG;
-      type: "FuelPressurization";
+  Receivers may log the data or use it for diagnostics and system health checks. */
+      content: NormallyOpenValve;
+      type: "PressurizationVentValveState";
     }
   | {
-      /** # `FuelPressurizationGain`
-  Event message sent by the FC.
-
-  ## Type
-  - `Event`: sent by the FC to configure the pressurization gain on the FuelControlBoard
+      /** ## Type
+  - `Periodic @ 5 Hz`
 
   ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+  - **Emitted by:** `FuelControlBoard`
+  - **Received by:** `unspecified`
 
   ## Purpose
-  Configure the Fuel Pressurization Gain
+  Communicates the Fuel Vent Valve State
 
   ## Reaction
-   */
-      content: PressurizationGain;
-      type: "FuelPressurizationGain";
+  Receivers may log the data or use it for diagnostics and system health checks. */
+      content: NormallyOpenValve;
+      type: "FuelVentValveState";
     }
   | {
-      type: "FuelPressurizationAbort";
-    }
-  | {
-      /** # `FuelDprConfigFC`
-  Event message sent by the FC.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the FC
 
   ## Direction
@@ -821,18 +829,14 @@ export type FueldControlBoardMessage =
 
   ## Purpose
   Set ETH Pressure Regulator configuration
-  Configures whether the control loop should be active, and what reference point (setpoint) it should assume.
 
   ## Reaction
   The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
       content: DPRValve;
-      type: "FuelDprConfigFC";
+      type: "FuelDprValveControlFC";
     }
   | {
-      /** # `PressurizationVentControlFC`
-  Event message sent by the FC.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the FC
 
   ## Direction
@@ -844,14 +848,11 @@ export type FueldControlBoardMessage =
 
   ## Reaction
   The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
-      content: ValveState;
-      type: "PressurizationVentControlFC";
+      content: NormallyOpenValve;
+      type: "PressurizationVentValveControlFC";
     }
   | {
-      /** # `FuelVentControlFC`
-  Event message sent by the FC.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the FC
 
   ## Direction
@@ -863,72 +864,11 @@ export type FueldControlBoardMessage =
 
   ## Reaction
   The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
-      content: ValveState;
-      type: "FuelVentControlFC";
+      content: NormallyOpenValve;
+      type: "FuelVentValveControlFC";
     }
   | {
-      /** # `FuelDprConfigECU`
-  Event message sent by the ECU.
-
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `FuelControlBoard`
-
-  ## Purpose
-  Set ETH Pressure Regulator configuration
-  Configures whether the control loop should be active, and what reference point (setpoint) it should assume.
-
-  ## Reaction
-  The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
-      content: DPRValve;
-      type: "FuelDprConfigECU";
-    }
-  | {
-      /** # `PressurizationVentControlECU`
-  Event message sent by the ECU.
-
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `FuelControlBoard`
-
-  ## Purpose
-  Sets the N2 Vent Valve to a certain state.
-
-  ## Reaction
-  The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
-      content: ValveState;
-      type: "PressurizationVentControlECU";
-    }
-  | {
-      /** # `FuelVentControlECU`
-  Event message sent by the ECU.
-
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `FuelControlBoard`
-
-  ## Purpose
-  Sets the Fuel Vent Valve to a certain state.
-
-  ## Reaction
-  The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
-      content: ValveState;
-      type: "FuelVentControlECU";
-    }
-  | {
-      /** # `FuelDprConfigRFS`
-  Event message sent by the RFS.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the RFS
 
   ## Direction
@@ -941,13 +881,10 @@ export type FueldControlBoardMessage =
   ## Reaction
   The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
       content: DPRValve;
-      type: "FuelDprConfigRFS";
+      type: "FuelDprValveControlRFS";
     }
   | {
-      /** # `PressurizationVentControlRFS`
-  Event message sent by the RFS.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the RFS
 
   ## Direction
@@ -959,14 +896,11 @@ export type FueldControlBoardMessage =
 
   ## Reaction
   The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
-      content: ValveState;
-      type: "PressurizationVentControlRFS";
+      content: NormallyOpenValve;
+      type: "PressurizationVentValveControlRFS";
     }
   | {
-      /** # `FuelVentControlRFS`
-  Event message sent by the RFS.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the RFS
 
   ## Direction
@@ -978,8 +912,8 @@ export type FueldControlBoardMessage =
 
   ## Reaction
   The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
-      content: ValveState;
-      type: "FuelVentControlRFS";
+      content: NormallyOpenValve;
+      type: "FuelVentValveControlRFS";
     };
 
 /**
@@ -2077,6 +2011,12 @@ export interface OxidizerControlBoardValveStates {
   ossVntVlv: ValveState;
 }
 
+/**
+ * Pressurization Proportional Gain in [barg/ms]
+opening_time = kp * (target_pressure - current_pressure), in milliseconds
+ */
+export type PressurizationGain = number;
+
 export type OxidizerControlBoardMessage =
   | {
       /** # `OxidizerControlBoardBuildInfo`
@@ -2344,26 +2284,6 @@ export interface NamedPssDatapointValue {
   value: number;
 }
 
-export type OptionalResultPss =
-  | {
-      kind: "some";
-      /** Representation of a PSS diagram. */
-      value: {
-        /** Map of all datapoints defined in the diagram together with information
-  collected at compile time and from the diagram about the datapoint. */
-        datapointInfo: { [key: string]: ExtendedDatapointInformation };
-        /** PSS diagram SVG without the drawio XML content. */
-        diagram: string;
-      };
-    }
-  | {
-      kind: "error";
-      value: string;
-    }
-  | {
-      kind: "none";
-    };
-
 export type OptionalResultStateMachine =
   | {
       kind: "some";
@@ -2403,13 +2323,6 @@ export interface Pss {
   datapointInfo: PssDatapointInfo;
   /** PSS diagram SVG without the drawio XML content. */
   diagram: string;
-}
-
-export interface PssDiagrams {
-  /** The PSS of the remote filling station. */
-  rfs: OptionalResultPss;
-  /** The PSS of the rocket. */
-  rocket: OptionalResultPss;
 }
 
 export type RemoteComputerKind =

@@ -17,7 +17,7 @@ import type {
 import type {
   Message,
   OptionalResultStateMachine,
-  PssDiagrams,
+  Pss,
   RemoteComputerInfo,
   ServerInfo,
 } from "./mission-control.schemas";
@@ -527,66 +527,62 @@ export const useSendMessage = <TError = ErrorType<string>, TContext = unknown>(
 };
 
 /**
- * Since the active remote transmits the used configuration asynchronously, it could
-be that the [`PssDiagrams`] are [`OptionalResult::None`] despite there being said
-PSS configured for the active remote. In that case, just retry calling the
-endpoint a bit later.
- * @summary Get the PSS configurations of the active remote.
+ * @summary Get the PSS diagram for the RFS.
  */
-export const pss = (
+export const rfsPss = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<PssDiagrams>(
-    { url: `/api/pss`, method: "GET", signal },
+  return customAxiosInstance<Pss>(
+    { url: `/api/pss/rfs`, method: "GET", signal },
     options,
   );
 };
 
-export const getPssQueryKey = () => {
-  return [`/api/pss`] as const;
+export const getRfsPssQueryKey = () => {
+  return [`/api/pss/rfs`] as const;
 };
 
-export const getPssQueryOptions = <
-  TData = Awaited<ReturnType<typeof pss>>,
+export const getRfsPssQueryOptions = <
+  TData = Awaited<ReturnType<typeof rfsPss>>,
   TError = ErrorType<unknown>,
 >(options?: {
   query?: Partial<
-    UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
+    UseQueryOptions<Awaited<ReturnType<typeof rfsPss>>, TError, TData>
   >;
   request?: SecondParameter<typeof customAxiosInstance>;
 }) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getPssQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getRfsPssQueryKey();
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof pss>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof rfsPss>>> = ({
     signal,
-  }) => pss(requestOptions, signal);
+  }) => rfsPss(requestOptions, signal);
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof pss>>,
+    Awaited<ReturnType<typeof rfsPss>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> };
 };
 
-export type PssQueryResult = NonNullable<Awaited<ReturnType<typeof pss>>>;
-export type PssQueryError = ErrorType<unknown>;
+export type RfsPssQueryResult = NonNullable<Awaited<ReturnType<typeof rfsPss>>>;
+export type RfsPssQueryError = ErrorType<unknown>;
 
-export function usePss<
-  TData = Awaited<ReturnType<typeof pss>>,
+export function useRfsPss<
+  TData = Awaited<ReturnType<typeof rfsPss>>,
   TError = ErrorType<unknown>,
 >(
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof rfsPss>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof pss>>,
+          Awaited<ReturnType<typeof rfsPss>>,
           TError,
-          Awaited<ReturnType<typeof pss>>
+          Awaited<ReturnType<typeof rfsPss>>
         >,
         "initialData"
       >;
@@ -596,19 +592,19 @@ export function usePss<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function usePss<
-  TData = Awaited<ReturnType<typeof pss>>,
+export function useRfsPss<
+  TData = Awaited<ReturnType<typeof rfsPss>>,
   TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof rfsPss>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof pss>>,
+          Awaited<ReturnType<typeof rfsPss>>,
           TError,
-          Awaited<ReturnType<typeof pss>>
+          Awaited<ReturnType<typeof rfsPss>>
         >,
         "initialData"
       >;
@@ -618,13 +614,13 @@ export function usePss<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 };
-export function usePss<
-  TData = Awaited<ReturnType<typeof pss>>,
+export function useRfsPss<
+  TData = Awaited<ReturnType<typeof rfsPss>>,
   TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof rfsPss>>, TError, TData>
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
@@ -633,16 +629,16 @@ export function usePss<
   queryKey: DataTag<QueryKey, TData, TError>;
 };
 /**
- * @summary Get the PSS configurations of the active remote.
+ * @summary Get the PSS diagram for the RFS.
  */
 
-export function usePss<
-  TData = Awaited<ReturnType<typeof pss>>,
+export function useRfsPss<
+  TData = Awaited<ReturnType<typeof rfsPss>>,
   TError = ErrorType<unknown>,
 >(
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof pss>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof rfsPss>>, TError, TData>
     >;
     request?: SecondParameter<typeof customAxiosInstance>;
   },
@@ -650,7 +646,139 @@ export function usePss<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
-  const queryOptions = getPssQueryOptions(options);
+  const queryOptions = getRfsPssQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the PSS diagram for the rocket.
+ */
+export const rocketPss = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<Pss>(
+    { url: `/api/pss/rocket`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getRocketPssQueryKey = () => {
+  return [`/api/pss/rocket`] as const;
+};
+
+export const getRocketPssQueryOptions = <
+  TData = Awaited<ReturnType<typeof rocketPss>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof rocketPss>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRocketPssQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof rocketPss>>> = ({
+    signal,
+  }) => rocketPss(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof rocketPss>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type RocketPssQueryResult = NonNullable<
+  Awaited<ReturnType<typeof rocketPss>>
+>;
+export type RocketPssQueryError = ErrorType<unknown>;
+
+export function useRocketPss<
+  TData = Awaited<ReturnType<typeof rocketPss>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof rocketPss>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof rocketPss>>,
+          TError,
+          Awaited<ReturnType<typeof rocketPss>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useRocketPss<
+  TData = Awaited<ReturnType<typeof rocketPss>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof rocketPss>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof rocketPss>>,
+          TError,
+          Awaited<ReturnType<typeof rocketPss>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useRocketPss<
+  TData = Awaited<ReturnType<typeof rocketPss>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof rocketPss>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the PSS diagram for the rocket.
+ */
+
+export function useRocketPss<
+  TData = Awaited<ReturnType<typeof rocketPss>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof rocketPss>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getRocketPssQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -928,7 +1056,6 @@ export function useActiveRemote<
  * **Events**:
 - `REMOTE` with body containing `null`.
 - `STATE_MACHINE` with body containing `null`.
-- `PSS` with body containing `null`.
  * @summary Deactivate the currently active remote computer.
  */
 export const deactivateActiveRemote = (
@@ -1017,7 +1144,6 @@ export const useDeactivateActiveRemote = <
 - `REMOTE` with body containing the name of the newly activated remote.
 - `MAVLINK_MESSAGE` with body containing JSON-serialized MavLink [`Message`].
 - `STATE_MACHINE` with body containing the JSON-serialized [`StateMachine`].
-- `PSS` with body containing the JSON-serialized vector of [`Pss`].
  * @summary Change the active remote computer.
  */
 export const changeActiveRemote = (

@@ -31,6 +31,8 @@ pub struct Config {
     /// Available remote computers for the mission control.
     #[serde(rename = "remote")]
     pub remotes: BTreeMap<String, RemoteComputerConfig>,
+    /// PSS diagram config.
+    pub pss: PssConfig,
 }
 
 impl Config {
@@ -77,6 +79,22 @@ pub enum MavlinkAddress {
     Tcp { remote: String },
     /// Path to a serial device together with the baud rate used
     Serial { path: String, baud_rate: u32 },
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct PssConfig {
+    /// Path to a PSS diagram for the rocket.
+    ///
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined onto the config file path.
+    #[serde(deserialize_with = "deserialize_relative_path", alias = "rocket_diagram")]
+    pub rocket_diagram_path: PathBuf,
+    /// Path to a PSS diagram for the RFS.
+    ///
+    /// **Important**: If this path is relative, it needs to be relative to the location
+    ///                of the config file and will be joined onto the config file path.
+    #[serde(deserialize_with = "deserialize_relative_path", alias = "rfs_diagram")]
+    pub rfs_diagram_path: PathBuf,
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

@@ -1,4 +1,6 @@
+use crate::PssDiagrams;
 use crate::config::Config;
+use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::web::{datatypes::*, event::Event, state::StateInstance};
 
@@ -85,7 +87,6 @@ pub async fn active_remote(
 /// **Events**:
 /// - `REMOTE` with body containing `null`.
 /// - `STATE_MACHINE` with body containing `null`.
-/// - `PSS` with body containing `null`.
 #[utoipa::path(responses((status = OK, body = ()), (status = BAD_REQUEST, body = String)))]
 #[delete("/remotes/active")]
 pub async fn deactivate_active_remote(
@@ -105,7 +106,6 @@ pub async fn deactivate_active_remote(
 /// - `REMOTE` with body containing the name of the newly activated remote.
 /// - `MAVLINK_MESSAGE` with body containing JSON-serialized MavLink [`Message`].
 /// - `STATE_MACHINE` with body containing the JSON-serialized [`StateMachine`].
-/// - `PSS` with body containing the JSON-serialized vector of [`Pss`].
 #[utoipa::path(responses((status = OK, body = RemoteComputerInfo, status = BAD_REQUEST, body = String)))]
 #[put("/remotes/active/{name}")]
 pub async fn change_active_remote(
@@ -143,21 +143,20 @@ pub async fn state_machine(state: Data<StateInstance>) -> actix_web::Result<Json
     Ok(Json(state.get_state_machine().clone()))
 }
 
-/// Get the PSS configurations of the active remote.
-///
-/// Since the active remote transmits the used configuration asynchronously, it could
-/// be that the [`PssDiagrams`] are [`OptionalResult::None`] despite there being said
-/// PSS configured for the active remote. In that case, just retry calling the
-/// endpoint a bit later.
-#[utoipa::path(responses((status = OK, body = RemoteComputerPss)))]
-#[get("/pss")]
-pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<RemoteComputerPss>> {
-    let state = state.read().await;
+/// Get the PSS diagram for the rocket.
+#[utoipa::path(responses((status = OK, body = Pss)))]
+#[get("/pss/rocket")]
+pub async fn rocket_pss(pss_diagrams: Data<PssDiagrams>) -> actix_web::Result<Json<Pss>> {
+    let (rocket_diagram, _) = &**pss_diagrams.as_ref();
+    Ok(Json(rocket_diagram.clone()))
+}
 
-    // Ensure that we have an active remote.
-    state.get_active_remote().map_err(error::ErrorBadRequest)?;
-
-    Ok(Json(state.get_pss().clone().into()))
+/// Get the PSS diagram for the RFS.
+#[utoipa::path(responses((status = OK, body = Pss)))]
+#[get("/pss/rfs")]
+pub async fn rfs_pss(pss_diagrams: Data<PssDiagrams>) -> actix_web::Result<Json<Pss>> {
+    let (_, rfs_diagram) = &**pss_diagrams.as_ref();
+    Ok(Json(rfs_diagram.clone()))
 }
 
 /// Send JSON-serialized MavLink message to the active remote computer.

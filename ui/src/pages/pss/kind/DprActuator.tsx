@@ -91,7 +91,7 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
         <NumberInput
           value={inputValue}
           onChange={setInputValue}
-          disabled={!active}
+          placeholder="Input"
           step={0.1}
           variant="unstyled"
           size="xs"
@@ -108,7 +108,7 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
       <Box style={{ zIndex: 1 }} />
       <Box
         onClick={() =>
-          onChange(!active, isNaN(value) ? lastValue.current : value)
+          onChange(!active, active ? NaN : Number(inputValue as string))
         }
         style={{
           position: "absolute",

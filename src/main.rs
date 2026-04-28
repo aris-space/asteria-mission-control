@@ -44,6 +44,9 @@ pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
 pub static CONFIGS_REPOSITORY: OnceLock<Repository> = OnceLock::new();
 
+/// Tuple containing the rocket and the RFS PSS diagrams.
+pub type PssDiagrams = Arc<(Pss, Pss)>;
+
 /// Interval at which a MavLink heartbeat message should be sent to the active remote.
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -94,6 +97,19 @@ async fn main() {
         log::info!("Using MavLink log file at '{}'", path.display());
     }
 
+    let pss_diagrams = match (Pss::new(&config.pss.rocket_diagram_path), Pss::new(&config.pss.rfs_diagram_path)) {
+        (Ok(rocket), Ok(rfs)) => Arc::new((rocket, rfs)),
+        (rocket_result, rfs_result) => {
+            if let Err(err) = rocket_result {
+                log::error!("Unable to parse rocket PSS diagram: {err}");
+            };
+            if let Err(err) = rfs_result {
+                log::error!("Unable to parse RFS PSS diagram: {err}")
+            };
+            exit(1)
+        }
+    };
+
     match gix::open(&config.configs_repository_path) {
         // We don't attempt to write to the OnceLock from anywhere else so we can be sure
         // that the OnceLock hasn't been initialized yet.
@@ -128,6 +144,7 @@ async fn main() {
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
             .app_data(Data::from(remotes.clone()))
+            .app_data(Data::new(pss_diagrams.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
@@ -165,7 +182,8 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::deactivate_active_remote)
         .service(web::change_active_remote)
         .service(web::state_machine)
-        .service(web::pss)
+        .service(web::rocket_pss)
+        .service(web::rfs_pss)
         .service(web::send_message);
 }
 

@@ -201,59 +201,47 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
+      type: "PressurizationLinePressure",
       hasContent: true,
     },
     {
-      type: "FuelPressurizationCompleted",
-      hasContent: false,
-    },
-    {
-      type: "FuelPressurization",
+      type: "FuelTankPressure",
       hasContent: true,
     },
     {
-      type: "FuelPressurizationGain",
+      type: "FuelDprValveState",
       hasContent: true,
     },
     {
-      type: "FuelPressurizationAbort",
-      hasContent: false,
-    },
-    {
-      type: "FuelDprConfigFC",
+      type: "PressurizationVentValveState",
       hasContent: true,
     },
     {
-      type: "PressurizationVentControlFC",
+      type: "FuelVentValveState",
       hasContent: true,
     },
     {
-      type: "FuelVentControlFC",
+      type: "FuelDprValveControlFC",
       hasContent: true,
     },
     {
-      type: "FuelDprConfigECU",
+      type: "PressurizationVentValveControlFC",
       hasContent: true,
     },
     {
-      type: "PressurizationVentControlECU",
+      type: "FuelVentValveControlFC",
       hasContent: true,
     },
     {
-      type: "FuelVentControlECU",
+      type: "FuelDprValveControlRFS",
       hasContent: true,
     },
     {
-      type: "FuelDprConfigRFS",
+      type: "PressurizationVentValveControlRFS",
       hasContent: true,
     },
     {
-      type: "PressurizationVentControlRFS",
-      hasContent: true,
-    },
-    {
-      type: "FuelVentControlRFS",
+      type: "FuelVentValveControlRFS",
       hasContent: true,
     },
   ],
