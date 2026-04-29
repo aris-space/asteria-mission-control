@@ -126,15 +126,11 @@ export type DPRValve =
 export type SensorKind =
   | {
       kind: "analog";
-      value: {
-        unit: string;
-      };
+      unit: string;
     }
   | {
+      default_enabled: boolean;
       kind: "digital";
-      value: {
-        default_enabled: boolean;
-      };
     };
 
 export type DatapointKind =

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   NumberInput,
@@ -28,15 +28,6 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
   const [inputValue, setInputValue] = useState<number | string>(value);
-  // We store the last value we received such that we can switch to "active" with
-  // a value.
-  // TODO: This is kinda flawed because what if we start in "inactive" state? Then we
-  // can never open again :/
-  const lastValue = useRef<number>(NaN);
-
-  useEffect(() => {
-    if (!isNaN(value)) lastValue.current = value;
-  }, [value]);
 
   return (
     <Paper
@@ -107,9 +98,13 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
       </Box>
       <Box style={{ zIndex: 1 }} />
       <Box
-        onClick={() =>
-          onChange(!active, active ? NaN : Number(inputValue as string))
-        }
+        onClick={() => {
+          // When deactivating the DPR, set the value of the setpoint input
+          // to the current value such that "spaming" activate-deactivate
+          // doesn't change the setpoint.
+          if (active) setInputValue(value);
+          onChange(!active, active ? NaN : Number(inputValue as string));
+        }}
         style={{
           position: "absolute",
           top: SLIDER_PADDING,

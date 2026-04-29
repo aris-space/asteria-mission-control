@@ -63,13 +63,12 @@ function DatapointKind({ kind, name, onChange }: DatapointKindProps) {
     case "sensor": {
       switch (kind.kind) {
         case "analog": {
-          const unit = kind.value.unit;
-          return <AnalogSensor value={value} unit={unit} />;
+          return <AnalogSensor value={value} unit={kind.unit} />;
         }
         case "digital":
           return (
             <DigitalSensor
-              defaultEnabled={kind.value.default_enabled}
+              defaultEnabled={kind.default_enabled}
               enabled={value == 1.0}
             />
           );
