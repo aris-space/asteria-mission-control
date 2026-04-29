@@ -127,7 +127,7 @@ impl RemoteComputer {
 
         tokio::spawn(async move {
             let mut attempts = 0;
-            while attempts < MAVLINK_RESEND_ATTEMPTS || attempts == 0 && !should_resend {
+            while attempts < MAVLINK_RESEND_ATTEMPTS {
                 attempts += 1;
                 let result = tokio::select! {
                     result = mavlink_tx.send(&message) => result.map_err(RemoteComputerError::MavLink),
@@ -136,8 +136,13 @@ impl RemoteComputer {
                 };
 
                 if let Err(err) = result {
-                    log::warn!("Unable to transmit MavLink message: {err}")
+                    log::error!("Unable to transmit MavLink message: {err}")
                 };
+
+                if !should_resend {
+                    // Exit after first iteration if we shouldn't resend the message.
+                    break;
+                }
 
                 tokio::time::sleep(MAVLINK_RESEND_TIMEOUT).await
             }
