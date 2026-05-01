@@ -1,7 +1,4 @@
-import {
-  ExtendedDatapointInformation,
-  ManualActuatorChange,
-} from "@asteria/mission-control-client";
+import { ExtendedDatapointInformation } from "@asteria/mission-control-client";
 import { DigitalActuator } from "./DigitalActuator";
 import { DprActuator } from "./DprActuator";
 import { DigitalSensor } from "./DigitalSensor";
@@ -22,39 +19,22 @@ export const SLOT_WIDTH: string = "5rem";
 export const GAP: string = "0.5rem";
 export const SLIDER_PADDING: string = "4px";
 
-interface DatapointKindProps extends Pick<
+interface DatapointProps extends Pick<
   ExtendedDatapointInformation,
   "kind" | "name"
 > {
-  onChange: (action: ManualActuatorChange) => void;
+  onChange: (name: string, value: number) => void;
 }
 
-function DatapointKind({ kind, name, onChange }: DatapointKindProps) {
+function Datapoint({ kind, name, onChange }: DatapointProps) {
   const value = usePssDatapointValue(name);
 
   const handleDigitalActuatorChange = (active: boolean) => {
-    const encoder = new TextEncoder();
-    const bytes = new Uint8Array(encoder.encode(name).buffer);
-    const action: ManualActuatorChange = {
-      // Exactly 20 bytes; Pad with zeroes on the right.
-      actuator: Array.from([...bytes, ...new Array(20).fill(0)]).slice(0, 20),
-      pathIndex: 0,
-      value: active ? 1.0 : 0.0,
-    };
-    onChange(action);
+    onChange(name, active ? 1.0 : 0.0);
   };
 
   const handleDprActuatorChange = (active: boolean, value: number) => {
-    const encoder = new TextEncoder();
-    // We assume that the backend does bounds checks on the actuator name bytes length and
-    // thus we don't need to do that here.
-    const bytes = new Uint8Array(encoder.encode(name).buffer);
-    const action: ManualActuatorChange = {
-      actuator: Array.from([...bytes, ...new Array(20).fill(0)]).slice(0, 20),
-      pathIndex: 0,
-      value: active ? value : NaN,
-    };
-    onChange(action);
+    onChange(name, active ? value : NaN);
   };
 
   if (value == null) return <DatapointLoader />;
@@ -124,4 +104,4 @@ function DatapointLoader() {
   );
 }
 
-export default DatapointKind;
+export default Datapoint;

@@ -1,5 +1,6 @@
 import {
   ExtendedDatapointInformation,
+  ManualActuatorChange,
   Message,
   RemoteComputerKind,
   useRfsPss,
@@ -12,6 +13,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import {
   ActionIcon,
@@ -26,10 +28,11 @@ import { useMap, useToggle, useViewportSize } from "@mantine/hooks";
 import * as d3 from "d3";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import classes from "./PSS.module.css";
-import DatapointKind from "./kind";
+import Datapoint from "./datapoint";
 import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
 import { notifications } from "@mantine/notifications";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
+import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
@@ -50,13 +53,24 @@ function PSS({ kind }: PssProps) {
     "hidden",
     "inherit",
   ]);
+  const [pathIndex, setPathIndex] = useState<number>(0);
+  // We need to also store the path index in a ref because the manual actuator change
+  // is called from a callback function and otherwise it just copies the initial path index.
+  const pathIndexRef = useRef<number>(0);
   const datapointNodes = useMap<string, SVGElement>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const [[activeState, _transitionTimestamp], setActiveState] = useState<
+    [string | null, number]
+  >([null, Date.now()]);
   const board = remoteComputer
     ? remoteComputer.kind == RemoteComputerKind.flight_computer
       ? "FlightComputer"
       : "RfsComputer"
     : null;
+  const stateMachineStateMessage = useMavlinkMessage(
+    board as any,
+    "StateMachineState",
+  );
 
   const {
     isZoomDirty,
@@ -100,6 +114,27 @@ function PSS({ kind }: PssProps) {
   );
 
   useEffect(() => {
+    if (!stateMachineStateMessage) return;
+
+    const { state, pathIndex } = stateMachineStateMessage.message.content;
+
+    const decoder = new TextDecoder();
+    const bytes = new Uint8Array(state.filter(Boolean));
+    const targetState = decoder.decode(bytes);
+
+    if (targetState != activeState) {
+      console.debug(`State changed to '${targetState}'`);
+    }
+
+    setPathIndex(pathIndex);
+    setActiveState([targetState, Date.now()]);
+  }, [stateMachineStateMessage]);
+
+  useEffect(() => {
+    pathIndexRef.current = pathIndex;
+  }, [pathIndex]);
+
+  useEffect(() => {
     updateDatapointVisibility();
     setupNodes();
   }, [pssInfo, containerRef, datapointVisibility]);
@@ -135,23 +170,27 @@ function PSS({ kind }: PssProps) {
       if (!styles) return <React.Fragment key={name} />;
 
       const datapoint = (
-        <DatapointKind
+        <Datapoint
           name={name}
           kind={info.kind}
-          onChange={({ actuator, value }) => {
-            const decoder = new TextDecoder();
-            const bytes = new Uint8Array(actuator.filter(Boolean));
-            let name = decoder.decode(bytes);
+          onChange={(name, value) => {
+            const encoder = new TextEncoder();
+            const actuator = new Uint8Array(encoder.encode(name).buffer);
+            const action: ManualActuatorChange = {
+              // Exactly 20 bytes; Pad with zeroes on the right.
+              actuator: Array.from([
+                ...actuator,
+                ...new Array(20).fill(0),
+              ]).slice(0, 20),
+              pathIndex: pathIndexRef.current,
+              value,
+            };
 
             const message: Message = {
               board: board as any,
               message: {
                 type: "ManualActuatorChange",
-                content: {
-                  actuator,
-                  value,
-                  pathIndex: 0,
-                },
+                content: action,
               },
             };
             sendMessage(
