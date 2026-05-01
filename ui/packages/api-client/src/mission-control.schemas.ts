@@ -1,5 +1,6 @@
 export type ActuatorKind =
   | {
+      default_enabled: boolean;
       kind: "digital";
     }
   | {
@@ -105,6 +106,13 @@ A temperature in degrees Celsius.
  */
 export type Celsius = number;
 
+/**
+ * First 5 hex characters of the config file Git Object Hash
+ */
+export interface ConfigHash {
+  hash: number[];
+}
+
 export type DPRValve =
   | {
       /** Enabled with pressure setpoint in Barg. 0-60. */
@@ -124,6 +132,9 @@ export type SensorKind =
     }
   | {
       kind: "digital";
+      value: {
+        default_enabled: boolean;
+      };
     };
 
 export type DatapointKind =
@@ -144,6 +155,22 @@ export interface DatapointInformation {
   label: string;
   /** Unique name of the datapoint */
   name: string;
+}
+
+/**
+ * Telemetry statistics for a downlink.
+ */
+export interface DownlinkTelemetryStats {
+  /**
+   * The total number of bytes sent.
+   * @minimum 0
+   */
+  numBytesSent: number;
+  /**
+   * The total number of messages sent.
+   * @minimum 0
+   */
+  numMessagesSent: number;
 }
 
 export interface EngineBayTemperature {
@@ -453,6 +480,17 @@ export interface EnvironmentalData {
   temperature: Celsius;
 }
 
+export type EventKind = (typeof EventKind)[keyof typeof EventKind];
+
+export const EventKind = {
+  REMOTE: "REMOTE",
+  STATE_MACHINE: "STATE_MACHINE",
+  PSS: "PSS",
+  PSS_DATA: "PSS_DATA",
+  PING: "PING",
+  MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
+} as const;
+
 export type ExtendedDatapointInformation = DatapointInformation & {
   /** Alignment of the replacement element. */
   align: Alignment;
@@ -483,6 +521,37 @@ export interface StateMachineState {
   pathIndex: number;
   /** The name of the current state in zero-padded utf-8. */
   state: number[];
+}
+
+/**
+ * UTC timestamp given in microseconds since the Unix epoch (`1970-01-01T00:00:00Z`).
+ * @minimum 0
+ */
+export type InstantUs = number;
+
+/**
+ * Telemetry health statistics for an uplink.
+ */
+export interface UplinkTelemetryHealth {
+  /**
+   * The number of message that were inferred to have been lost by the sequence number.
+   * @minimum 0
+   */
+  numMsgLost: number;
+  /**
+   * The number of the messages received that have been understood and processed successfully.
+   * @minimum 0
+   */
+  numMsgProcessed: number;
+  /**
+   * The total number of the messages received, including malformed ones.
+   * @minimum 0
+   */
+  numMsgReceived: number;
+  /** The timestamp of the last message received, including malformed ones. */
+  timeOfLastMsg: InstantUs;
+  /** The timestamp of the last message that has been understood and processed successfully. */
+  timeOfLastProcessedMsg: InstantUs;
 }
 
 /**
@@ -537,6 +606,26 @@ export type FlightComputerMessage =
       type: "BuildInfo";
     }
   | {
+      /** # `FlightComputerConfigHash`
+  First 5 hex characters of the config file Git Object Hash currently
+  loaded by the Flight Computer.
+
+  ## Type
+  - `Periodic @ 0.2 Hz`
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Allows Flight Computer config file tracking.
+
+  ## Reaction
+  Receivers may log or display the config hash. */
+      content: ConfigHash;
+      type: "ConfigHash";
+    }
+  | {
       /** # `FlightComputerStatus`
   Periodic status message emitted by the Flight Computer.
 
@@ -560,6 +649,22 @@ export type FlightComputerMessage =
       /** The current state of the flight computer state machine. */
       content: StateMachineState;
       type: "StateMachineState";
+    }
+  | {
+      /** Statistics about the health of the telemetry uplink received by the Flight Computer.
+
+  Emitted periodically by the flight computer.
+  Can be used to calculate the throughput and loss rate. */
+      content: UplinkTelemetryHealth;
+      type: "UplinkTelemetryHealth";
+    }
+  | {
+      /** Statistics about the telemetry downlink sent by the Flight Computer.
+
+  Emitted periodically by the flight computer.
+  Can be used to calculate the throughput and loss rate. */
+      content: DownlinkTelemetryStats;
+      type: "DownlinkTelemetryStats";
     }
   | {
       /** Command a manual state transition on the FC.
@@ -1057,19 +1162,6 @@ export interface ImuData {
   /** Angular velocity around body Z-axis in °/s. Range: ±2000 °/s */
   angularVelocityZ: number;
 }
-
-export interface Info {
-  /** Default scenario from current configuration file. */
-  default_scenario: string;
-  /** Git version of the mission control server. */
-  version: string;
-}
-
-/**
- * UTC timestamp given in microseconds since the Unix epoch (`1970-01-01T00:00:00Z`).
- * @minimum 0
- */
-export type InstantUs = number;
 
 export interface MagnetometerData {
   /** Magnetic field along Down axis in μT. Range: ±4915.2 μT */
@@ -2252,19 +2344,55 @@ export interface NamedPssDatapointValue {
   value: number;
 }
 
+export type OptionalResultPss =
+  | {
+      kind: "some";
+      /** Representation of a PSS diagram. */
+      value: {
+        /** Map of all datapoints defined in the diagram together with information
+  collected at compile time and from the diagram about the datapoint. */
+        datapointInfo: { [key: string]: ExtendedDatapointInformation };
+        /** PSS diagram SVG without the drawio XML content. */
+        diagram: string;
+      };
+    }
+  | {
+      kind: "error";
+      value: string;
+    }
+  | {
+      kind: "none";
+    };
+
+export type OptionalResultStateMachine =
+  | {
+      kind: "some";
+      /** Representation of a state machine diagram. */
+      value: {
+        /** State machine diagram SVG without the drawio XML content. */
+        diagram: string;
+        /** Initial state of the state machine. */
+        initialState: string;
+        /** Allowed manual transitions for every state and whether they
+  are an abort transition. */
+        manualTransitions: { [key: string]: [string, boolean][] };
+        /** Mapping of state names to diagram cell ids. */
+        stateNodes: { [key: string]: string };
+      };
+    }
+  | {
+      kind: "error";
+      value: string;
+    }
+  | {
+      kind: "none";
+    };
+
 /**
  * Map of all datapoints defined in the diagram together with information
 collected at compile time and from the diagram about the datapoint.
  */
 export type PssDatapointInfo = { [key: string]: ExtendedDatapointInformation };
-
-export type RemoteComputerKind =
-  (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
-
-export const RemoteComputerKind = {
-  fc: "fc",
-  rfs: "rfs",
-} as const;
 
 /**
  * Representation of a PSS diagram.
@@ -2275,24 +2403,36 @@ export interface Pss {
   datapointInfo: PssDatapointInfo;
   /** PSS diagram SVG without the drawio XML content. */
   diagram: string;
-  /** Kind of remote computer this PSS infomration is for. */
+}
+
+export interface PssDiagrams {
+  /** The PSS of the remote filling station. */
+  rfs: OptionalResultPss;
+  /** The PSS of the rocket. */
+  rocket: OptionalResultPss;
+}
+
+export type RemoteComputerKind =
+  (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
+
+export const RemoteComputerKind = {
+  flight_computer: "flight computer",
+  rfs_computer: "rfs computer",
+} as const;
+
+export interface RemoteComputerInfo {
+  /** Description about the remote. */
+  description: string;
+  /** What kind of remote computer this is. */
   kind: RemoteComputerKind;
-  /** Display name of the PSS information. */
+  /** Name of the remote.
+  This is used as the identifier. */
   name: string;
 }
 
-export interface PssInfo {
-  /** Identifier of the PSS information. */
-  id: string;
-  /** Display name of the PSS information. */
-  name: string;
-}
-
-export interface ScenarioInfo {
-  /** Identifier of the scenario. */
-  id: string;
-  /** Display name of the scenario. */
-  name: string;
+export interface ServerInfo {
+  /** Git version of the mission control server. */
+  version: string;
 }
 
 /**
@@ -2316,20 +2456,9 @@ export interface StateMachine {
   diagram: string;
   /** Initial state of the state machine. */
   initialState: string;
-  /** Kind of remote computer this state machine diagram is for. */
-  kind: RemoteComputerKind;
   /** Allowed manual transitions for every state and whether they
   are an abort transition. */
   manualTransitions: StateMachineManualTransitions;
-  /** Display name of the state machine. */
-  name: string;
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
-}
-
-export interface StateMachineInfo {
-  /** Identifier of the state machine. */
-  id: string;
-  /** Display name of the state machine. */
-  name: string;
 }

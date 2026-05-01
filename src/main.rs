@@ -1,39 +1,49 @@
-use crate::{cli::Cli, config::Config, mavlink::Mavlink, state::State, web::broadcast::Broadcast};
+use crate::cli::Cli;
+use crate::config::Config;
+use crate::datatypes::NamedPssDatapointValue;
+use crate::parser::{pss::Pss, statemachine::StateMachine};
+use crate::remote::{RemoteComputer, Remotes, config::RemoteComputerConfig};
+use crate::web::event::Event;
+use crate::web::{
+    broadcast::Broadcast,
+    event::EventKind,
+    state::{State, StateInstance},
+};
+
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
-use asteria_datapoint_information::datapoint::NamedDatapointValue;
-use asteria_messages::{
-    Message,
-    datapoints::dp_system_management::{self, Heartbeat, MavState, MavType},
-};
+use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_messages::{Message, datapoints::dp_flight_computer};
 use clap::Parser;
 use env_logger::Env;
-use mavio::Dialect;
-use serde::Serialize;
+use futures::{StreamExt, stream::FuturesUnordered};
+use gix::ThreadSafeRepository as Repository;
 use std::{
     path::{Path, PathBuf},
     process::exit,
-    sync::OnceLock,
+    sync::{Arc, OnceLock},
     time::Duration,
 };
-use utoipa::{OpenApi, ToSchema};
+use tokio::sync::{RwLock, mpsc::UnboundedReceiver};
+use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
 use utoipa_rapidoc::RapiDoc;
 
 mod cli;
 mod config;
+mod datatypes;
 mod mavlink;
 mod parser;
-mod scenario;
-mod state;
+mod remote;
 mod web;
 
 /// Global variable containing the path where the config file is located.
 pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
 
-/// Duration after which a restart of the MavLink
-/// message proxy should be attempted.
-const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
+pub static CONFIGS_REPOSITORY: OnceLock<Repository> = OnceLock::new();
+
+/// Interval at which a MavLink heartbeat message should be sent to the active remote.
+const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
 
 #[derive(utoipa::OpenApi)]
 #[openapi(
@@ -43,26 +53,12 @@ const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
         version = env!("GIT_VERSION")
     ),
     components(
-        // Manually add this type to the OpenAPI schema since we have no endpoint
-        // using/returning this type. It's only broadcast through SSE.
-        schemas(NamedPssDatapointValue)
+        // Manually add those types to the OpenAPI schema because they not directly
+        // exposed through endpoints.
+        schemas(EventKind, NamedPssDatapointValue, StateMachine, Pss)
     )
 )]
 struct ApiDoc;
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct NamedPssDatapointValue {
-    /// Unique name of the datapoint
-    pub name: &'static str,
-    /// Value of the datapoint
-    pub value: f32,
-}
-
-impl From<NamedDatapointValue> for NamedPssDatapointValue {
-    fn from(NamedDatapointValue { name, value }: NamedDatapointValue) -> Self {
-        NamedPssDatapointValue { name, value: value.into() }
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -74,66 +70,51 @@ async fn main() {
     CONFIG_PATH.set(Path::new(&cli.config_path).to_path_buf()).unwrap();
 
     let config = match Config::parse(Path::new(&cli.config_path)) {
-        Ok(config) => config,
+        Ok(config) => {
+            log::debug!("Using config: {config:?}");
+            config.remotes.keys().for_each(|name| log::info!("Found remote '{name}'"));
+            config
+        }
         Err(err) => {
             log::error!("Error whilst parsing config: {err}");
             exit(1);
         }
     };
 
-    log::debug!("Using config: {config:?}");
+    match gix::open(&config.configs_repository_path) {
+        // We don't attempt to write to the OnceLock from anywhere else so we can be sure
+        // that the OnceLock hasn't been initialized yet.
+        Ok(repository) => CONFIGS_REPOSITORY.set(repository.into_sync()).unwrap(),
+        Err(err) => {
+            log::error!("Unable to open configs repository at {}: {err}", config.configs_repository_path.display());
+            exit(1)
+        }
+    };
 
-    config.scenarios.iter().for_each(|(name, scenario)| {
-        log::info!(
-            "Found scenario '{name}' with {} state machine(s) and {} PSS configuration(s)",
-            scenario.state_machines.len(),
-            scenario.pss.len()
-        )
-    });
-
-    let state = State::new(config.clone());
+    let (msg_tx, msg_rx) = tokio::sync::mpsc::unbounded_channel();
     let broadcast = Broadcast::new();
-    let mavlink = Mavlink::new(config.clone(), broadcast.clone());
 
-    let mavlink_clone = mavlink.clone();
-    tokio::spawn(async move {
-        loop {
-            // Start MavLink receiver and proxy messages as SSE events.
-            if let Err(err) = mavlink_clone.run_message_proxy().await {
-                log::error!("Error whilst starting mavlink message proxy: {err}");
-            }
-            // Await restart timeout and then attempt restart in next iteration.
-            tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT).await
-        }
-    });
-    let mavlink_clone = mavlink.clone();
-    tokio::spawn(async move {
-        loop {
-            // Send a heartbeat MavLink message to the MavLink router.
-            let heartbeat_message = Message::SystemManagement(dp_system_management::Message::Heartbeat(Heartbeat {
-                type_: MavType::Gcs,
-                mavlink_version: Message::version().unwrap_or_default(),
-                system_status: MavState::Active,
-                ..Default::default()
-            }));
-            if let Err(err) = mavlink_clone.send(heartbeat_message).await {
-                log::error!("Error whilst sending heartbeat mavlink message: {err}")
-            };
+    let remotes = config
+        .remotes
+        .iter()
+        .map(|(key, rc_config)| {
+            (key.clone(), Arc::new(RwLock::new(RemoteComputer::new(rc_config.clone(), config.clone(), msg_tx.clone()))))
+        })
+        .collect::<Remotes>();
+    let remotes = Arc::new(remotes);
 
-            log::debug!("Successfully sent heartbeat message");
+    let state = State::new(remotes.clone(), broadcast.clone());
 
-            // Sleep for a second.
-            tokio::time::sleep(Duration::from_secs(1)).await
-        }
-    });
+    start_mavlink_message_handler(msg_rx, config.clone(), broadcast.clone(), state.clone());
+    start_heartbeat(state.clone());
 
     HttpServer::new(move || {
         let app = App::new()
             .wrap(Cors::permissive())
-            .wrap(middleware::Logger::default())
+            .wrap(middleware::Logger::default().log_level(log::Level::Debug))
             .app_data(Data::from(broadcast.clone()))
             .app_data(Data::from(config.clone()))
-            .app_data(Data::from(mavlink.clone()))
+            .app_data(Data::from(remotes.clone()))
             .app_data(Data::new(state.clone()))
             .into_utoipa_app()
             .openapi(ApiDoc::openapi())
@@ -158,15 +139,101 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
     cfg.service(web::info)
         .service(web::config_schema)
         .service(web::subscribe_events)
+        .service(web::remotes)
+        .service(web::active_remote)
+        .service(web::deactivate_active_remote)
+        .service(web::change_active_remote)
         .service(web::state_machine)
-        .service(web::active_scenario)
-        .service(web::change_scenario)
-        .service(web::all_scenarios)
-        .service(web::state_machine)
-        .service(web::all_state_machines)
-        .service(web::pss_information)
-        .service(web::all_pss_infos)
+        .service(web::pss)
         .service(web::send_message);
+}
+
+/// Start the heartbeat thread which periodically sends a MavLink heartbeat message
+/// to the active remote, if one is currently active.
+fn start_heartbeat(state: StateInstance) {
+    tokio::spawn(async move {
+        loop {
+            let state_guard = state.read().await;
+            if let Ok((name, remote_computer)) = state_guard.get_active_remote().map(|(name, rc)| (name.clone(), rc)) {
+                drop(state_guard);
+                let rc_guard = remote_computer.read().await;
+                if let Err(err) = rc_guard.send_heartbeat_message().await {
+                    log::warn!("Unable to send heartbeat message to remote '{name}': {err}")
+                }
+            } else {
+                log::trace!("No active remote, skipping heartbeat!");
+            }
+
+            // We don't use a tokio interval here because we don't want to queue
+            // up heartbeats if one couldn't be sent.
+            tokio::time::sleep(HEARTBEAT_INTERVAL).await
+        }
+    });
+}
+
+/// Start the thread which handles the incoming MavLink messages.
+/// - Every message is proxied in JSON serialized form through SSE with the [`EventKind::MavlinkMessage`] event
+/// - If the message contains any PSS datapoints, the datapoint values are broadcast in JSON serialized form
+///   through SEE with the [`EventKind::PssData`] event.
+/// - If the message contains a new config hash, the state machine and PSS are updated according to the new config.
+fn start_mavlink_message_handler(
+    mut msg_rx: UnboundedReceiver<Message>,
+    config: Arc<Config>,
+    broadcast: Arc<Broadcast>,
+    state: StateInstance,
+) {
+    tokio::spawn(async move {
+        while let Some(message) = msg_rx.recv().await {
+            if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash)) = &message {
+                handle_config_hash_message(hash.hash, &config.configs_repository_path, &state).await;
+            }
+
+            let datapoint_events =
+                message.get_datapoint_values().into_iter().map(|value| Event::PssData(value.into())).collect::<Vec<_>>();
+
+            let mut events = vec![Event::MavlinkMessage(message)];
+            events.extend(datapoint_events);
+
+            if !events.is_empty() {
+                FuturesUnordered::from_iter(events.into_iter().map(|event| broadcast.broadcast(event)))
+                    .collect::<Vec<_>>()
+                    .await;
+            }
+        }
+    });
+}
+
+/// Look up the config file in the configs repository at `configs_repository_path` and update
+/// the state machine and PSS in the [`StateInstance`] according to how they are defined in
+/// the config file.
+async fn handle_config_hash_message(hash: [u8; 5], configs_repository_path: &Path, state: &StateInstance) {
+    let repository = CONFIGS_REPOSITORY.get().unwrap().to_thread_local();
+    log::debug!("Looking up config file with hash {}", String::from_utf8_lossy(&hash));
+
+    let bytes = {
+        let Ok(object_id) = repository.rev_parse_single(&hash) else {
+            return log::error!("Could not find object with hash {} in configs repository", String::from_utf8_lossy(&hash));
+        };
+
+        // We unwrap because we just got this object id from `rev_parse_single`
+        // so we know it exists.
+        let object = repository.find_object(object_id).unwrap();
+
+        let Ok(blob) = object.try_into_blob() else { return log::error!("Object belongig to config hash is not a blob") };
+
+        blob.data.clone()
+    };
+
+    let rc_config = match toml::from_slice::<RemoteComputerConfig>(&bytes) {
+        Ok(config) => config,
+        Err(err) => return log::error!("Remote computer config is not valid: {err}"),
+    };
+
+    let state_machine = StateMachine::new(&rc_config, configs_repository_path);
+    // TODO: Also parse PSS configurations here once they are ready.
+
+    let mut state_guard = state.write().await;
+    state_guard.set_state_machine(Some(state_machine)).await;
 }
 
 #[cfg(feature = "static-frontend")]

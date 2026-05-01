@@ -1,5 +1,10 @@
+//! This module is used to parse remote computer configs for the mission control purposes.
+//! It's only a partial representation of a remote computer config.
+//! The full remote computer config specification can be found here:
+//! <https://github.com/aris-space/asteria-remote-computers/>
+
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 #[derive(Deserialize)]
 pub struct RemoteComputerConfig {
@@ -8,6 +13,7 @@ pub struct RemoteComputerConfig {
 
 #[derive(Deserialize)]
 pub struct StateMachineConfig {
+    pub diagram_path: PathBuf,
     pub initial_state: String,
     pub states: HashMap<String, StateMachineStateConfig>,
 }

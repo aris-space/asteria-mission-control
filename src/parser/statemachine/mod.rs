@@ -1,26 +1,20 @@
-use crate::{
-    config::RemoteComputerKind,
-    parser::{cut_diagram_xml, parse_diagram_xml, statemachine::config::RemoteComputerConfig},
-};
+use crate::parser::{cut_diagram_xml, parse_diagram_xml};
+use crate::remote::config::RemoteComputerConfig;
+
 use html_parser::Dom;
 use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fs,
+    path::Path,
 };
 use utoipa::ToSchema;
 
-pub mod config;
-
 #[derive(Debug, thiserror::Error)]
 pub enum StateMachineError {
-    #[error("Error whilst reading state machine config: {0}")]
-    ConfigRead(std::io::Error),
-    #[error("Error whilst deserializing state machine config: {0}")]
-    ConfigParse(toml::de::Error),
-    #[error("Error whilst reading state machine diagram: {0}")]
-    DiagramRead(std::io::Error),
-    #[error("State machine config references the following undefined states: {0:?}")]
+    #[error("Error whilst reading state machine diagram at '{0}': {1}")]
+    DiagramRead(String, std::io::Error),
+    #[error("Remote computer config references the following undefined states: {0:?}")]
     ConfigMissingStates(Vec<String>),
     #[error("Error whilst parsing state machine diagram: {0}")]
     DiagramParse(quick_xml::de::DeError),
@@ -28,18 +22,14 @@ pub enum StateMachineError {
     DiagramNodeParse(html_parser::Error),
     #[error("State machine diagram contains duplicate state definitions for the following states: {0:#?}")]
     DiagramDuplicateStates(Vec<String>),
-    #[error("State machine diagram config references the following states which are missing in the diagram: {0:#?}")]
+    #[error("Remote computer config references the following states which are missing in the diagram: {0:#?}")]
     DiagramMissingStates(Vec<String>),
 }
 
 /// Representation of a state machine diagram.
-#[derive(Debug, Serialize, ToSchema, Clone)]
+#[derive(Debug, Serialize, ToSchema, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct StateMachine {
-    /// Kind of remote computer this state machine diagram is for.
-    pub kind: RemoteComputerKind,
-    /// Display name of the state machine.
-    pub name: String,
     /// State machine diagram SVG without the drawio XML content.
     pub diagram: String,
     /// Allowed manual transitions for every state and whether they
@@ -51,14 +41,17 @@ pub struct StateMachine {
     pub state_nodes: HashMap<String, String>,
 }
 
-impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
-    type Error = StateMachineError;
+impl StateMachine {
+    pub fn new(rc_config: &RemoteComputerConfig, configs_repository_path: &Path) -> Result<Self, StateMachineError> {
+        let raw_diagram_path = configs_repository_path.join(&rc_config.state_machine.diagram_path);
+        let diagram_path = match fs::canonicalize(&raw_diagram_path) {
+            Ok(path) => path,
+            Err(err) => return Err(StateMachineError::DiagramRead(raw_diagram_path.display().to_string(), err)),
+        };
 
-    fn try_from(config: crate::config::StateMachineConfig) -> Result<Self, Self::Error> {
-        let config_str = fs::read_to_string(&config.config_path).map_err(StateMachineError::ConfigRead)?;
-        let diagram_str = fs::read_to_string(&config.diagram_path).map_err(StateMachineError::DiagramRead)?;
+        let diagram_str = fs::read_to_string(&diagram_path)
+            .map_err(|err| StateMachineError::DiagramRead(diagram_path.display().to_string(), err))?;
 
-        let rc_config = toml::from_str::<RemoteComputerConfig>(&config_str).map_err(StateMachineError::ConfigParse)?;
         // Read the state machine config and ensure that all manual transitions are valid.
         // This means that the source and the target of a transition need to be defined in
         // the config.
@@ -99,7 +92,7 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
         // All unique labels we have in the diagram. Note that we always use the first
         // string of a cell's value as it's state name.
         let unique_state_labels = HashSet::<String>::from_iter(state_node_labels.iter().cloned());
-        log::debug!("Detected labels in state machine '{}': {unique_state_labels:#?}", config.name);
+        log::debug!("Detected labels in state machine: {unique_state_labels:#?}");
 
         // Check whether there are duplicate labels in the diagram.
         // We can only check for duplicate labels which are also defined in the state machine
@@ -144,7 +137,7 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
                 match split.as_slice() {
                     [state_name @ .., postfix] if postfix.parse::<u32>().is_ok() => {
                         // State names with postfix (e.g. "Spiral 2") are okay to "miss" as long
-                        // as the same state without postifx exists.
+                        // as the same state without postfix exists.
                         !unique_state_labels.contains(&state_name.join(" "))
                     }
                     // State does not exist and it doesn't have a postfix. This is a real miss.
@@ -167,10 +160,8 @@ impl TryFrom<crate::config::StateMachineConfig> for StateMachine {
         Ok(Self {
             diagram: svg,
             manual_transitions,
-            initial_state: rc_config.state_machine.initial_state,
+            initial_state: rc_config.state_machine.initial_state.clone(),
             state_nodes,
-            kind: config.kind,
-            name: config.name,
         })
     }
 }

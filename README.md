@@ -15,8 +15,10 @@ The project contains a `Dockerfile` which builds a full stack version of the AST
 To start the current development version of the mission control inside docker, you can simply run:
 
 ```bash
-# build new docker image and start it
-docker compose up
+# Build new docker image and start it.
+# If you also want to have a local flight computer, start with the `--profile full` 
+# flag instead.
+docker compose --profile mission-control up
 ```
 
 after that you should be able to open the mission control UI on [http://localhost:8888](http://localhost:8888).
@@ -31,7 +33,7 @@ In general, all API endpoints except the ones used for documentation are prefixe
 
 The backend needs a config file. The path of the config file can be specified as a CLI flag or through the `CONFIG_PATH` environment variable (see [usage](#usage)).
 
-At the moment, the config file is used to specify the scenarios which are available. You can think of a scenario to be a deployment (e.g. for a drop test or an engine test). At the moment, a scenario just specifies where it's state machine diagrams are found and which state machines it has.
+Besides a few other things, the config mainly contains a list of available remote computers to which the mission control can connect to. 
 
 The config is written in TOML and follows the schema hosted by the backend on the `/api/config/schema` path.
 
@@ -41,8 +43,8 @@ The code for the mission control UI is located in [the ui subdirectory](./ui/)
 
 ## Diagrams
 
-For the statemachine and PSS views we use draw.io diagrams exported as SVG.
-There are some things which need to be followed whilst exporting the diagram as a SVG such that the SVGs can successfully be used by the Mission Control:
+For the state machine and PSS views we use [draw.io](https://www.drawio.com) diagrams exported as SVG.
+There are some things which need to be followed whilst exporting the diagram as a SVG such that the SVGs can successfully be used by the mission control:
 
 - The SVG background needs to be set to **transparent**
 - The SVG appearance needs to be set to **light**
@@ -60,9 +62,10 @@ There are some things which need to be followed whilst exporting the diagram as 
 The `fc.Dockerfile` can be used to build a docker image containing a built version of the flight computer contained in the remote-computers submodule.
 
 The image also contains a mavlink-router which automatically gets started and which expects a config to be mounted at `/etc/mavlink-router/main.conf`.
-Additionally, there is also a SSH server running inside the container at port `22` (needs to be mapped to non-standard host port, e.g. `2222`) which allows passwordless root logins. This means, `ssh -p 2222 root@localhost` connects into the container.
+Additionally, there is also a SSH server running inside the container at port `22` (needs to be mapped to non-standard host port, e.g. `2222`) which allows passwordless root logins. 
+This means, `ssh -p 2222 root@localhost` connects into the container.
 
-The `docker-compose.yml` in the project root contains a fully configured setup for such a flight computer. By running `docker compose --profile flight-computer up -d`, there will be a MavLink TCP server at port `5766` to which the local Mission Control can connect. Also, the SSH server is mapped to port `2222`.
+The `docker-compose.yml` in the project root contains a fully configured setup for such a flight computer. By running `docker compose --profile flight-computer up -d`, there will be a MavLink TCP server at port `5766` to which the local mission control can connect. Also, the SSH server is mapped to port `2222`.
 
-If you want to test a full deployment of the Mission Control + Flight Computer, run `docker compose --profile full up -d`. A statically compiled version of the Mission Control is then available under http://localhost:8888` which is
-connected to the flight computer running inside the docker container.
+If you want to test a full deployment of the mission control and a flight computer, run `docker compose --profile full up -d`. 
+A statically compiled version of the mission control is then available under [http://localhost:8888](http://localhost:8888) which is connected to the flight computer running inside the docker container.

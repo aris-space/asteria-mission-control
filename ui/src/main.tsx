@@ -17,6 +17,8 @@ import {
   CodeHighlightAdapterProvider,
   createShikiAdapter,
 } from "@mantine/code-highlight";
+import { RemoteComputerProvider } from "@asteria/hooks/RemoteComputerContext";
+import { MavlinkProvider } from "@asteria/hooks/MavlinkContext";
 
 import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
@@ -64,16 +66,20 @@ createRoot(document.getElementById("root")!).render(
         <CodeHighlightAdapterProvider adapter={shikiAdapter}>
           <EventProvider>
             <Notifications />
-            <BrowserRouter>
-              <Layout>
-                <Routes>
-                  <Route path="statemachine" element={<StateMachine />} />
-                  <Route path="pss" element={<PSS />} />
-                  <Route path="health" element={<Health />} />
-                  <Route path="telemetry" element={<Telemetry />} />
-                </Routes>
-              </Layout>
-            </BrowserRouter>
+            <RemoteComputerProvider>
+              <MavlinkProvider>
+                <BrowserRouter>
+                  <Layout>
+                    <Routes>
+                      <Route path="statemachine" element={<StateMachine />} />
+                      <Route path="pss" element={<PSS />} />
+                      <Route path="health" element={<Health />} />
+                      <Route path="telemetry" element={<Telemetry />} />
+                    </Routes>
+                  </Layout>
+                </BrowserRouter>
+              </MavlinkProvider>
+            </RemoteComputerProvider>
           </EventProvider>
         </CodeHighlightAdapterProvider>
       </MantineProvider>

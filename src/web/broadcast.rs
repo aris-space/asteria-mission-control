@@ -1,8 +1,9 @@
+use crate::web::event::EventKind;
+
 use actix_web_lab::sse::{Data, Event, Sse};
 use actix_web_lab::util::InfallibleStream;
 use chrono::Utc;
 use futures::future::join_all;
-use log::trace;
 use serde::Serialize;
 use std::sync::Arc;
 use std::time::Duration;
@@ -56,7 +57,7 @@ impl Broadcast {
         let (tx, rx) = tokio::sync::mpsc::channel::<Event>(10);
         let mut subscriptions = self.subscriptions.lock().await;
         if let Err(err) = tx.send(BroadcastEvent::Ping.into()).await {
-            log::warn!("unable to send initial ping to new subscription: {err}");
+            log::warn!("Unable to send initial ping to new subscription: {err}");
         }
         subscriptions.push(tx.clone());
 
@@ -68,7 +69,7 @@ impl Broadcast {
         // Clone such that lock is dropped immediately.
         let subscriptions = self.subscriptions.lock().await.clone();
 
-        trace!("notifying {} receivers of new event", subscriptions.len());
+        log::trace!("Notifying {} receivers of new event", subscriptions.len());
 
         let sse_event: Event = event.into();
         for receiver in subscriptions {
@@ -91,7 +92,9 @@ impl From<BroadcastEvent> for Event {
         match value {
             // The data of the ping event contains the current UTC timestamp in milliseconds such that
             // the client can display some sort of latency to the server.
-            BroadcastEvent::Ping => Event::Data(Data::new(Utc::now().timestamp_millis().to_string()).event("ping")),
+            BroadcastEvent::Ping => {
+                Event::Data(Data::new(Utc::now().timestamp_millis().to_string()).event(EventKind::Ping.to_string()))
+            }
         }
     }
 }

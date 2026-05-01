@@ -1,11 +1,9 @@
-use crate::{
-    config::{PssConfig, RemoteComputerKind},
-    parser::{cut_diagram_xml, parse_diagram_xml},
-};
+use crate::parser::{cut_diagram_xml, parse_diagram_xml};
+
 use asteria_datapoint_information::datapoint::{DatapointHolder, DatapointInformation};
 use asteria_messages::Message;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, ops::Not};
+use std::{collections::HashMap, fs, ops::Not, path::PathBuf};
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]
@@ -55,10 +53,6 @@ pub struct ExtendedDatapointInformation {
 #[derive(Debug, Serialize, ToSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Pss {
-    /// Kind of remote computer this PSS infomration is for.
-    pub kind: RemoteComputerKind,
-    /// Display name of the PSS information.
-    pub name: String,
     /// PSS diagram SVG without the drawio XML content.
     pub diagram: String,
     /// Map of all datapoints defined in the diagram together with information
@@ -66,11 +60,9 @@ pub struct Pss {
     pub datapoint_info: HashMap<String, ExtendedDatapointInformation>,
 }
 
-impl TryFrom<PssConfig> for Pss {
-    type Error = PssError;
-
-    fn try_from(config: PssConfig) -> Result<Self, Self::Error> {
-        let diagram_str = fs::read_to_string(&config.diagram_path).map_err(PssError::DiagramRead)?;
+impl Pss {
+    pub fn new(diagram_path: &PathBuf) -> Result<Self, PssError> {
+        let diagram_str = fs::read_to_string(diagram_path).map_err(PssError::DiagramRead)?;
 
         let (xml, svg) = cut_diagram_xml(&diagram_str).map_err(PssError::DiagramParse)?;
         let diagram = parse_diagram_xml::<PssVertexData>(&xml).map_err(PssError::DiagramParse)?;
@@ -131,6 +123,6 @@ impl TryFrom<PssConfig> for Pss {
             Some((datapoint.name.to_string(), info))
         }));
 
-        Ok(Self { diagram: svg, datapoint_info, kind: config.kind, name: config.name })
+        Ok(Self { diagram: svg, datapoint_info })
     }
 }

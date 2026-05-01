@@ -1,224 +1,182 @@
-use crate::parser::pss::Pss;
-use crate::{config::Config, mavlink::Mavlink, parser::statemachine::StateMachine, state::StateInstance};
+use crate::config::Config;
+use crate::parser::statemachine::StateMachine;
+use crate::web::{datatypes::*, event::Event, state::StateInstance};
+
 use actix_web::{
-    Responder,
-    error::{ErrorBadRequest, ErrorInternalServerError, ErrorNotFound},
-    get, put,
-    web::{self, Data, Json},
+    Responder, error, get, put,
+    web::{Data, Json},
 };
-use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
+use actix_web::{delete, web};
 use asteria_messages::Message;
 use broadcast::Broadcast;
-use serde::Serialize;
 
 pub mod broadcast;
+pub mod datatypes;
+pub mod event;
+pub mod state;
 
-pub enum Event {
-    /// The scenario on the backend changed. The event contains the id of the new scenario.
-    ScenarioChange(String),
-}
-
-impl From<Event> for SseEvent {
-    fn from(event: Event) -> Self {
-        match event {
-            Event::ScenarioChange(id) => Self::Data(SseData::new(id).event("scenario-change")),
-        }
-    }
-}
-
-#[derive(Serialize, utoipa::ToSchema)]
-struct Info {
-    /// Git version of the mission control server.
-    version: String,
-    /// Default scenario from current configuration file.
-    default_scenario: String,
-}
-
-#[utoipa::path(responses((status = OK, body = Info)), description = "Get basic information about the running API server")]
+/// Get general information about the running API server.
+#[utoipa::path(responses((status = OK, body = ServerInfo)))]
 #[get("/")]
-pub async fn info(config: Data<Config>) -> actix_web::Result<Json<Info>> {
-    Ok(Json(Info { version: env!("GIT_VERSION").to_string(), default_scenario: config.default_scenario.clone() }))
+pub async fn info() -> actix_web::Result<Json<ServerInfo>> {
+    Ok(Json(ServerInfo { version: env!("GIT_VERSION").to_string() }))
 }
 
-#[utoipa::path(responses((status = OK, content_type = "application/json")), description = "Get the TOML schema for the config")]
+/// Get the TOML schema for the config file.
+#[utoipa::path(responses((status = OK, content_type = "application/json")))]
 #[get("/config/schema")]
 pub async fn config_schema() -> actix_web::Result<Json<serde_json::Value>> {
     let schema = schemars::schema_for!(Config);
     Ok(Json(schema.into()))
 }
 
-#[utoipa::path(responses((status = OK, content_type = "text/event-stream")), description = "Subscribe to API event stream using SSE")]
+/// Subscribe to API events using SSE.
+///
+/// Endpoints triggering SSE events specify which events are to be
+/// expected as a consequence of calling the endpoint.
+#[utoipa::path(responses((status = OK, content_type = "text/event-stream")))]
 #[get("/events")]
 pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<impl Responder> {
     broadcast.subscribe().await
 }
 
-#[derive(Serialize, utoipa::ToSchema)]
-struct ScenarioInfo {
-    /// Identifier of the scenario.
-    id: String,
-    /// Display name of the scenario.
-    name: String,
-}
-
-#[utoipa::path(responses((status = OK, body = ScenarioInfo)), description = "Get the active scenario")]
-#[get("/scenario")]
-pub async fn active_scenario(state: Data<StateInstance>) -> actix_web::Result<Json<ScenarioInfo>> {
-    let state = state.read().await;
-    Ok(Json(ScenarioInfo { id: state.get_scenario_id().clone(), name: state.get_scenario().name.clone() }))
-}
-
-#[utoipa::path(responses((status = OK, body = Vec<ScenarioInfo>)), description = "Get all available scenarios")]
-#[get("/scenario/all")]
-pub async fn all_scenarios(config: Data<Config>) -> actix_web::Result<Json<Vec<ScenarioInfo>>> {
-    let scenarios = config
-        .scenarios
+/// Get all available remote computers.
+#[utoipa::path(responses((status = OK, body = Vec<RemoteComputerInfo>)))]
+#[get("/remotes")]
+pub async fn remotes(config: Data<Config>) -> actix_web::Result<Json<Vec<RemoteComputerInfo>>> {
+    let remotes = config
+        .remotes
         .iter()
-        .map(|(id, scenario)| ScenarioInfo { id: id.clone(), name: scenario.name.clone() })
+        .map(|(name, remote_config)| RemoteComputerInfo {
+            name: name.clone(),
+            description: remote_config.description.clone(),
+            kind: remote_config.kind.clone(),
+        })
         .collect::<Vec<_>>();
-    Ok(Json(scenarios))
+    Ok(Json(remotes))
 }
 
-#[utoipa::path(
-    responses(
-        (status = OK, body = String),
-        (status = BAD_REQUEST, body = String)
-    ),
-    description = "Change the active scenario. Emits a `scenario-change` event with the id of the new scenario to all clients"
-)]
-#[put("/scenario/{scenario_id}")]
-pub async fn change_scenario(
-    scenario_id: web::Path<String>,
+/// Get the active remote computer, if one is currently active.
+#[utoipa::path(responses((status = OK, body = Option<RemoteComputerInfo>)))]
+#[get("/remotes/active")]
+pub async fn active_remote(
     state: Data<StateInstance>,
-    broadcast: Data<Broadcast>,
-) -> actix_web::Result<String> {
-    let scenario_id = scenario_id.into_inner();
-    let mut state = state.write().await;
-    match state.set_scenario(scenario_id.clone()) {
-        Ok(_) => {
-            broadcast.broadcast(Event::ScenarioChange(scenario_id.clone())).await;
-            Ok(scenario_id)
-        }
-        Err(err) => {
-            log::debug!("Error whilst changing scenario: {err}");
-            Err(ErrorBadRequest(err))
-        }
+    config: Data<Config>,
+) -> actix_web::Result<Json<Option<RemoteComputerInfo>>> {
+    let state = state.read().await;
+
+    if let Ok((name, _)) = state.get_active_remote() {
+        // Because [`StateInstance`] contains an [`Remotes`] instance which holds the same
+        // remotes as in the [`Config`], we use the remote from the config to not compete
+        // on the remote computer lock.
+        let remote = config.remotes.get(name).expect("Remote should exist");
+        Ok(Json(Some(RemoteComputerInfo {
+            name: name.clone(),
+            description: remote.description.clone(),
+            kind: remote.kind.clone(),
+        })))
+    } else {
+        Ok(Json(None))
     }
 }
 
-#[utoipa::path(
-    responses((status = OK, body = StateMachine), (status = NOT_FOUND, body = String)),
-    description = "Get a specific state machine for a scenario"
-)]
-#[get("/statemachine/scenario/{scenario_id}/{state_machine_id}")]
-pub async fn state_machine(ids: web::Path<(String, String)>, config: Data<Config>) -> actix_web::Result<Json<StateMachine>> {
-    let (scenario_id, state_machine_id) = ids.into_inner();
-    config
-        .scenarios
-        .get(&scenario_id)
-        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
-        .and_then(|scenario| {
-            scenario
-                .state_machines
-                .get(&state_machine_id)
-                .cloned()
-                .ok_or(ErrorNotFound(format!("State machine '{state_machine_id}' not found on scenario '{scenario_id}'")))
-        })
-        .map(Json)
+/// Deactivate the currently active remote computer.
+///
+/// **Events**:
+/// - `REMOTE` with body containing `null`.
+/// - `STATE_MACHINE` with body containing `null`.
+/// - `PSS` with body containing `null`.
+#[utoipa::path(responses((status = OK, body = ()), (status = BAD_REQUEST, body = String)))]
+#[delete("/remotes/active")]
+pub async fn deactivate_active_remote(
+    state: Data<StateInstance>,
+    broadcast: Data<Broadcast>,
+) -> actix_web::Result<Json<()>> {
+    let mut state = state.write().await;
+    state.remove_active_remote().await.map_err(error::ErrorBadRequest)?;
+
+    broadcast.broadcast(Event::Remote(None)).await;
+    Ok(Json(()))
 }
 
-#[derive(Serialize, utoipa::ToSchema)]
-struct StateMachineInfo {
-    /// Identifier of the state machine.
-    id: String,
-    /// Display name of the state machine.
-    name: String,
-}
-
-#[utoipa::path(
-    responses((status = OK, body = Vec<StateMachineInfo>), (status = NOT_FOUND, body = String)),
-    description = "Get all available state machines of a specific scenario"
-)]
-#[get("/statemachine/scenario/{scenario_id}")]
-pub async fn all_state_machines(
-    scenario_id: web::Path<String>,
+/// Change the active remote computer.
+///
+/// **Events**:
+/// - `REMOTE` with body containing the name of the newly activated remote.
+/// - `MAVLINK_MESSAGE` with body containing JSON-serialized MavLink [`Message`].
+/// - `STATE_MACHINE` with body containing the JSON-serialized [`StateMachine`].
+/// - `PSS` with body containing the JSON-serialized vector of [`Pss`].
+#[utoipa::path(responses((status = OK, body = RemoteComputerInfo, status = BAD_REQUEST, body = String)))]
+#[put("/remotes/active/{name}")]
+pub async fn change_active_remote(
+    name: web::Path<String>,
+    state: Data<StateInstance>,
     config: Data<Config>,
-) -> actix_web::Result<Json<Vec<StateMachineInfo>>> {
-    let scenario_id = scenario_id.into_inner();
+    broadcast: Data<Broadcast>,
+) -> actix_web::Result<Json<RemoteComputerInfo>> {
+    let name = name.into_inner();
+    let mut state = state.write().await;
+    state.set_active_remote(&name).await.map_err(error::ErrorBadRequest)?;
 
-    config
-        .scenarios
-        .get(&scenario_id)
-        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
-        .map(|scenario| {
-            scenario
-                .state_machines
-                .iter()
-                .map(|(id, machine)| StateMachineInfo { id: id.clone(), name: machine.name.clone() })
-                .collect::<Vec<_>>()
-        })
-        .map(Json)
+    broadcast.broadcast(Event::Remote(Some(name.clone()))).await;
+
+    // Because [`StateInstance`] contains an [`Remotes`] instance which holds the same
+    // remotes as in the [`Config`], we use the remote from the config to not compete
+    // on the remote computer lock.
+    let remote = config.remotes.get(&name).expect("Remote should exist");
+    Ok(Json(RemoteComputerInfo { name, description: remote.description.clone(), kind: remote.kind.clone() }))
 }
 
-#[utoipa::path(
-    responses((status = OK, body = Pss), (status = NOT_FOUND, body = String)),
-    description = "Get a specific PSS information for a scenario"
-)]
-#[get("/pss/scenario/{scenario_id}/{pss_id}")]
-pub async fn pss_information(ids: web::Path<(String, String)>, config: Data<Config>) -> actix_web::Result<Json<Pss>> {
-    let (scenario_id, pss_id) = ids.into_inner();
-    config
-        .scenarios
-        .get(&scenario_id)
-        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
-        .and_then(|scenario| {
-            scenario
-                .pss
-                .get(&pss_id)
-                .cloned()
-                .ok_or(ErrorNotFound(format!("PSS information '{pss_id}' not found on scenario '{scenario_id}'")))
-        })
-        .map(Json)
+/// Get the state machine of the active remote.
+///
+/// Since the active remote transmits the used configuration asynchronously, it could
+/// be that this endpoint returns [`OptionalResult::None`] despite there being an active remote
+/// with a state machine. In that case, just retry calling the endpoint a bit later.
+#[utoipa::path(responses((status = OK, body = OptionalResult<StateMachine>)))]
+#[get("/state-machine")]
+pub async fn state_machine(state: Data<StateInstance>) -> actix_web::Result<Json<OptionalResult<StateMachine>>> {
+    let state = state.read().await;
+
+    // Ensure that we have an active remote.
+    state.get_active_remote().map_err(error::ErrorBadRequest)?;
+
+    Ok(Json(state.get_state_machine().clone()))
 }
 
-#[derive(Serialize, utoipa::ToSchema)]
-struct PssInfo {
-    /// Identifier of the PSS information.
-    id: String,
-    /// Display name of the PSS information.
-    name: String,
+/// Get the PSS configurations of the active remote.
+///
+/// Since the active remote transmits the used configuration asynchronously, it could
+/// be that the [`PssDiagrams`] are [`OptionalResult::None`] despite there being said
+/// PSS configured for the active remote. In that case, just retry calling the
+/// endpoint a bit later.
+#[utoipa::path(responses((status = OK, body = RemoteComputerPss)))]
+#[get("/pss")]
+pub async fn pss(state: Data<StateInstance>) -> actix_web::Result<Json<RemoteComputerPss>> {
+    let state = state.read().await;
+
+    // Ensure that we have an active remote.
+    state.get_active_remote().map_err(error::ErrorBadRequest)?;
+
+    Ok(Json(state.get_pss().clone().into()))
 }
 
-#[utoipa::path(
-    responses((status = OK, body = Vec<PssInfo>), (status = NOT_FOUND, body = String)),
-    description = "Get all available PSS infos of a specific scenario"
-)]
-#[get("/pss/scenario/{scenario_id}")]
-pub async fn all_pss_infos(scenario_id: web::Path<String>, config: Data<Config>) -> actix_web::Result<Json<Vec<PssInfo>>> {
-    let scenario_id = scenario_id.into_inner();
-
-    config
-        .scenarios
-        .get(&scenario_id)
-        .ok_or(ErrorNotFound(format!("Scenario '{scenario_id}' not found")))
-        .map(|scenario| {
-            scenario.pss.iter().map(|(id, pss)| PssInfo { id: id.clone(), name: pss.name.clone() }).collect::<Vec<_>>()
-        })
-        .map(Json)
-}
-
-#[utoipa::path(
-    responses((status = OK, body = ())),
-    description = "Send a message which will be proxied by the backend as a MavLink message")
-]
+/// Send JSON-serialized MavLink message to the active remote computer.
+#[utoipa::path(responses((status = OK, body = ()), (status = BAD_REQUEST, body = String), (status = INTERNAL_SERVER_ERROR, body = String)))]
 #[put("/message")]
-pub async fn send_message(message: Json<Message>, mavlink: Data<Mavlink>) -> actix_web::Result<()> {
-    mavlink
-        .send(message.into_inner())
+pub async fn send_message(message: Json<Message>, state: Data<StateInstance>) -> actix_web::Result<()> {
+    let state = state.read().await;
+
+    let (_, remote) = state
+        .get_active_remote()
+        .map_err(|err| error::ErrorBadRequest(format!("Unable to transmit MavLink message: {err}")))?;
+    let remote = remote.read().await;
+
+    remote
+        .send_mavlink_message(message.into_inner())
         .await
         .map_err(|err| {
             log::error!("Error whilst sending MavLink message: {err}");
-            ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
+            error::ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
         })
         .map(|_| ())
 }
