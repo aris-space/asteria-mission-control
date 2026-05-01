@@ -2,6 +2,7 @@ configs_repository_path = "./remote-computers"
 
 [mavlink]
 system_id = 222
+logs_path = "./mavlink-logs"
 
 [remote.docker-fc]
 kind = "flight computer"

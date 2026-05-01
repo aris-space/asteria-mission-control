@@ -66,6 +66,8 @@ pub struct RemoteComputerConfig {
 pub struct MavlinkConfig {
     /// System id which should be used by the backend when sending messages
     pub system_id: u8,
+    /// Directory where the MavLink logs should be saved.
+    pub logs_path: PathBuf,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
