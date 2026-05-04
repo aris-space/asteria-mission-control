@@ -19,12 +19,13 @@ use clap::Parser;
 use env_logger::Env;
 use futures::{StreamExt, stream::FuturesUnordered};
 use gix::ThreadSafeRepository as Repository;
-use std::fs::{self, File};
-use std::io::Write;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
+use tokio::fs::{self, File};
+use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, mpsc::UnboundedReceiver};
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
@@ -83,27 +84,11 @@ async fn main() {
     };
 
     let mavlink_logfile_path = config.mavlink.logs_path.join(format!("mavlink-logs-{}.jsonl", Utc::now().to_rfc3339()));
-    let mavlink_logfile = if config.mavlink.logs_path.is_dir() {
-        File::create(&mavlink_logfile_path).unwrap_or_else(|err| {
+    let mavlink_logfile =
+        create_and_get_logfile(&config.mavlink.logs_path, &mavlink_logfile_path).await.unwrap_or_else(|err| {
             log::error!("Unable to create log file at '{}': {err}", mavlink_logfile_path.display());
             exit(1)
-        })
-    } else if config.mavlink.logs_path.exists() {
-        log::error!(
-            "MavLink logs cannot be stored in '{}' because it's not a directory",
-            config.mavlink.logs_path.display()
-        );
-        exit(1)
-    } else {
-        if let Err(err) = fs::create_dir_all(&config.mavlink.logs_path) {
-            log::error!("Unable to create MavLink logs directory: {err}");
-            exit(1)
-        }
-        File::create(&mavlink_logfile_path).unwrap_or_else(|err| {
-            log::error!("Unable to create log file at '{}': {err}", mavlink_logfile_path.display());
-            exit(1)
-        })
-    };
+        });
 
     if let Ok(path) = mavlink_logfile_path.canonicalize() {
         log::info!("Using MavLink log file at '{}'", path.display());
@@ -160,6 +145,14 @@ async fn main() {
     .run()
     .await
     .expect("Should start web server");
+}
+
+/// Create a new log file and return a handle to it.
+async fn create_and_get_logfile(directory: &PathBuf, path: &PathBuf) -> io::Result<File> {
+    if !directory.exists() {
+        fs::create_dir_all(directory).await?
+    }
+    File::create(path).await
 }
 
 /// Apply all endpoints to the main service config which is exposed under `/api/`.
@@ -220,7 +213,7 @@ fn start_mavlink_message_handler(
                 if let serde_json::Value::Object(ref mut map) = message_value {
                     map.insert(String::from("timestamp"), serde_json::Value::from(Utc::now().timestamp_millis()));
                 }
-                if let Err(err) = writeln!(&mut log_file, "{message_value}") {
+                if let Err(err) = log_file.write_all(format!("{message_value}\r\n").as_bytes()).await {
                     log::warn!("Unable to write MavLink log: {err}");
                 }
             }
