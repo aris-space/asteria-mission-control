@@ -19,15 +19,15 @@ import {
 } from ".";
 
 interface DprActuatorProps {
-  value: number;
+  enabled: boolean;
+  setpoint: number;
   onChange: (active: boolean, value: number) => void;
-  active: boolean;
 }
 
-export function DprActuator({ value, onChange, active }: DprActuatorProps) {
+export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
-  const [inputValue, setInputValue] = useState<number | string>(value);
+  const [inputValue, setInputValue] = useState<number | string>(setpoint);
 
   return (
     <Paper
@@ -55,7 +55,7 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
           zIndex: 1,
         }}
       >
-        <Transition mounted={active} transition="fade" duration={400}>
+        <Transition mounted={enabled} transition="fade" duration={400}>
           {(styles) => (
             <Button
               style={styles}
@@ -64,7 +64,7 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
               color="dark"
               h={"fit-content"}
               variant="light"
-              onClick={() => onChange(active, Number(inputValue))}
+              onClick={() => onChange(enabled, Number(inputValue))}
             >
               SET
             </Button>
@@ -102,8 +102,8 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
           // When deactivating the DPR, set the value of the setpoint input
           // to the current value such that "spaming" activate-deactivate
           // doesn't change the setpoint.
-          if (active) setInputValue(value);
-          onChange(!active, active ? NaN : Number(inputValue as string));
+          if (enabled) setInputValue(setpoint);
+          onChange(!enabled, enabled ? NaN : Number(inputValue as string));
         }}
         style={{
           position: "absolute",
@@ -116,22 +116,24 @@ export function DprActuator({ value, onChange, active }: DprActuatorProps) {
           borderRadius: theme.radius.sm,
           borderWidth: 1,
           borderStyle: "solid",
-          borderColor: active ? theme.colors.green[9] : theme.colors.red[9],
+          borderColor: enabled ? theme.colors.green[9] : theme.colors.red[9],
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: active ? theme.colors.green[1] : theme.colors.red[1],
-          color: active ? theme.colors.green[9] : theme.colors.red[9],
-          transform: active
+          backgroundColor: enabled
+            ? theme.colors.green[1]
+            : theme.colors.red[1],
+          color: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          transform: enabled
             ? `translateX(calc(${SLOT_WIDTH} * 2 + calc(${HORIZONTAL_PADDING} * 2)))`
             : "translateX(0)",
         }}
       >
-        <Text p="xs" size="sm" fw={600} ff={active ? "monospace" : "text"}>
-          {active ? value : "Off"}
+        <Text p="xs" size="sm" fw={600} ff={enabled ? "monospace" : "text"}>
+          {enabled ? setpoint : "Off"}
         </Text>
       </Box>
     </Paper>

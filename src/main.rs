@@ -1,6 +1,5 @@
 use crate::cli::Cli;
 use crate::config::Config;
-use crate::datatypes::NamedPssDatapointValue;
 use crate::parser::{pss::Pss, statemachine::StateMachine};
 use crate::remote::{RemoteComputer, Remotes, config::RemoteComputerConfig};
 use crate::web::event::Event;
@@ -12,7 +11,7 @@ use crate::web::{
 
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
-use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_datapoint_information::datapoint::{DatapointHolder, NamedDatapointValue};
 use asteria_messages::{Message, datapoints::dp_flight_computer};
 use chrono::Utc;
 use clap::Parser;
@@ -33,7 +32,6 @@ use utoipa_rapidoc::RapiDoc;
 
 mod cli;
 mod config;
-mod datatypes;
 mod mavlink;
 mod parser;
 mod remote;
@@ -60,7 +58,7 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
     components(
         // Manually add those types to the OpenAPI schema because they not directly
         // exposed through endpoints.
-        schemas(EventKind, NamedPssDatapointValue, StateMachine, Pss)
+        schemas(EventKind, NamedDatapointValue, StateMachine, Pss)
     )
 )]
 struct ApiDoc;
@@ -240,8 +238,7 @@ fn start_mavlink_message_handler(
                 handle_config_hash_message(hash.hash, &config.configs_repository_path, &state).await;
             }
 
-            let datapoint_events =
-                message.get_datapoint_values().into_iter().map(|value| Event::PssData(value.into())).collect::<Vec<_>>();
+            let datapoint_events = message.get_datapoint_values().into_iter().map(Event::PssData).collect::<Vec<_>>();
 
             let mut events = vec![Event::MavlinkMessage(message)];
             events.extend(datapoint_events);

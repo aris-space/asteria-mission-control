@@ -1,6 +1,7 @@
-use crate::{datatypes::NamedPssDatapointValue, parser::statemachine::StateMachine, web::datatypes::OptionalResult};
+use crate::{parser::statemachine::StateMachine, web::datatypes::OptionalResult};
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
+use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use asteria_messages::Message;
 use serde::Serialize;
 use std::fmt::Display;
@@ -26,7 +27,7 @@ impl Display for EventKind {
 pub enum Event {
     Remote(Option<String>),
     StateMachine(OptionalResult<StateMachine>),
-    PssData(NamedPssDatapointValue),
+    PssData(NamedDatapointValue),
     MavlinkMessage(Message),
 }
 

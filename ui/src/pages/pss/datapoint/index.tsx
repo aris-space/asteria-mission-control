@@ -1,4 +1,7 @@
-import { ExtendedDatapointInformation } from "@asteria/mission-control-client";
+import {
+  DatapointValue,
+  ExtendedDatapointInformation,
+} from "@asteria/mission-control-client";
 import { DigitalActuator } from "./DigitalActuator";
 import { DprActuator } from "./DprActuator";
 import { DigitalSensor } from "./DigitalSensor";
@@ -43,36 +46,65 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
     case "sensor": {
       switch (kind.kind) {
         case "analog": {
-          return <AnalogSensor value={value} unit={kind.unit} />;
+          {
+            const {
+              value: { value: numValue },
+            } = value as {
+              component: "sensor";
+              kind: "analog";
+            } & DatapointValue;
+            return <AnalogSensor value={numValue} unit={kind.unit} />;
+          }
         }
-        case "digital":
+        case "digital": {
+          const {
+            value: { enabled },
+          } = value as {
+            component: "sensor";
+            kind: "digital";
+          } & DatapointValue;
           return (
             <DigitalSensor
               defaultEnabled={kind.default_enabled}
-              enabled={value == 1.0}
+              enabled={enabled}
             />
           );
+        }
       }
       break;
     }
     case "actuator": {
       switch (kind.kind) {
-        case "digital":
+        case "digital": {
+          const {
+            value: { enabled },
+          } = value as {
+            component: "actuator";
+            kind: "digital";
+          } & DatapointValue;
           return (
             <DigitalActuator
               defaultEnabled={kind.default_enabled}
-              enabled={value == 1.0}
+              enabled={enabled}
               onChange={handleDigitalActuatorChange}
             />
           );
-        case "dpr":
+        }
+        case "dpr": {
+          const {
+            value: { enabled, setpoint },
+          } = value as {
+            component: "actuator";
+            kind: "dpr";
+          } & DatapointValue;
           return (
             <DprActuator
-              value={value}
-              active={!isNaN(value)}
+              enabled={enabled}
+              setpoint={setpoint}
               onChange={handleDprActuatorChange}
             />
           );
+        }
         case "fractional":
       }
       return <div />;

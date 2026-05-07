@@ -255,47 +255,31 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
+      type: "OxidizerTankPressure",
       hasContent: true,
     },
     {
-      type: "OxidizerPressurizationCompleted",
-      hasContent: false,
-    },
-    {
-      type: "OxidizerPressurization",
+      type: "OxidizerDprValveState",
       hasContent: true,
     },
     {
-      type: "OxidizerPressurizationGain",
+      type: "OxidizerVentValveState",
       hasContent: true,
     },
     {
-      type: "OxidizerPressurizationAbort",
-      hasContent: false,
-    },
-    {
-      type: "OxidizerDprConfigFC",
+      type: "OxidizerDprValveControlFC",
       hasContent: true,
     },
     {
-      type: "OxidizerVentControlFC",
+      type: "OxidizerVentValveControlFC",
       hasContent: true,
     },
     {
-      type: "OxidizerDprConfigECU",
+      type: "OxidizerDprValveControlRFS",
       hasContent: true,
     },
     {
-      type: "OxidizerVentControlECU",
-      hasContent: true,
-    },
-    {
-      type: "OxidizerDprConfigRFS",
-      hasContent: true,
-    },
-    {
-      type: "OxidizerVentControlRFS",
+      type: "OxidizerVentValveControlRFS",
       hasContent: true,
     },
   ],
@@ -309,7 +293,11 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
+      type: "FuelMainValveState",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerMainValveState",
       hasContent: true,
     },
     {
@@ -349,19 +337,19 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: false,
     },
     {
-      type: "OxidizerMainControlFC",
+      type: "OxidizerMainValveControlFC",
       hasContent: true,
     },
     {
-      type: "OxidizerMainControlRFS",
+      type: "OxidizerMainValveControlRFS",
       hasContent: true,
     },
     {
-      type: "FuelMainControlFC",
+      type: "FuelMainValveControlFC",
       hasContent: true,
     },
     {
-      type: "FuelMainControlRFS",
+      type: "FuelMainValveControlRFS",
       hasContent: true,
     },
   ],

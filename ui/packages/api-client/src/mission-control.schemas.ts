@@ -26,6 +26,27 @@ export const ActuatorStatus = {
   powerOn: "powerOn",
 } as const;
 
+export type ActuatorValue =
+  | {
+      kind: "digital";
+      value: {
+        enabled: boolean;
+      };
+    }
+  | {
+      kind: "dpr";
+      value: {
+        enabled: boolean;
+        setpoint: number;
+      };
+    }
+  | {
+      kind: "fractional";
+      value: {
+        percent: number;
+      };
+    };
+
 export type Alignment = (typeof Alignment)[keyof typeof Alignment];
 
 export const Alignment = {
@@ -153,6 +174,28 @@ export interface DatapointInformation {
   name: string;
 }
 
+export type SensorValue =
+  | {
+      kind: "analog";
+      value: {
+        value: number;
+      };
+    }
+  | {
+      kind: "digital";
+      value: {
+        enabled: boolean;
+      };
+    };
+
+export type DatapointValue =
+  | (ActuatorValue & {
+      component: "actuator";
+    })
+  | (SensorValue & {
+      component: "sensor";
+    });
+
 /**
  * Telemetry statistics for a downlink.
  */
@@ -170,8 +213,8 @@ export interface DownlinkTelemetryStats {
 }
 
 export interface EngineBayTemperature {
-  /** Oxidizer Runline temperature in °C. */
-  ossRnlT: Celsius;
+  /** Injector Fuel temperature in °C. */
+  engInjT: Celsius;
   /** Oxidizer Tank Bottom temperature in °C. */
   ossTnkT: Celsius;
 }
@@ -205,35 +248,24 @@ export interface EngineControlBoardStatus {
   common: StatusCommonMessage;
   /** State of the ADS1120 device used to read thermocouples */
   thermocoupleStatus: SensorStatus;
-  /**
-   * Hash of the Thrust Curve used for this flight. Defined by
-   * @minimum 0
-   */
-  thrustCurveHash: number;
 }
 
 /**
- * Enum representing the state of a valve.
+ * The state of a valve that is normally closed.
  */
-export type ValveState = (typeof ValveState)[keyof typeof ValveState];
+export type NormallyClosedValve =
+  (typeof NormallyClosedValve)[keyof typeof NormallyClosedValve];
 
-export const ValveState = {
-  active: "active",
-  inactive: "inactive",
+export const NormallyClosedValve = {
+  open: "open",
+  closed: "closed",
 } as const;
-
-export interface EngineControlBoardValveStates {
-  /** Fuel Main Valve state */
-  fssMnlVlv: ValveState;
-  /** Oxidizer Main Valve state */
-  ossMnlVlv: ValveState;
-}
 
 export interface EnginePressure {
   /** Engine Chamber pressure in barg. */
   engCcP: BarG;
   /** Injector Fuel pressure in barg. */
-  fssInjP: BarG;
+  engInjP: BarG;
   /** Injector Oxidizer pressure in barg. */
   ossInjP: BarG;
 }
@@ -278,10 +310,7 @@ export type EngineControlBoardMessage =
       type: "BoardStatus";
     }
   | {
-      /** # `EngineControlBoardValveStates`
-  Periodic status message emitted by the Engine Control Board.
-
-  ## Type
+      /** ## Type
   - `Periodic @ 5 Hz`
 
   ## Direction
@@ -289,12 +318,28 @@ export type EngineControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Communicates the Valve State of all Valves controlled by the Engine Control Board.
-  This includes the Oxidizer Main and Fuel Main Valve.
+  Communicates the Fuel Main Valve State.
+
   ## Reaction
   Receivers may log the data or use it for diagnostics and system health checks. */
-      content: EngineControlBoardValveStates;
-      type: "ValveStates";
+      content: NormallyClosedValve;
+      type: "FuelMainValveState";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 5 Hz`
+
+  ## Direction
+  - **Emitted by:** `EngineControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Communicates the Oxidizer Main Valve State.
+
+  ## Reaction
+  Receivers may log the data or use it for diagnostics and system health checks. */
+      content: NormallyClosedValve;
+      type: "OxidizerMainValveState";
     }
   | {
       /** # `EnginePressure`
@@ -368,92 +413,68 @@ export type EngineControlBoardMessage =
       type: "FiringInitiation";
     }
   | {
-      /** # `OxidizerMainControlFC`
-  Event message sent by the FC.
-
-  ## Type
-  - `Event`: sent by the FC to control the Oxidizer Main Valve
+      /** ## Type
+  - `Event`: sent by the FC
 
   ## Direction
   - **Emitted by:** `FlightComputer`
   - **Received by:** `EngineControlBoard`
 
   ## Purpose
-  Sets the Oxidizer Main valve to be active or inactive.
+  Sets the Oxidizer Main valve to a certain state.
 
   ## Reaction
-  The Engine Control Board shall change the Oxidizer Main Valve position accordingly
-  ## Note
-  The Engine Control Board might also change the valve position without input from this message, during the firing sequence
-  The Valve is Normally Closed */
-      content: ValveState;
-      type: "OxidizerMainControlFC";
+  The Engine Control Board shall change the Oxidizer Main Valve position accordingly */
+      content: NormallyClosedValve;
+      type: "OxidizerMainValveControlFC";
     }
   | {
-      /** # `OxidizerMainControlRFS`
-  Event message sent by the RFS.
-
-  ## Type
-  - `Event`: sent by the RFS to control the Oxidizer Main Valve
+      /** ## Type
+  - `Event`: sent by the RFS
 
   ## Direction
   - **Emitted by:** `RemoteFillingStation`
   - **Received by:** `EngineControlBoard`
 
   ## Purpose
-  Sets the Oxidizer Main valve to be active or inactive.
+  Sets the Oxidizer Main valve to a certain state.
 
   ## Reaction
-  The Engine Control Board shall change the Oxidizer Main Valve position accordingly
-  ## Note
-  The Engine Control Board might also change the valve position without input from this message, during the firing sequence
-  The Valve is Normally Closed */
-      content: ValveState;
-      type: "OxidizerMainControlRFS";
+  The Engine Control Board shall change the Oxidizer Main Valve position accordingly */
+      content: NormallyClosedValve;
+      type: "OxidizerMainValveControlRFS";
     }
   | {
-      /** # `FuelMainControlFC`
-  Event message sent by the FC.
-
-  ## Type
-  - `Event`: sent by the FC to control the Fuel Main Valve
+      /** ## Type
+  - `Event`: sent by the FC
 
   ## Direction
   - **Emitted by:** `FlightComputer`
   - **Received by:** `EngineControlBoard`
 
   ## Purpose
-  Sets the Fuel Main valve to be active or inactive.
+  Sets the Fuel Main valve to a certain state.
 
   ## Reaction
-  The Engine Control Board shall change the Fuel Main Valve position accordingly.
-  ## Note
-  The Engine Control Board might also change the valve position without input from this message, during the firing sequence
-  The Valve is Normally Closed */
-      content: ValveState;
-      type: "FuelMainControlFC";
+  The Engine Control Board shall change the Fuel Main Valve position accordingly. */
+      content: NormallyClosedValve;
+      type: "FuelMainValveControlFC";
     }
   | {
-      /** # `FuelMainControlRFS`
-  Event message sent by the RFS.
-
-  ## Type
-  - `Event`: sent by the RFS to control the Fuel Main Valve
+      /** ## Type
+  - `Event`: sent by the RFS
 
   ## Direction
   - **Emitted by:** `RemoteFillingStation`
   - **Received by:** `EngineControlBoard`
 
   ## Purpose
-  Sets the Fuel Main valve to be active or inactive.
+  Sets the Fuel Main valve to a certain state.
 
   ## Reaction
-  The Engine Control Board shall change the Fuel Main Valve position accordingly.
-  ## Note
-  The Engine Control Board might also change the valve position without input from this message, during the firing sequence
-  The Valve is Normally Closed */
-      content: ValveState;
-      type: "FuelMainControlRFS";
+  The Engine Control Board shall change the Fuel Main Valve position accordingly. */
+      content: NormallyClosedValve;
+      type: "FuelMainValveControlRFS";
     };
 
 /**
@@ -1118,6 +1139,16 @@ export interface RfsComputerStatus {
   isIgnitionArmed: ArmingState;
 }
 
+/**
+ * Enum representing the state of a valve.
+ */
+export type ValveState = (typeof ValveState)[keyof typeof ValveState];
+
+export const ValveState = {
+  active: "active",
+  inactive: "inactive",
+} as const;
+
 export interface RfsComputerValveStates {
   /** The current active state of the normally closed GOX igniter valve. */
   goxIgnVlv: ValveState;
@@ -1377,10 +1408,10 @@ export interface RecoveryBoardStatus {
 
 export interface SteeringPositions {
   /** Current position of the left steering motor in steps (4096 steps = 1 revolution) from the
-  startup position (0). */
+  startup position (0). Positive values mean pulling. */
   leftPos: number;
   /** Current position of the right steering motor in steps (4096 steps = 1 revolution) from the
-  startup position (0). */
+  startup position (0). Positive values mean pulling. */
   rightPos: number;
 }
 
@@ -2000,25 +2031,18 @@ export interface OxidizerControlBoardStatus {
   thermocoupleStatus: SensorStatus;
 }
 
-export interface OxidizerControlBoardValveStates {
-  /** Oxidizer DPR Control loop state */
-  ossDpr: DPRValve;
-  /** Oxidizer Vent Valve state */
-  ossVntVlv: ValveState;
+export interface OxidizerTankPressure {
+  /** Absolute valued Oxidizer Tank differential pressure in barg. */
+  oxidizerTankDifferentialPressure: BarG;
+  /** Oxidizer Tank pressure sensor 1 in barg. */
+  oxidizerTankPressureSensor1: BarG;
+  /** Oxidizer Tank pressure sensor 2 in barg. */
+  oxidizerTankPressureSensor2: BarG;
 }
-
-/**
- * Pressurization Proportional Gain in [barg/ms]
-opening_time = kp * (target_pressure - current_pressure), in milliseconds
- */
-export type PressurizationGain = number;
 
 export type OxidizerControlBoardMessage =
   | {
-      /** # `OxidizerControlBoardBuildInfo`
-  Firmware build metadata emitted by the Oxidizer Control Board.
-
-  ## Type
+      /** ## Type
   - `Periodic @ 0.2 Hz`
 
   ## Direction
@@ -2034,10 +2058,7 @@ export type OxidizerControlBoardMessage =
       type: "BuildInfo";
     }
   | {
-      /** # `OxidizerControlBoardStatus`
-  Periodic status message emitted by the Oxidizer Control Board.
-
-  ## Type
+      /** ## Type
   - `Periodic @ 1 Hz`
 
   ## Direction
@@ -2045,7 +2066,7 @@ export type OxidizerControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Communicates the runtime health of the Oxidizer Control Board, including sensor.
+  Communicates the runtime health of the Oxidizer Control Board, including sensor status.
 
   ## Reaction
   Receivers may log the data or use it for diagnostics and system health checks. */
@@ -2053,10 +2074,22 @@ export type OxidizerControlBoardMessage =
       type: "BoardStatus";
     }
   | {
-      /** # `OxidizerControlBoardValveStates`
-  Periodic status message emitted by the Oxidizer Control Board.
+      /** ## Type
+  - `Periodic @ 20 Hz`
 
-  ## Type
+  ## Direction
+  - **Emitted by:** `OxidizerControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports Oxidizer Tank Pressures and Differential Pressure.
+  These are mainly used as an input to the Control Loop running on the Oxidizer Control Board.
+   */
+      content: OxidizerTankPressure;
+      type: "OxidizerTankPressure";
+    }
+  | {
+      /** ## Type
   - `Periodic @ 5 Hz`
 
   ## Direction
@@ -2064,62 +2097,31 @@ export type OxidizerControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Communicates the Valve State of all Valves controlled by the Oxidizer Control Board, including the DPR control loop state and setpoint.
+  Communicates the DPR Valve State including setpoint.
 
   ## Reaction
   Receivers may log the data or use it for diagnostics and system health checks. */
-      content: OxidizerControlBoardValveStates;
-      type: "ValveStates";
+      content: DPRValve;
+      type: "OxidizerDprValveState";
     }
   | {
-      type: "OxidizerPressurizationCompleted";
-    }
-  | {
-      /** # `OxidizerPressurization`
-  Event message sent by the FC.
-
-  ## Type
-  - `Event`: sent by the FC to initiate pressurization on the OxidizerControlBoard
+      /** ## Type
+  - `Periodic @ 5 Hz`
 
   ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+  - **Emitted by:** `OxidizerControlBoard`
+  - **Received by:** `unspecified`
 
   ## Purpose
-  Pressurize the Oxidizer Tank to a desired setpoint
+  Communicates the Oxidizer Vent Valve State.
 
   ## Reaction
-   */
-      content: BarG;
-      type: "OxidizerPressurization";
+  Receivers may log the data or use it for diagnostics and system health checks. */
+      content: NormallyClosedValve;
+      type: "OxidizerVentValveState";
     }
   | {
-      /** # `OxidizerPressurizationGain`
-  Event message sent by the FC.
-
-  ## Type
-  - `Event`: sent by the FC to configure the pressurization gain on the OxidizerControlBoard
-
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
-
-  ## Purpose
-  Configure the Oxidizer Pressurization Gain
-
-  ## Reaction
-   */
-      content: PressurizationGain;
-      type: "OxidizerPressurizationGain";
-    }
-  | {
-      type: "OxidizerPressurizationAbort";
-    }
-  | {
-      /** # `OxidizerDprConfigFC`
-  Event message sent by the FC.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the FC
 
   ## Direction
@@ -2128,18 +2130,14 @@ export type OxidizerControlBoardMessage =
 
   ## Purpose
   Set OXD Pressure Regulator configuration
-  Configures whether the control loop should be active, and what reference point (setpoint) it should assume.
 
   ## Reaction
   The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
       content: DPRValve;
-      type: "OxidizerDprConfigFC";
+      type: "OxidizerDprValveControlFC";
     }
   | {
-      /** # `OxidizerVentControlFC`
-  Event message sent by the FC.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the FC
 
   ## Direction
@@ -2151,53 +2149,11 @@ export type OxidizerControlBoardMessage =
 
   ## Reaction
   The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: ValveState;
-      type: "OxidizerVentControlFC";
+      content: NormallyClosedValve;
+      type: "OxidizerVentValveControlFC";
     }
   | {
-      /** # `OxidizerDprConfigECU`
-  Event message sent by the ECU.
-
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `OxidizerControlBoard`
-
-  ## Purpose
-  Set OXD Pressure Regulator configuration
-  Configures whether the control loop should be active, and what reference point (setpoint) it should assume.
-
-  ## Reaction
-  The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
-      content: DPRValve;
-      type: "OxidizerDprConfigECU";
-    }
-  | {
-      /** # `OxidizerVentControlECU`
-  Event message sent by the ECU.
-
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `OxidizerControlBoard`
-
-  ## Purpose
-  Sets the Oxidizer Vent Valve to a certain state.
-
-  ## Reaction
-  The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: ValveState;
-      type: "OxidizerVentControlECU";
-    }
-  | {
-      /** # `OxidizerDprConfigRFS`
-  Event message sent by the RFS.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the RFS
 
   ## Direction
@@ -2210,13 +2166,10 @@ export type OxidizerControlBoardMessage =
   ## Reaction
   The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
       content: DPRValve;
-      type: "OxidizerDprConfigRFS";
+      type: "OxidizerDprValveControlRFS";
     }
   | {
-      /** # `OxidizerVentControlRFS`
-  Event message sent by the RFS.
-
-  ## Type
+      /** ## Type
   - `Event`: sent by the RFS
 
   ## Direction
@@ -2228,8 +2181,8 @@ export type OxidizerControlBoardMessage =
 
   ## Reaction
   The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: ValveState;
-      type: "OxidizerVentControlRFS";
+      content: NormallyClosedValve;
+      type: "OxidizerVentValveControlRFS";
     };
 
 /**
@@ -2273,11 +2226,11 @@ export type Message =
       message: EngineControlBoardMessage;
     };
 
-export interface NamedPssDatapointValue {
+export interface NamedDatapointValue {
   /** Unique name of the datapoint */
   name: string;
   /** Value of the datapoint */
-  value: number;
+  value: DatapointValue;
 }
 
 export type OptionalResultStateMachine =

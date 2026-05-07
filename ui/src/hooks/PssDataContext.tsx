@@ -7,8 +7,9 @@ import {
   type PropsWithChildren,
 } from "react";
 import {
+  DatapointValue,
   EventKind,
-  NamedPssDatapointValue,
+  NamedDatapointValue,
 } from "@asteria/mission-control-client";
 import { useId } from "@mantine/hooks";
 import { useEvent } from "@asteria/hooks/EventContext";
@@ -18,10 +19,10 @@ interface PssDataContextDefinition {
   addNotifier: (
     name: string,
     datapointName: string,
-    cb: (value: number) => void,
+    cb: (value: DatapointValue) => void,
   ) => void;
   removeNotifier: (name: string) => void;
-  getValue: (datapointName: string) => number | null;
+  getValue: (datapointName: string) => DatapointValue | null;
 }
 
 const defaultValue: PssDataContextDefinition = {
@@ -37,13 +38,13 @@ export function PssDataProvider(props: PropsWithChildren) {
   // Those values are stored in a ref to prevent triggering a re-render for every value update.
   // To minimize the number of re-renders, we store callback functions for all `usePssDatapointData`
   // hooks which are currently active and only trigger state updates inside those hooks.
-  const datapointValues = useRef<Record<string, number>>({});
-  const notifiers = useRef<Record<string, [string, (value: number) => void]>>(
-    {},
-  );
+  const datapointValues = useRef<Record<string, DatapointValue>>({});
+  const notifiers = useRef<
+    Record<string, [string, (value: DatapointValue) => void]>
+  >({});
 
   useEvent<string>(EventKind.PSS_DATA, (event) => {
-    const datapointValue = JSON.parse(event.data) as NamedPssDatapointValue;
+    const datapointValue = JSON.parse(event.data) as NamedDatapointValue;
 
     datapointValues.current = {
       [datapointValue.name]: datapointValue.value,
@@ -73,7 +74,7 @@ export function PssDataProvider(props: PropsWithChildren) {
   const addNotifier = (
     id: string,
     datapointName: string,
-    cb: (value: number) => void,
+    cb: (value: DatapointValue) => void,
   ) => {
     notifiers.current[id] = [datapointName, cb];
   };
@@ -110,7 +111,7 @@ export function PssDataProvider(props: PropsWithChildren) {
  * @param datapoint name of the datapoint
  * @returns latest PSS value for this datapoint or null if no value was received until now
  */
-export function usePssDatapointData(datapoint: string): number | null {
+export function usePssDatapointData(datapoint: string): DatapointValue | null {
   const id = useId();
   const context = useContext(PssDataContext);
   if (!context)
@@ -118,13 +119,13 @@ export function usePssDatapointData(datapoint: string): number | null {
       "usePssDatapointData must only be used within a PssDataProvider",
     );
 
-  const currentValue = useRef<number>(null);
-  const [value, setValue] = useState<number | null>(null);
+  const currentValue = useRef<DatapointValue>(null);
+  const [value, setValue] = useState<DatapointValue | null>(null);
 
   useEffect(() => {
     setValue(context.getValue(datapoint));
-    const cb = (newValue: number) => {
-      if (currentValue.current != newValue) {
+    const cb = (newValue: DatapointValue) => {
+      if (JSON.stringify(currentValue.current) != JSON.stringify(newValue)) {
         setValue(newValue);
       }
     };
