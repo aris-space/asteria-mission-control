@@ -14,16 +14,18 @@ use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
 use asteria_datapoint_information::datapoint::DatapointHolder;
 use asteria_messages::{Message, datapoints::dp_flight_computer};
+use chrono::Utc;
 use clap::Parser;
 use env_logger::Env;
 use futures::{StreamExt, stream::FuturesUnordered};
 use gix::ThreadSafeRepository as Repository;
-use std::{
-    path::{Path, PathBuf},
-    process::exit,
-    sync::{Arc, OnceLock},
-    time::Duration,
-};
+use std::io;
+use std::path::{Path, PathBuf};
+use std::process::exit;
+use std::sync::{Arc, OnceLock};
+use std::time::Duration;
+use tokio::fs::{self, File};
+use tokio::io::AsyncWriteExt;
 use tokio::sync::{RwLock, mpsc::UnboundedReceiver};
 use utoipa::OpenApi;
 use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
@@ -81,6 +83,17 @@ async fn main() {
         }
     };
 
+    let mavlink_logfile_path = config.mavlink.logs_path.join(format!("mavlink-logs-{}.jsonl", Utc::now().to_rfc3339()));
+    let mavlink_logfile =
+        create_and_get_logfile(&config.mavlink.logs_path, &mavlink_logfile_path).await.unwrap_or_else(|err| {
+            log::error!("Unable to create log file at '{}': {err}", mavlink_logfile_path.display());
+            exit(1)
+        });
+
+    if let Ok(path) = mavlink_logfile_path.canonicalize() {
+        log::info!("Using MavLink log file at '{}'", path.display());
+    }
+
     match gix::open(&config.configs_repository_path) {
         // We don't attempt to write to the OnceLock from anywhere else so we can be sure
         // that the OnceLock hasn't been initialized yet.
@@ -105,7 +118,7 @@ async fn main() {
 
     let state = State::new(remotes.clone(), broadcast.clone());
 
-    start_mavlink_message_handler(msg_rx, config.clone(), broadcast.clone(), state.clone());
+    start_mavlink_message_handler(msg_rx, config.clone(), broadcast.clone(), state.clone(), mavlink_logfile);
     start_heartbeat(state.clone());
 
     HttpServer::new(move || {
@@ -132,6 +145,14 @@ async fn main() {
     .run()
     .await
     .expect("Should start web server");
+}
+
+/// Create a new log file and return a handle to it.
+async fn create_and_get_logfile(directory: &PathBuf, path: &PathBuf) -> io::Result<File> {
+    if !directory.exists() {
+        fs::create_dir_all(directory).await?
+    }
+    File::create(path).await
 }
 
 /// Apply all endpoints to the main service config which is exposed under `/api/`.
@@ -181,9 +202,22 @@ fn start_mavlink_message_handler(
     config: Arc<Config>,
     broadcast: Arc<Broadcast>,
     state: StateInstance,
+    mut log_file: File,
 ) {
     tokio::spawn(async move {
         while let Some(message) = msg_rx.recv().await {
+            // Log message to MavLink log file.
+            if let Ok(mut message_value) = serde_json::to_value(&message) {
+                // Insert a `timestamp` field which is the current UNIX timestamp. This would enable
+                // replaying the messages.
+                if let serde_json::Value::Object(ref mut map) = message_value {
+                    map.insert(String::from("timestamp"), serde_json::Value::from(Utc::now().timestamp_millis()));
+                }
+                if let Err(err) = log_file.write_all(format!("{message_value}\r\n").as_bytes()).await {
+                    log::warn!("Unable to write MavLink log: {err}");
+                }
+            }
+
             if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash)) = &message {
                 handle_config_hash_message(hash.hash, &config.configs_repository_path, &state).await;
             }
