@@ -223,13 +223,7 @@ function PSS({ kind }: PssProps) {
   return (
     <>
       {datapointElements}
-      <Flex
-        direction={"column"}
-        justify={"center"}
-        align={"center"}
-        h={"calc(100vh - var(--app-shell-header-height))"}
-        w={"100%"}
-      >
+      <Flex direction={"column"} justify={"center"} align={"center"} w={"100%"}>
         {pssInfo && (
           <Affix position={{ top: "5rem", right: "lg" }}>
             <Flex gap={"xs"}>
@@ -279,14 +273,10 @@ function PSS({ kind }: PssProps) {
             </Alert>
           </Flex>
         ) : (
-          <Box
-            className={classes.container}
-            style={{ justifySelf: "center", alignSelf: "center" }}
-            w={"100%"}
-          >
+          <Box w={"100%"}>
             <section
-              style={{ overflow: "hidden" }}
               data-highlight-states={datapointVisibility}
+              className={classes.container}
               ref={containerRef}
             />
           </Box>
