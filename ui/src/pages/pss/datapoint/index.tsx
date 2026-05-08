@@ -53,7 +53,9 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
               component: "sensor";
               kind: "analog";
             } & DatapointValue;
-            return <AnalogSensor value={numValue} unit={kind.unit} />;
+            return (
+              <AnalogSensor value={numValue} unit={kind.unit} precision={3} />
+            );
           }
         }
         case "digital": {

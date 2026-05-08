@@ -16,10 +16,16 @@ type AnalogSensorTendency = "equal" | "grow" | "shrink";
 
 interface AnalogSensorProps {
   value: number;
+  precision: number;
   unit: string;
 }
 
-export function AnalogSensor({ value, unit }: AnalogSensorProps) {
+function fmt(value: number | undefined, decimals = 3): string {
+  if (value == undefined || value == null) return "--";
+  return value.toFixed(decimals);
+}
+
+export function AnalogSensor({ value, unit, precision }: AnalogSensorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
   const previousValue = useRef<number>(null);
@@ -52,7 +58,7 @@ export function AnalogSensor({ value, unit }: AnalogSensorProps) {
       }}
     >
       <Text p="xs" size="sm" fw={600} ff={"monospace"}>
-        {value.toFixed(2)}
+        {fmt(value, precision)}
       </Text>
       <Tendency tendency={tendency} />
       <Text p="xs" size="sm" fw={500}>
@@ -71,9 +77,14 @@ function Tendency({ tendency }: TendencyProps) {
   const centerY = tendency == "equal" ? 50 : tendency == "shrink" ? 80 : 20;
 
   const color =
-    tendency == "equal" ? theme.colors.blue[5] : tendency == "shrink" ? theme.colors.orange[5] : theme.colors.green[5];
+    tendency == "equal"
+      ? theme.colors.blue[5]
+      : tendency == "shrink"
+        ? theme.colors.orange[5]
+        : theme.colors.green[5];
 
-  const translate = tendency == "equal" ? "0" : tendency == "shrink" ? "-10%" : "10%";
+  const translate =
+    tendency == "equal" ? "0" : tendency == "shrink" ? "-10%" : "10%";
 
   return (
     <svg
