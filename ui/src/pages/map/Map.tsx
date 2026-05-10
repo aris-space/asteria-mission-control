@@ -1,24 +1,45 @@
 import { useMavlinkMessage } from "@asteria/hooks/EventContext";
-import { Alert, Box, Card, Text, useMantineTheme } from "@mantine/core";
+import {
+  Alert,
+  Box,
+  Card,
+  Text,
+  TextInput,
+  useMantineTheme,
+} from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
-import { CSSProperties, ReactNode, useEffect, useId, useState } from "react";
+import {
+  CSSProperties,
+  ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
+import "leaflet/dist/leaflet.css";
+import {
+  CircleMarker,
+  MapContainer,
+  Polyline,
+  TileLayer,
+  useMap,
+} from "react-leaflet";
+import { latLngBounds } from "leaflet";
+import type { LatLngTuple } from "leaflet";
 
 const MAX_HISTORY = 1000;
 
-// Minimum visible span on any axis (metres).  Prevents the view from
-// zooming in to sub-centimetre detail when the vehicle is nearly stationary.
 const MIN_SPAN_M = 20;
-
-// Approximate metres per degree of latitude (constant) and per degree of
-// longitude (latitude-dependent).
 const METRES_PER_LAT_DEG = 111_320;
 
-// SVG plot canvas dimensions
 const SVG_W = 500;
 const SVG_H = 260;
 const M = { top: 12, right: 12, bottom: 46, left: 58 };
 const IW = SVG_W - M.left - M.right;
 const IH = SVG_H - M.top - M.bottom;
+
+const DEFAULT_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_STORAGE_KEY = ""; // Downloaded tiles in case of no internet, empty for now
 
 interface TrackPoint {
   lat: number;
@@ -26,23 +47,12 @@ interface TrackPoint {
   alt: number;
 }
 
-// Bounding polygon geo-point – will be made configurable in a future update
-interface GeoPoint {
-  lat: number;
-  lon: number;
-}
-
-// Stub: populate this to render a bounding polygon on the top view
-const BOUNDING_POLYGON: GeoPoint[] = [];
-
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/** North-south offset from a reference latitude, in metres. */
 function latToM(lat: number, latRef: number): number {
   return (lat - latRef) * METRES_PER_LAT_DEG;
 }
 
-/** East-west offset from a reference longitude, in metres (corrected for latitude). */
 function lonToM(lon: number, lonRef: number, latRef: number): number {
   return (
     (lon - lonRef) * METRES_PER_LAT_DEG * Math.cos((latRef * Math.PI) / 180)
@@ -88,7 +98,7 @@ function fmtNum(n: number): string {
   return n.toFixed(4);
 }
 
-// ─── Generic Plot ────────────────────────────────────────────────────────────
+// Generic Plot
 
 interface PlotProps {
   title: string;
@@ -96,14 +106,11 @@ interface PlotProps {
   yLabel: string;
   xs: number[];
   ys: number[];
-  /** Rendered inside the clipped inner plot area, receives computed scales */
   extraContent?: (
     scaleX: (v: number) => number,
     scaleY: (v: number) => number,
   ) => ReactNode;
-  /** Minimum span enforced on both axes (same units as xs/ys) */
   minSpan?: number;
-  /** Forwarded to the outer Card (e.g. for CSS grid span) */
   style?: CSSProperties;
 }
 
@@ -125,7 +132,7 @@ function Plot({
   const [xd0, xd1] = computeDomain(xs, 0.12, minSpan);
   const [yd0, yd1] = computeDomain(ys, 0.12, minSpan);
   const sx = linScale(xd0, xd1, 0, IW);
-  const sy = linScale(yd0, yd1, IH, 0); // flip: larger values go up
+  const sy = linScale(yd0, yd1, IH, 0);
 
   const xTickVals = ticks(xd0, xd1);
   const yTickVals = ticks(yd0, yd1);
@@ -178,7 +185,6 @@ function Plot({
             </clipPath>
           </defs>
 
-          {/* Plot background */}
           <rect
             x={M.left}
             y={M.top}
@@ -188,7 +194,6 @@ function Plot({
             rx={3}
           />
 
-          {/* Grid lines */}
           <g opacity={0.5}>
             {yTickVals.map((t, i) => (
               <line
@@ -214,7 +219,6 @@ function Plot({
             ))}
           </g>
 
-          {/* Inner content: extra layer + trail + current position dot */}
           <g
             transform={`translate(${M.left},${M.top})`}
             clipPath={`url(#${clipId})`}
@@ -234,7 +238,6 @@ function Plot({
             )}
           </g>
 
-          {/* X axis */}
           <g transform={`translate(${M.left},${M.top + IH})`}>
             <line x1={0} x2={IW} stroke={gray[7]} />
             {xTickVals.map((t, i) => (
@@ -257,7 +260,6 @@ function Plot({
             </text>
           </g>
 
-          {/* Y axis */}
           <g transform={`translate(${M.left},${M.top})`}>
             <line y2={IH} stroke={gray[7]} />
             {yTickVals.map((t, i) => (
@@ -286,6 +288,124 @@ function Plot({
           </g>
         </svg>
       )}
+    </Card>
+  );
+}
+
+// Leaflet Map
+
+function getStoredTileUrl(): string {
+  return (
+    localStorage.getItem(TILE_STORAGE_KEY) ||
+    import.meta.env.VITE_TILE_SERVER_URL ||
+    DEFAULT_TILE_URL
+  );
+}
+
+function MapController({ positions }: { positions: LatLngTuple[] }) {
+  const map = useMap();
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (positions.length === 0) return;
+    if (!initialized.current) {
+      map.setView(positions[0], 15);
+      initialized.current = true;
+      return;
+    }
+    const trackBounds = latLngBounds(positions);
+    if (!map.getBounds().contains(trackBounds)) {
+      map.fitBounds(trackBounds, { padding: [20, 20], maxZoom: map.getZoom() });
+    }
+  }, [map, positions]);
+
+  return null;
+}
+
+interface LeafletTopViewProps {
+  history: TrackPoint[];
+  style?: CSSProperties;
+}
+
+function LeafletTopView({ history, style }: LeafletTopViewProps) {
+  const [tileUrl, setTileUrl] = useState(getStoredTileUrl);
+  const [inputValue, setInputValue] = useState(tileUrl);
+
+  const positions: LatLngTuple[] = history.map((p) => [p.lat, p.lon]);
+  const currentPos: LatLngTuple | null =
+    positions.length > 0 ? positions[positions.length - 1] : null;
+
+  function applyTileUrl() {
+    const url = inputValue.trim() || DEFAULT_TILE_URL;
+    setTileUrl(url);
+    localStorage.setItem(TILE_STORAGE_KEY, url);
+  }
+
+  return (
+    <Card
+      withBorder
+      padding="xs"
+      radius="md"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        ...style,
+      }}
+    >
+      <Text size="sm" fw={600} mb="xs">
+        Top View – Map
+      </Text>
+
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {history.length === 0 ? (
+          <Alert
+            title="No position data received"
+            color="yellow"
+            variant="light"
+            icon={<IconAlertTriangle />}
+          />
+        ) : (
+          <MapContainer
+            center={currentPos ?? [0, 0]}
+            zoom={2}
+            style={{ height: "100%", width: "100%" }}
+            scrollWheelZoom
+          >
+            <TileLayer
+              key={tileUrl}
+              url={tileUrl}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            />
+            <MapController positions={positions} />
+            {positions.length > 1 && (
+              <Polyline positions={positions} color="#339af0" weight={2} />
+            )}
+            {currentPos && (
+              <CircleMarker
+                center={currentPos}
+                radius={6}
+                pathOptions={{
+                  color: "#fa5252",
+                  fillColor: "#fa5252",
+                  fillOpacity: 1,
+                }}
+              />
+            )}
+          </MapContainer>
+        )}
+      </div>
+
+      <TextInput
+        mt="xs"
+        size="xs"
+        label="Tile server URL"
+        placeholder={DEFAULT_TILE_URL}
+        value={inputValue}
+        onChange={(e) => setInputValue(e.currentTarget.value)}
+        onBlur={applyTileUrl}
+        onKeyDown={(e) => e.key === "Enter" && applyTileUrl()}
+      />
     </Card>
   );
 }
@@ -330,35 +450,12 @@ function MapPage() {
     });
   }, [positionMsg]);
 
-  // Use the first received fix as the local origin so all axes are in metres.
   const refLat = history[0]?.lat ?? 0;
   const refLon = history[0]?.lon ?? 0;
 
-  const nsM = history.map((p) => latToM(p.lat, refLat)); // North-South metres
-  const ewM = history.map((p) => lonToM(p.lon, refLon, refLat)); // East-West metres
+  const nsM = history.map((p) => latToM(p.lat, refLat));
+  const ewM = history.map((p) => lonToM(p.lon, refLon, refLat));
   const alts = history.map((p) => p.alt);
-
-  // Polygon extra-content callback for the top view (converted to metres)
-  const topViewExtra = (
-    scaleX: (v: number) => number,
-    scaleY: (v: number) => number,
-  ) => {
-    if (!BOUNDING_POLYGON.length) return null;
-    const points = BOUNDING_POLYGON.map(
-      (p) =>
-        `${scaleX(lonToM(p.lon, refLon, refLat)).toFixed(1)},${scaleY(latToM(p.lat, refLat)).toFixed(1)}`,
-    ).join(" ");
-    return (
-      <polygon
-        points={points}
-        fill={theme.colors.orange[2]}
-        fillOpacity={0.35}
-        stroke={theme.colors.orange[6]}
-        strokeWidth={1.5}
-        strokeLinejoin="round"
-      />
-    );
-  };
 
   return (
     <Box
@@ -390,17 +487,8 @@ function MapPage() {
         minSpan={MIN_SPAN_M}
       />
 
-      {/* Row 2 – Top View spanning both columns */}
-      <Plot
-        title="Top View – E-W / N-S"
-        xLabel="E-W (m)"
-        yLabel="N-S (m)"
-        xs={ewM}
-        ys={nsM}
-        extraContent={topViewExtra}
-        style={{ gridColumn: "span 2" }}
-        minSpan={MIN_SPAN_M}
-      />
+      {/* Row 2 – Leaflet map spanning both columns */}
+      <LeafletTopView history={history} style={{ gridColumn: "span 2" }} />
     </Box>
   );
 }
