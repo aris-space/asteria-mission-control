@@ -17,10 +17,14 @@ import {
 interface DigitalActuatorProps {
   onChange: (active: boolean) => void;
   enabled: boolean;
-  defaultEnabled: boolean,
+  defaultEnabled: boolean;
 }
 
-export function DigitalActuator({ onChange, enabled, defaultEnabled }: DigitalActuatorProps) {
+export function DigitalActuator({
+  onChange,
+  enabled,
+  defaultEnabled: _,
+}: DigitalActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
 
@@ -61,9 +65,11 @@ export function DigitalActuator({ onChange, enabled, defaultEnabled }: DigitalAc
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: enabled ? theme.colors.green[1] : theme.colors.red[1],
+          backgroundColor: enabled
+            ? theme.colors.green[1]
+            : theme.colors.red[1],
           color: enabled ? theme.colors.green[9] : theme.colors.red[9],
-          transform: (enabled && defaultEnabled)
+          transform: enabled
             ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
             : "translateX(0)",
         }}
