@@ -43,8 +43,14 @@ function SteeringBar({
   actual?: number;
   target?: number;
 }) {
-  const toFrac = (steps: number) =>
-    Math.max(0, Math.min(1, 0.5 + steps / (2 * STEERING_MAX_STEPS)));
+  // Invert the conversion done by convert_gnc_output function in the FC
+  // 
+  // The formula (for the right motor just replace each occurence of 'left' with 'right'):
+  // ((left_motor_steps / 4096) - revolution_interval_mapping_left.0) / (revolution_interval_mapping_left.1 - revolution_interval_mapping.0)
+  const toFrac = (steps: number, lbl: string) => 
+    lbl === "Steer L"
+        ? Math.max(0, Math.min(1, ((steps / 4096) + 3.36) / 4.95 ))
+        : Math.max(0, Math.min(1, ((steps / 4096) + 2.273) / 4.95 ));
 
   const actualFrac = actual != null ? toFrac(actual) : 0.5;
   const targetFrac = target != null ? toFrac(target) : null;
