@@ -39,11 +39,27 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
+      type: "ConfigHash",
+      hasContent: true,
+    },
+    {
       type: "Status",
       hasContent: true,
     },
     {
       type: "ValveStates",
+      hasContent: true,
+    },
+    {
+      type: "StateMachineState",
+      hasContent: true,
+    },
+    {
+      type: "UplinkTelemetryHealth",
+      hasContent: true,
+    },
+    {
+      type: "DownlinkTelemetryStats",
       hasContent: true,
     },
     {
@@ -205,7 +221,15 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "FuelTankPressure",
+      type: "FuelTankPressureSensor1",
+      hasContent: true,
+    },
+    {
+      type: "FuelTankPressureSensor2",
+      hasContent: true,
+    },
+    {
+      type: "FuelTankPressureFiltered",
       hasContent: true,
     },
     {
@@ -255,7 +279,15 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "OxidizerTankPressure",
+      type: "OxidizerTankPressureSensor1",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerTankPressureSensor2",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerTankDifferentialPressure",
       hasContent: true,
     },
     {
@@ -301,11 +333,23 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "EnginePressure",
+      type: "ChamberPressure",
       hasContent: true,
     },
     {
-      type: "EngineBayTemperature",
+      type: "InjectorFuelPressure",
+      hasContent: true,
+    },
+    {
+      type: "InjectorOxidizerPressure",
+      hasContent: true,
+    },
+    {
+      type: "InjectorFuelTemperature",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerTankTemperature",
       hasContent: true,
     },
     {

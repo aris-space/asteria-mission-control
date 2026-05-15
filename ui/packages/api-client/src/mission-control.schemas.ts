@@ -212,13 +212,6 @@ export interface DownlinkTelemetryStats {
   numMessagesSent: number;
 }
 
-export interface EngineBayTemperature {
-  /** Injector Fuel temperature in °C. */
-  engInjT: Celsius;
-  /** Oxidizer Tank Bottom temperature in °C. */
-  ossTnkT: Celsius;
-}
-
 export interface StatusCommonMessage {
   /**
    * Number of errors encountered since startup.
@@ -260,15 +253,6 @@ export const NormallyClosedValve = {
   open: "open",
   closed: "closed",
 } as const;
-
-export interface EnginePressure {
-  /** Engine Chamber pressure in barg. */
-  engCcP: BarG;
-  /** Injector Fuel pressure in barg. */
-  engInjP: BarG;
-  /** Injector Oxidizer pressure in barg. */
-  ossInjP: BarG;
-}
 
 export type EngineControlBoardMessage =
   | {
@@ -342,7 +326,7 @@ export type EngineControlBoardMessage =
       type: "OxidizerMainValveState";
     }
   | {
-      /** # `EnginePressure`
+      /** # `EngineChamberPressure`
   Periodic telemetry message emitted by the Engine Control Board.
 
   ## Type
@@ -353,8 +337,7 @@ export type EngineControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Reports various Pressures from the Engine.
-  This includes the Combustion Chamber Pressure, Injector Fuel Pressure and Injector Oxidizer Pressure.
+  Reports the Combustion Chamber Pressure.
 
   ## Reaction
   No action required.
@@ -362,11 +345,57 @@ export type EngineControlBoardMessage =
   ## Data Origin
   Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
   The value will be `NaN` if reading the sensor fails. */
-      content: EnginePressure;
-      type: "EnginePressure";
+      content: BarG;
+      type: "ChamberPressure";
     }
   | {
-      /** # `EngineBayTemperature`
+      /** # `InjectorFuelPressure`
+  Periodic telemetry message emitted by the Engine Control Board.
+
+  ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `EngineControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports the Injector Fuel Pressure.
+
+  ## Reaction
+  No action required.
+
+  ## Data Origin
+  Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
+  The value will be `NaN` if reading the sensor fails. */
+      content: BarG;
+      type: "InjectorFuelPressure";
+    }
+  | {
+      /** # `InjectorOxidizerPressure`
+  Periodic telemetry message emitted by the Engine Control Board.
+
+  ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `EngineControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports the Injector Oxidizer Pressure.
+
+  ## Reaction
+  No action required.
+
+  ## Data Origin
+  Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
+  The value will be `NaN` if reading the sensor fails. */
+      content: BarG;
+      type: "InjectorOxidizerPressure";
+    }
+  | {
+      /** # `InjectorFuelTemperature`
   Periodic telemetry message emitted by the Engine Control Board.
 
   ## Type
@@ -377,8 +406,7 @@ export type EngineControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Reports various Data from Thermocouples in the Engine Bay.
-  This includes the OSS Runline Temperature and the OSS Tank Bottom Temperature.
+  Reports the Injector Fuel Temperature.
 
   ## Reaction
   No action required.
@@ -388,8 +416,33 @@ export type EngineControlBoardMessage =
   Thermocouples installed can be either Type K or Type T.
   If the value read in firmware is outside the specific temperature range of [-200.0, 200.0] °C,
   the value will be set to `NaN`. */
-      content: EngineBayTemperature;
-      type: "EngineBayTemperature";
+      content: Celsius;
+      type: "InjectorFuelTemperature";
+    }
+  | {
+      /** # `OxidizerTankTemperature`
+  Periodic telemetry message emitted by the Engine Control Board.
+
+  ## Type
+  - `Periodic @ 10 Hz`
+
+  ## Direction
+  - **Emitted by:** `EngineControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports the Oxidizer Tank Bottom Temperature.
+
+  ## Reaction
+  No action required.
+
+  ## Data Origin
+  Data originates from high precision ADCs which read the differential thermocouple voltage together with a thermistor from which the temperature is calculated.
+  Thermocouples installed can be either Type K or Type T.
+  If the value read in firmware is outside the specific temperature range of [-200.0, 200.0] °C,
+  the value will be set to `NaN`. */
+      content: Celsius;
+      type: "OxidizerTankTemperature";
     }
   | {
       type: "FiringAborted";
@@ -707,15 +760,6 @@ export interface FuelControlBoardStatus {
   thermocoupleStatus: SensorStatus;
 }
 
-export interface FuelTankPressure {
-  /** Filtered Fuel Tank pressure used as DPR control loop input in barg. */
-  fuelTankPressureFiltered: BarG;
-  /** Fuel Tank pressure sensor 1 in barg. */
-  fuelTankPressureSensor1: BarG;
-  /** Fuel Tank pressure sensor 2 in barg. */
-  fuelTankPressureSensor2: BarG;
-}
-
 /**
  * The state of a valve that is normally open.
  */
@@ -783,11 +827,40 @@ export type FueldControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Reports Fuel Tank Pressures.
-  These are mainly used as an input to the Control Loop running on the Fuel Control Board.
+  Reports Fuel Tank Pressure Sensor 1.
+  This is mainly used as an input to the Control Loop running on the Fuel Control Board.
    */
-      content: FuelTankPressure;
-      type: "FuelTankPressure";
+      content: BarG;
+      type: "FuelTankPressureSensor1";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `FuelControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports Fuel Tank Pressure Sensor 2.
+  This is mainly used as an input to the Control Loop running on the Fuel Control Board.
+   */
+      content: BarG;
+      type: "FuelTankPressureSensor2";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `FuelControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports the filtered Fuel Tank pressure used as DPR control loop input.
+   */
+      content: BarG;
+      type: "FuelTankPressureFiltered";
     }
   | {
       /** ## Type
@@ -1183,6 +1256,26 @@ export type RfsComputerMessage =
       type: "BuildInfo";
     }
   | {
+      /** # `RfsComputerConfigHash`
+  First 5 hex characters of the config file Git Object Hash currently
+  loaded by the Rfs Computer.
+
+  ## Type
+  - `Periodic @ 0.2 Hz`
+
+  ## Direction
+  - **Emitted by:** `RfsComputer`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Allows Rfs Computer config file tracking.
+
+  ## Reaction
+  Receivers may log or display the config hash. */
+      content: ConfigHash;
+      type: "ConfigHash";
+    }
+  | {
       /** # `RfsComputerStatus`
   Periodic status message emitted by the RFS Computer.
 
@@ -1220,6 +1313,27 @@ export type RfsComputerMessage =
   Receivers may log the data or use it for diagnostics and system health checks. */
       content: RfsComputerValveStates;
       type: "ValveStates";
+    }
+  | {
+      /** The current state of the rfs computer state machine. */
+      content: StateMachineState;
+      type: "StateMachineState";
+    }
+  | {
+      /** Statistics about the health of the telemetry uplink received by the Rfs Computer.
+
+  Emitted periodically by the rfs computer.
+  Can be used to calculate the throughput and loss rate. */
+      content: UplinkTelemetryHealth;
+      type: "UplinkTelemetryHealth";
+    }
+  | {
+      /** Statistics about the telemetry downlink sent by the Rfs Computer.
+
+  Emitted periodically by the Rfs computer.
+  Can be used to calculate the throughput and loss rate. */
+      content: DownlinkTelemetryStats;
+      type: "DownlinkTelemetryStats";
     }
   | {
       /** # `GoxIgniterValveControl`
@@ -2031,15 +2145,6 @@ export interface OxidizerControlBoardStatus {
   thermocoupleStatus: SensorStatus;
 }
 
-export interface OxidizerTankPressure {
-  /** Absolute valued Oxidizer Tank differential pressure in barg. */
-  oxidizerTankDifferentialPressure: BarG;
-  /** Oxidizer Tank pressure sensor 1 in barg. */
-  oxidizerTankPressureSensor1: BarG;
-  /** Oxidizer Tank pressure sensor 2 in barg. */
-  oxidizerTankPressureSensor2: BarG;
-}
-
 export type OxidizerControlBoardMessage =
   | {
       /** ## Type
@@ -2082,11 +2187,40 @@ export type OxidizerControlBoardMessage =
   - **Received by:** `unspecified`
 
   ## Purpose
-  Reports Oxidizer Tank Pressures and Differential Pressure.
-  These are mainly used as an input to the Control Loop running on the Oxidizer Control Board.
+  Reports Oxidizer Tank Pressure Sensor 1.
+  This is mainly used as an input to the Control Loop running on the Oxidizer Control Board.
    */
-      content: OxidizerTankPressure;
-      type: "OxidizerTankPressure";
+      content: BarG;
+      type: "OxidizerTankPressureSensor1";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `OxidizerControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports Oxidizer Tank Pressure Sensor 2.
+  This is mainly used as an input to the Control Loop running on the Oxidizer Control Board.
+   */
+      content: BarG;
+      type: "OxidizerTankPressureSensor2";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 20 Hz`
+
+  ## Direction
+  - **Emitted by:** `OxidizerControlBoard`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Reports the absolute valued Oxidizer Tank differential pressure.
+   */
+      content: BarG;
+      type: "OxidizerTankDifferentialPressure";
     }
   | {
       /** ## Type
