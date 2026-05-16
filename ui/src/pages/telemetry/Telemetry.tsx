@@ -32,8 +32,6 @@ function accelMagnitude(
   return Math.sqrt(n * n + e * e + d * d);
 }
 
-const STEERING_MAX_STEPS = 8000; // 4096 is one rotation
-
 function SteeringBar({
   label,
   actual,
