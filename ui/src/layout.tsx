@@ -409,8 +409,6 @@ function UplinkHealth() {
     else return `${duration}ms`;
   };
 
-  console.log(timeOfLastMsg, timeOfLastProcessedMsg);
-
   return (
     <Flex direction={"column"} gap={"xs"}>
       <Text size="sm" fw={600}>
