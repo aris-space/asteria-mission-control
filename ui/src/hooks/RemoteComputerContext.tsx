@@ -6,6 +6,8 @@ import {
   useStateMachine,
   OptionalResultStateMachine,
   StateMachine,
+  Message,
+  RemoteComputerKind,
 } from "@asteria/mission-control-client";
 import {
   createContext,
@@ -28,6 +30,7 @@ interface RemoteComputerContextDefinition {
   errors: Array<string>;
   dismissError: (idx: number) => void;
   dismissAllErrors: () => void;
+  remoteComputerBoard: Message["board"] | null;
 }
 
 const defaultValue: RemoteComputerContextDefinition = {
@@ -39,6 +42,7 @@ const defaultValue: RemoteComputerContextDefinition = {
   errors: [],
   dismissError: () => {},
   dismissAllErrors: () => {},
+  remoteComputerBoard: null,
 };
 
 const RemoteComputerContext =
@@ -127,6 +131,11 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
         errors,
         dismissError,
         dismissAllErrors: () => errorHandler.setState([]),
+        remoteComputerBoard: currentActive
+          ? currentActive.kind == RemoteComputerKind.flight_computer
+            ? "FlightComputer"
+            : "RfsComputer"
+          : null,
       }}
     >
       {props.children}

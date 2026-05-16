@@ -51,8 +51,8 @@ export function MavlinkProvider(props: PropsWithChildren) {
     const mavlinkMessage = JSON.parse(event.data) as MavlinkMessage;
     const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
     mavlinkMessages.current = {
-      [messageId]: mavlinkMessage,
       ...mavlinkMessages.current,
+      [messageId]: mavlinkMessage,
     };
     Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
       if (cbMessageId == messageId) cb(mavlinkMessage);
