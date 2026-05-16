@@ -401,7 +401,7 @@ function UplinkHealth() {
   const fmt = (intVal?: number) => intVal?.toLocaleString("de-CH") || "--";
   const fmtTimestamp = (timestamp?: number) => {
     if (!timestamp) return "--.--";
-    // JavaScript UNIX are in milliseconds; the `timestamp` is in microseconds.
+    // JavaScript UNIX timestamps are in milliseconds; the `timestamp` is in microseconds.
     const timestampMs = timestamp / 1000;
     const duration = Date.now() - timestampMs;
     if (duration > 60000) return `${(duration / 60).toFixed(2)}m`;
