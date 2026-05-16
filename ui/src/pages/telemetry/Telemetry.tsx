@@ -50,8 +50,8 @@ function SteeringBar({
         ? Math.max(0, Math.min(1, ((steps / 4096) + 3.36) / 4.95 ))
         : Math.max(0, Math.min(1, ((steps / 4096) + 2.273) / 4.95 ));
 
-  const actualFrac = actual != null ? toFrac(actual) : 0.5;
-  const targetFrac = target != null ? toFrac(target) : null;
+  const actualFrac = actual != null ? toFrac(actual, label) : 0.5;
+  const targetFrac = target != null ? toFrac(target, label) : null;
 
   const indicatorH = 12; // percent
 
