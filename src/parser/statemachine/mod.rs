@@ -1,6 +1,8 @@
 use crate::parser::{cut_diagram_xml, parse_diagram_xml};
 use crate::remote::config::RemoteComputerConfig;
 
+use asteria_datapoint_information::datapoint::DatapointHolder;
+use asteria_messages::Message;
 use html_parser::Dom;
 use serde::Serialize;
 use std::{
@@ -16,6 +18,8 @@ pub enum StateMachineError {
     DiagramRead(String, std::io::Error),
     #[error("Remote computer config references the following undefined states: {0:?}")]
     ConfigMissingStates(Vec<String>),
+    #[error("Remote computer config references the following undefined actuators: {0:?}")]
+    ConfigInvalidActuators(Vec<String>),
     #[error("Error whilst parsing state machine diagram: {0}")]
     DiagramParse(quick_xml::de::DeError),
     #[error("Error whilst parsing state machine diagram nodes: {0}")]
@@ -35,6 +39,8 @@ pub struct StateMachine {
     /// Allowed manual transitions for every state and whether they
     /// are an abort transition.
     pub manual_transitions: HashMap<String, Vec<(String, bool)>>,
+    /// Allowed actuators for every state.
+    pub allowed_actuators: HashMap<String, Vec<String>>,
     /// Initial state of the state machine.
     pub initial_state: String,
     /// Mapping of state names to diagram cell ids.
@@ -157,11 +163,36 @@ impl StateMachine {
         // this is needed as we also treat text boxes as possible nodes.
         state_nodes.retain(|label, _| rc_config.state_machine.states.contains_key(label));
 
+        // Check whether the config references any invalid actuators in the `allowed_actuators`
+        // field of any state.
+        let mut invalid_actuators = Vec::new();
+        let allowed_actuators = rc_config
+            .state_machine
+            .states
+            .iter()
+            .filter_map(|(name, state)| {
+                let invalid_state_actuators = state
+                    .allowed_actuators
+                    .iter()
+                    .filter(|actuator| !Message::DATAPOINTS.iter().any(|dp| dp.name == *actuator))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let result = invalid_state_actuators.is_empty().then_some((name.clone(), state.allowed_actuators.clone()));
+                invalid_actuators.extend(invalid_state_actuators);
+                result
+            })
+            .collect::<HashMap<_, _>>();
+
+        if !invalid_actuators.is_empty() {
+            Err(StateMachineError::ConfigInvalidActuators(invalid_actuators))?
+        }
+
         Ok(Self {
             diagram: svg,
             manual_transitions,
             initial_state: rc_config.state_machine.initial_state.clone(),
             state_nodes,
+            allowed_actuators,
         })
     }
 }

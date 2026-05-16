@@ -75,14 +75,8 @@ interface TendencyProps {
 function Tendency({ tendency }: TendencyProps) {
   const theme = useMantineTheme();
   const centerY = tendency == "equal" ? 50 : tendency == "shrink" ? 80 : 20;
-
   const color =
-    tendency == "equal"
-      ? theme.colors.blue[5]
-      : tendency == "shrink"
-        ? theme.colors.orange[5]
-        : theme.colors.green[5];
-
+    tendency == "equal" ? "blue" : tendency == "shrink" ? "orange" : "green";
   const translate =
     tendency == "equal" ? "0" : tendency == "shrink" ? "-10%" : "10%";
 
@@ -95,7 +89,7 @@ function Tendency({ tendency }: TendencyProps) {
     >
       <polyline
         fill={"none"}
-        stroke={color}
+        stroke={theme.colors[color][5]}
         strokeWidth={15}
         strokeLinecap="round"
         points={`20,50 50,${centerY} 80,50`}

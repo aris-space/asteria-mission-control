@@ -22,6 +22,8 @@ pub struct StateMachineConfig {
 pub struct StateMachineStateConfig {
     #[serde(default)]
     pub manual_transitions: Vec<StateMachineTransition>,
+    #[serde(default)]
+    pub allowed_actuators: Vec<String>,
 }
 
 #[derive(Deserialize)]

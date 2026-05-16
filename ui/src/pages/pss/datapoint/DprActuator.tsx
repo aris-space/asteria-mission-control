@@ -20,13 +20,20 @@ import {
 
 interface DprActuatorProps {
   enabled: boolean;
+  allowed: boolean;
   setpoint: number;
   onChange: (active: boolean, value: number) => void;
 }
 
-export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
+export function DprActuator({
+  enabled,
+  allowed,
+  setpoint,
+  onChange,
+}: DprActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
+  const color = allowed ? (enabled ? "green" : "red") : "dark";
   const [inputValue, setInputValue] = useState<number | string>(setpoint);
 
   return (
@@ -64,6 +71,7 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
               color="dark"
               h={"fit-content"}
               variant="light"
+              disabled={!allowed}
               onClick={() => onChange(enabled, Number(inputValue))}
             >
               SET
@@ -82,6 +90,7 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
         <NumberInput
           value={inputValue}
           onChange={setInputValue}
+          disabled={!allowed}
           placeholder="Input"
           step={0.1}
           variant="unstyled"
@@ -99,6 +108,7 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
       <Box style={{ zIndex: 1 }} />
       <Box
         onClick={() => {
+          if (!allowed) return;
           // When deactivating the DPR, set the value of the setpoint input
           // to the current value such that "spaming" activate-deactivate
           // doesn't change the setpoint.
@@ -112,21 +122,19 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
           left: SLIDER_PADDING,
           width: `calc(${SLOT_WIDTH} - 2 * ${SLIDER_PADDING})`,
           zIndex: 2,
-          cursor: "pointer",
+          cursor: allowed ? "pointer" : "default",
           borderRadius: theme.radius.sm,
           borderWidth: 1,
           borderStyle: "solid",
-          borderColor: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          borderColor: theme.colors[color][9],
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: enabled
-            ? theme.colors.green[1]
-            : theme.colors.red[1],
-          color: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          backgroundColor: theme.colors[color][1],
+          color: theme.colors[color][9],
           transform: enabled
             ? `translateX(calc(${SLOT_WIDTH} * 2 + calc(${HORIZONTAL_PADDING} * 2)))`
             : "translateX(0)",

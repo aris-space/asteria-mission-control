@@ -44,7 +44,8 @@ interface PssProps {
 }
 
 function PSS({ kind }: PssProps) {
-  const { remoteComputer, remoteComputerBoard } = useRemoteComputer();
+  const { remoteComputer, remoteComputerBoard, stateMachine } =
+    useRemoteComputer();
   const { data: pssInfo } = kind == "rfs" ? useRfsPss() : useRocketPss();
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
   const { width, height } = useViewportSize();
@@ -66,6 +67,9 @@ function PSS({ kind }: PssProps) {
     remoteComputerBoard as any,
     "StateMachineState",
   );
+  const allowedActuators = activeState
+    ? stateMachine?.allowedActuators?.[activeState] || []
+    : [];
 
   const {
     isZoomDirty,
@@ -166,6 +170,7 @@ function PSS({ kind }: PssProps) {
 
       const datapoint = (
         <Datapoint
+          allowed={allowedActuators.includes(name)}
           name={name}
           kind={info.kind}
           onChange={(name, value) => {
@@ -213,7 +218,15 @@ function PSS({ kind }: PssProps) {
         </div>
       );
     });
-  }, [height, width, pssInfo, datapointNodes, svgReady, remoteComputerBoard]);
+  }, [
+    height,
+    width,
+    pssInfo,
+    datapointNodes,
+    svgReady,
+    remoteComputerBoard,
+    allowedActuators,
+  ]);
 
   return (
     <>

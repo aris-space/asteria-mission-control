@@ -26,10 +26,11 @@ interface DatapointProps extends Pick<
   ExtendedDatapointInformation,
   "kind" | "name"
 > {
+  allowed: boolean;
   onChange: (name: string, value: number) => void;
 }
 
-function Datapoint({ kind, name, onChange }: DatapointProps) {
+function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
   const value = usePssDatapointValue(name);
 
   const handleDigitalActuatorChange = (active: boolean) => {
@@ -73,7 +74,6 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
           );
         }
       }
-      break;
     }
     case "actuator": {
       switch (kind.kind) {
@@ -86,6 +86,7 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
           } & DatapointValue;
           return (
             <DigitalActuator
+              allowed={allowed}
               defaultEnabled={kind.default_enabled}
               enabled={enabled}
               onChange={handleDigitalActuatorChange}
@@ -101,6 +102,7 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
           } & DatapointValue;
           return (
             <DprActuator
+              allowed={allowed}
               enabled={enabled}
               setpoint={setpoint}
               onChange={handleDprActuatorChange}

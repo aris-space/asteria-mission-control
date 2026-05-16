@@ -21,6 +21,11 @@ interface DigitalSensorProps {
 export function DigitalSensor({ enabled, defaultEnabled }: DigitalSensorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
+  const color = enabled ? "green" : "red";
+
+  // Boolean whether the "knob" of the sensor should be at the right of the datapoint indicator.
+  // If the sensor is _not_ enabled by default, we want the "enabled" state to be on the right.
+  const right = defaultEnabled ? !enabled : enabled;
 
   return (
     <Paper
@@ -49,21 +54,18 @@ export function DigitalSensor({ enabled, defaultEnabled }: DigitalSensorProps) {
           borderRadius: theme.radius.sm,
           borderWidth: 1,
           borderStyle: "solid",
-          borderColor: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          borderColor: theme.colors[color][9],
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: enabled
-            ? theme.colors.green[1]
-            : theme.colors.red[1],
-          color: enabled ? theme.colors.green[9] : theme.colors.red[9],
-          transform:
-            enabled && defaultEnabled
-              ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
-              : "translateX(0)",
+          backgroundColor: theme.colors[color][1],
+          color: theme.colors[color][9],
+          transform: right
+            ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
+            : "translateX(0)",
         }}
       >
         <Text p="xs" size="sm" fw={600}>
