@@ -2,13 +2,10 @@ import {
   EventKind,
   RemoteComputerInfo,
   useActiveRemote,
-  usePss,
   useRemotes,
   useStateMachine,
   OptionalResultStateMachine,
-  PssDiagrams,
   StateMachine,
-  Pss,
 } from "@asteria/mission-control-client";
 import {
   createContext,
@@ -28,9 +25,6 @@ interface RemoteComputerContextDefinition {
   isRemoteComputerLoading: boolean;
   stateMachine: StateMachine | null;
   isStateMachineLoading: boolean;
-  rocketPss: Pss | null;
-  rfsPss: Pss | null;
-  isPssLoading: boolean;
   errors: Array<string>;
   dismissError: (idx: number) => void;
   dismissAllErrors: () => void;
@@ -42,9 +36,6 @@ const defaultValue: RemoteComputerContextDefinition = {
   isRemoteComputerLoading: false,
   stateMachine: null,
   isStateMachineLoading: false,
-  rocketPss: null,
-  rfsPss: null,
-  isPssLoading: false,
   errors: [],
   dismissError: () => {},
   dismissAllErrors: () => {},
@@ -63,9 +54,6 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
   } = useActiveRemote({ query: { retry: false } });
   const { data: stateMachineData, isLoading: isStateMachineLoading } =
     useStateMachine({ query: { retry: false } });
-  const { data: pssData, isLoading: isPssLoading } = usePss({
-    query: { retry: false },
-  });
 
   const [errors, errorHandler] = useListState<string>([]);
 
@@ -73,8 +61,6 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
     null,
   );
   const [stateMachine, setStateMachine] = useState<StateMachine | null>(null);
-  const [rocketPss, setRocketPss] = useState<Pss | null>(null);
-  const [rfsPss, setRfsPss] = useState<Pss | null>(null);
 
   useEffect(() => {
     remotesRef.current = remotes.data || [];
@@ -91,10 +77,6 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
   useEffect(() => {
     updateStateMachine(stateMachineData || null);
   }, [stateMachineData]);
-
-  useEffect(() => {
-    updatePss(pssData || null);
-  }, [pssData]);
 
   useEvent<string>(EventKind.REMOTE, (event) => {
     const newActive = event.data;
@@ -119,32 +101,11 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
     updateStateMachine(stateMachineJson as OptionalResultStateMachine | null);
   });
 
-  useEvent<string>(EventKind.PSS, (event) => {
-    const pssJson = JSON.parse(event.data);
-    updatePss(pssJson as PssDiagrams | null);
-  });
-
   const updateStateMachine = (result: OptionalResultStateMachine | null) => {
     if (!result || result.kind == "none") return setStateMachine(null);
 
     if (result.kind == "some") setStateMachine(result.value);
     else if (result.kind == "error") errorHandler.append(result.value);
-  };
-
-  const updatePss = (diagrams: PssDiagrams | null) => {
-    if (!diagrams) {
-      setRocketPss(null);
-      setRfsPss(null);
-      return;
-    }
-
-    const { rocket, rfs } = diagrams;
-
-    if (rocket.kind == "some") setRocketPss(rocket.value);
-    else if (rocket.kind == "error") errorHandler.append(rocket.value);
-
-    if (rfs.kind == "some") setRfsPss(rfs.value);
-    else if (rfs.kind == "error") errorHandler.append(rfs.value);
   };
 
   /**
@@ -163,9 +124,6 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
         isRemoteComputerLoading,
         stateMachine,
         isStateMachineLoading,
-        rocketPss,
-        rfsPss,
-        isPssLoading,
         errors,
         dismissError,
         dismissAllErrors: () => errorHandler.setState([]),

@@ -24,6 +24,7 @@ import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
 import Health from "./pages/health/Health";
 import Telemetry from "./pages/telemetry/Telemetry";
+import { PssDataProvider } from "./hooks/PssDataContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -68,16 +69,22 @@ createRoot(document.getElementById("root")!).render(
             <Notifications />
             <RemoteComputerProvider>
               <MavlinkProvider>
-                <BrowserRouter>
-                  <Layout>
-                    <Routes>
-                      <Route path="statemachine" element={<StateMachine />} />
-                      <Route path="pss" element={<PSS />} />
-                      <Route path="health" element={<Health />} />
-                      <Route path="telemetry" element={<Telemetry />} />
-                    </Routes>
-                  </Layout>
-                </BrowserRouter>
+                <PssDataProvider>
+                  <BrowserRouter>
+                    <Layout>
+                      <Routes>
+                        <Route path="statemachine" element={<StateMachine />} />
+                        <Route
+                          path="pss/rocket"
+                          element={<PSS kind="rocket" />}
+                        />
+                        <Route path="pss/rfs" element={<PSS kind="rfs" />} />
+                        <Route path="health" element={<Health />} />
+                        <Route path="telemetry" element={<Telemetry />} />
+                      </Routes>
+                    </Layout>
+                  </BrowserRouter>
+                </PssDataProvider>
               </MavlinkProvider>
             </RemoteComputerProvider>
           </EventProvider>

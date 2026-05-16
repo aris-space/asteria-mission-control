@@ -1,5 +1,4 @@
 use crate::config::RemoteComputerKind;
-use crate::parser::pss::Pss;
 
 use serde::Serialize;
 
@@ -18,20 +17,6 @@ pub struct RemoteComputerInfo {
     pub description: String,
     /// What kind of remote computer this is.
     pub kind: RemoteComputerKind,
-}
-
-#[derive(Serialize, Clone, utoipa::ToSchema, Default)]
-pub struct RemoteComputerPss {
-    /// The PSS of the rocket.
-    pub rocket: OptionalResult<Pss>,
-    /// The PSS of the remote filling station.
-    pub rfs: OptionalResult<Pss>,
-}
-
-impl From<(OptionalResult<Pss>, OptionalResult<Pss>)> for RemoteComputerPss {
-    fn from(value: (OptionalResult<Pss>, OptionalResult<Pss>)) -> Self {
-        Self { rocket: value.0, rfs: value.1 }
-    }
 }
 
 #[derive(Serialize, Clone, utoipa::ToSchema, Default, PartialEq)]

@@ -1,4 +1,4 @@
-use crate::parser::{pss::*, statemachine::*};
+use crate::parser::statemachine::*;
 use crate::remote::{RemoteComputer, Remotes};
 use crate::web::{broadcast::Broadcast, datatypes::OptionalResult, event::Event};
 
@@ -25,10 +25,6 @@ pub struct State {
     /// The state machine of the active remote. [`None`] if no remote is currently
     /// active, or the config of the active remote hasn't been received.
     state_machine: OptionalResult<StateMachine>,
-    /// The PSS configurations of the active remote.
-    /// The tuple contains the PSS configuration for the rocket
-    /// and the PSS configuration of the RFS.
-    pss: (OptionalResult<Pss>, OptionalResult<Pss>),
 
     remotes: Arc<Remotes>,
     broadcast: Arc<Broadcast>,
@@ -36,13 +32,7 @@ pub struct State {
 
 impl State {
     pub fn new(remotes: Arc<Remotes>, broadcast: Arc<Broadcast>) -> StateInstance {
-        let instance = Self {
-            remotes,
-            active_remote: None,
-            state_machine: OptionalResult::None,
-            pss: (OptionalResult::None, OptionalResult::None),
-            broadcast,
-        };
+        let instance = Self { remotes, active_remote: None, state_machine: OptionalResult::None, broadcast };
         Arc::new(RwLock::new(instance))
     }
 
@@ -91,7 +81,6 @@ impl State {
         remote.write().await.deactivate().expect("Remote should be active");
 
         self.set_state_machine(OptionalResult::None).await;
-        self.set_pss((OptionalResult::None, OptionalResult::None)).await;
 
         Ok(())
     }
@@ -108,14 +97,5 @@ impl State {
 
     pub fn get_state_machine(&self) -> &OptionalResult<StateMachine> {
         &self.state_machine
-    }
-
-    pub async fn set_pss(&mut self, pss: (impl Into<OptionalResult<Pss>>, impl Into<OptionalResult<Pss>>)) {
-        self.pss = (pss.0.into(), pss.1.into());
-        self.broadcast.broadcast(Event::Pss(self.pss.clone().into())).await;
-    }
-
-    pub fn get_pss(&self) -> &(OptionalResult<Pss>, OptionalResult<Pss>) {
-        &self.pss
     }
 }

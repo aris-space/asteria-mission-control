@@ -13,3 +13,8 @@ mavlink = { protocol = "tcp", remote = "localhost:5766" }
 kind = "flight computer"
 description = "Flight computer running on raspberry pi."
 mavlink = { protocol = "tcp", remote = "hermes2.local:5766" }
+
+[pss]
+rocket_diagram_path = "./rocket-pss.svg"
+# TODO: Update this once we have a RFS diagram.
+rfs_diagram_path = "./rocket-pss.svg"

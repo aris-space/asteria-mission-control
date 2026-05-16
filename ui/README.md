@@ -8,7 +8,8 @@ At the moment, there is nothing like an index page. Therefore, you can only chan
 
 Currently, the following views are available under the following paths:
 - **State machine**: The state machine view is available under `/statemachine`
-- **PSS**: The PSS view is available under `/pss`
+- **Rocket PSS**: The rocket PSS view is available under `/pss/rocket`
+- **RFS PSS**: The RFS PSS view is available under `/pss/rfs`
 - **Health**: The health view is available under `/health`
 - **Telemetry**: The telemetry view is available under `/telemetry`
 

@@ -39,11 +39,27 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
+      type: "ConfigHash",
+      hasContent: true,
+    },
+    {
       type: "Status",
       hasContent: true,
     },
     {
       type: "ValveStates",
+      hasContent: true,
+    },
+    {
+      type: "StateMachineState",
+      hasContent: true,
+    },
+    {
+      type: "UplinkTelemetryHealth",
+      hasContent: true,
+    },
+    {
+      type: "DownlinkTelemetryStats",
       hasContent: true,
     },
     {
@@ -201,59 +217,55 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
+      type: "PressurizationLinePressure",
       hasContent: true,
     },
     {
-      type: "FuelPressurizationCompleted",
-      hasContent: false,
-    },
-    {
-      type: "FuelPressurization",
+      type: "FuelTankPressureSensor1",
       hasContent: true,
     },
     {
-      type: "FuelPressurizationGain",
+      type: "FuelTankPressureSensor2",
       hasContent: true,
     },
     {
-      type: "FuelPressurizationAbort",
-      hasContent: false,
-    },
-    {
-      type: "FuelDprConfigFC",
+      type: "FuelTankPressureFiltered",
       hasContent: true,
     },
     {
-      type: "PressurizationVentControlFC",
+      type: "FuelDprValveState",
       hasContent: true,
     },
     {
-      type: "FuelVentControlFC",
+      type: "PressurizationVentValveState",
       hasContent: true,
     },
     {
-      type: "FuelDprConfigECU",
+      type: "FuelVentValveState",
       hasContent: true,
     },
     {
-      type: "PressurizationVentControlECU",
+      type: "FuelDprValveControlFC",
       hasContent: true,
     },
     {
-      type: "FuelVentControlECU",
+      type: "PressurizationVentValveControlFC",
       hasContent: true,
     },
     {
-      type: "FuelDprConfigRFS",
+      type: "FuelVentValveControlFC",
       hasContent: true,
     },
     {
-      type: "PressurizationVentControlRFS",
+      type: "FuelDprValveControlRFS",
       hasContent: true,
     },
     {
-      type: "FuelVentControlRFS",
+      type: "PressurizationVentValveControlRFS",
+      hasContent: true,
+    },
+    {
+      type: "FuelVentValveControlRFS",
       hasContent: true,
     },
   ],
@@ -267,47 +279,39 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
+      type: "OxidizerTankPressureSensor1",
       hasContent: true,
     },
     {
-      type: "OxidizerPressurizationCompleted",
-      hasContent: false,
-    },
-    {
-      type: "OxidizerPressurization",
+      type: "OxidizerTankPressureSensor2",
       hasContent: true,
     },
     {
-      type: "OxidizerPressurizationGain",
+      type: "OxidizerTankDifferentialPressure",
       hasContent: true,
     },
     {
-      type: "OxidizerPressurizationAbort",
-      hasContent: false,
-    },
-    {
-      type: "OxidizerDprConfigFC",
+      type: "OxidizerDprValveState",
       hasContent: true,
     },
     {
-      type: "OxidizerVentControlFC",
+      type: "OxidizerVentValveState",
       hasContent: true,
     },
     {
-      type: "OxidizerDprConfigECU",
+      type: "OxidizerDprValveControlFC",
       hasContent: true,
     },
     {
-      type: "OxidizerVentControlECU",
+      type: "OxidizerVentValveControlFC",
       hasContent: true,
     },
     {
-      type: "OxidizerDprConfigRFS",
+      type: "OxidizerDprValveControlRFS",
       hasContent: true,
     },
     {
-      type: "OxidizerVentControlRFS",
+      type: "OxidizerVentValveControlRFS",
       hasContent: true,
     },
   ],
@@ -321,15 +325,31 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
+      type: "FuelMainValveState",
       hasContent: true,
     },
     {
-      type: "EnginePressure",
+      type: "OxidizerMainValveState",
       hasContent: true,
     },
     {
-      type: "EngineBayTemperature",
+      type: "ChamberPressure",
+      hasContent: true,
+    },
+    {
+      type: "InjectorFuelPressure",
+      hasContent: true,
+    },
+    {
+      type: "InjectorOxidizerPressure",
+      hasContent: true,
+    },
+    {
+      type: "InjectorFuelTemperature",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerTankTemperature",
       hasContent: true,
     },
     {
@@ -361,19 +381,19 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: false,
     },
     {
-      type: "OxidizerMainControlFC",
+      type: "OxidizerMainValveControlFC",
       hasContent: true,
     },
     {
-      type: "OxidizerMainControlRFS",
+      type: "OxidizerMainValveControlRFS",
       hasContent: true,
     },
     {
-      type: "FuelMainControlFC",
+      type: "FuelMainValveControlFC",
       hasContent: true,
     },
     {
-      type: "FuelMainControlRFS",
+      type: "FuelMainValveControlRFS",
       hasContent: true,
     },
   ],

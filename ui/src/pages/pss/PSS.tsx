@@ -1,6 +1,11 @@
 import {
   ExtendedDatapointInformation,
-  Pss,
+  ManualActuatorChange,
+  Message,
+  RemoteComputerKind,
+  useRfsPss,
+  useRocketPss,
+  useSendMessage,
 } from "@asteria/mission-control-client";
 import React, {
   CSSProperties,
@@ -17,42 +22,55 @@ import {
   Box,
   Flex,
   Loader,
-  Select,
   Tooltip,
 } from "@mantine/core";
 import { useMap, useToggle, useViewportSize } from "@mantine/hooks";
 import * as d3 from "d3";
 import { IconEye, IconEyeOff, IconZoomReset } from "@tabler/icons-react";
 import classes from "./PSS.module.css";
-import DatapointKind from "./kind";
+import Datapoint from "./datapoint";
 import useDiagramSvg from "@asteria/hooks/DiagramSvgHook";
 import { notifications } from "@mantine/notifications";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
+import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 // Attribute which is used to store which state a diagram node represents
 const CELL_ID_ATTR: string = "data-cell-id";
 
-const TEST_VALUE: Record<string, number> = {
-  oss_dpr: 25.1,
-  oss_vnt_vlv: 0,
-  fss_inj_p: 12.4,
-  oss_tnk_t: -14.9,
-};
-
 type Transform = { k: number; x: number; y: number };
 
-function PSS() {
-  const [pssInfo, setPssInfo] = useState<Pss | null>();
+interface PssProps {
+  kind: "rfs" | "rocket";
+}
+
+function PSS({ kind }: PssProps) {
+  const { remoteComputer } = useRemoteComputer();
+  const { data: pssInfo } = kind == "rfs" ? useRfsPss() : useRocketPss();
+  const { mutate: sendMessage, isPending: isSending } = useSendMessage();
   const { width, height } = useViewportSize();
   // By default the datapoint markers should not be visible.
   const [datapointVisibility, toggleDatapointVisibility] = useToggle([
     "hidden",
     "inherit",
   ]);
+  const [pathIndex, setPathIndex] = useState<number>(0);
+  // We need to also store the path index in a ref because the manual actuator change
+  // is called from a callback function and otherwise it just copies the initial path index.
+  const pathIndexRef = useRef<number>(0);
   const datapointNodes = useMap<string, SVGElement>();
-  const [datapointValues, setDatapointValues] =
-    useState<Record<string, number>>(TEST_VALUE);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [[activeState, _transitionTimestamp], setActiveState] = useState<
+    [string | null, number]
+  >([null, Date.now()]);
+  const board = remoteComputer
+    ? remoteComputer.kind == RemoteComputerKind.flight_computer
+      ? "FlightComputer"
+      : "RfsComputer"
+    : null;
+  const stateMachineStateMessage = useMavlinkMessage(
+    board as any,
+    "StateMachineState",
+  );
 
   const {
     isZoomDirty,
@@ -66,7 +84,7 @@ function PSS() {
       onZoom: (transform) => {
         // We do this kinda sketchy style overriding here to prevent having a state update and thus a re-render
         // per zoom event. This is much more performant as zoom events happen at a very high frequency!
-        Object.keys(datapointValues).forEach((name) => {
+        Object.keys(pssInfo?.datapointInfo || {}).forEach((name) => {
           const info = pssInfo?.datapointInfo[name];
           if (!info) return;
           const styles = computeDatapointStyle(transform, info);
@@ -94,6 +112,27 @@ function PSS() {
       },
     },
   );
+
+  useEffect(() => {
+    if (!stateMachineStateMessage) return;
+
+    const { state, pathIndex } = stateMachineStateMessage.message.content;
+
+    const decoder = new TextDecoder();
+    const bytes = new Uint8Array(state.filter(Boolean));
+    const targetState = decoder.decode(bytes);
+
+    if (targetState != activeState) {
+      console.debug(`State changed to '${targetState}'`);
+    }
+
+    setPathIndex(pathIndex);
+    setActiveState([targetState, Date.now()]);
+  }, [stateMachineStateMessage]);
+
+  useEffect(() => {
+    pathIndexRef.current = pathIndex;
+  }, [pathIndex]);
 
   useEffect(() => {
     updateDatapointVisibility();
@@ -126,34 +165,46 @@ function PSS() {
   }
 
   const datapointElements = useMemo(() => {
-    return Object.entries(datapointValues).map(([name, value]) => {
-      const info = pssInfo?.datapointInfo[name];
-      if (!info) return <React.Fragment key={name} />;
-
+    return Object.entries(pssInfo?.datapointInfo || {}).map(([name, info]) => {
       const styles = computeDatapointStyle(zoomTransform, info);
       if (!styles) return <React.Fragment key={name} />;
 
       const datapoint = (
-        <DatapointKind
+        <Datapoint
           name={name}
-          value={value}
           kind={info.kind}
-          onChange={({ actuator, value }) => {
-            const decoder = new TextDecoder();
-            const bytes = new Uint8Array(actuator.filter(Boolean));
-            let name = decoder.decode(bytes);
+          onChange={(name, value) => {
+            const encoder = new TextEncoder();
+            const actuator = new Uint8Array(encoder.encode(name).buffer);
+            const action: ManualActuatorChange = {
+              // Exactly 20 bytes; Pad with zeroes on the right.
+              actuator: Array.from([
+                ...actuator,
+                ...new Array(20).fill(0),
+              ]).slice(0, 20),
+              pathIndex: pathIndexRef.current,
+              value,
+            };
 
-            // TODO: Here we would send the mavlink message in JSON form to backend.
-            setDatapointValues((values) => ({
-              ...values,
-              [name]: value,
-            }));
-
-            notifications.show({
-              title: "Manual Actuator Change",
-              message: `Successfully changed value of actuator '${name}' to ${value}`,
-              color: "green",
-            });
+            const message: Message = {
+              board: board as any,
+              message: {
+                type: "ManualActuatorChange",
+                content: action,
+              },
+            };
+            sendMessage(
+              { data: message },
+              {
+                onError: () => {
+                  notifications.show({
+                    title: "Manual actuator change failed",
+                    message: `Failed to send message for manual actuator change of '${name}' to '${value}'`,
+                    color: "red",
+                  });
+                },
+              },
+            );
           }}
         />
       );
@@ -167,18 +218,12 @@ function PSS() {
         </div>
       );
     });
-  }, [height, width, datapointValues, pssInfo, datapointNodes, svgReady]);
+  }, [height, width, pssInfo, datapointNodes, svgReady]);
 
   return (
     <>
       {datapointElements}
-      <Flex
-        direction={"column"}
-        justify={"center"}
-        align={"center"}
-        h={"calc(100vh - var(--app-shell-header-height))"}
-        w={"100%"}
-      >
+      <Flex direction={"column"} justify={"center"} align={"center"} w={"100%"}>
         {pssInfo && (
           <Affix position={{ top: "5rem", right: "lg" }}>
             <Flex gap={"xs"}>
@@ -201,79 +246,43 @@ function PSS() {
             </Flex>
           </Affix>
         )}
-        <Affix position={{ top: "5rem", left: "lg" }}>
-          <PssSelector onChange={setPssInfo} />
+        <Affix position={{ bottom: "lg", left: "lg" }}>
+          {isSending && <Loader size={"sm"} />}
         </Affix>
-        {pssInfo ? (
-          <Box
-            className={classes.container}
-            style={{ justifySelf: "center", alignSelf: "center" }}
-            w={"100%"}
-          >
-            <section
-              style={{ overflow: "hidden" }}
-              data-highlight-states={datapointVisibility}
-              ref={containerRef}
-            />
-          </Box>
-        ) : (
+        {!remoteComputer ? (
           <Flex p={"lg"} justify={"center"} align={"center"}>
             <Alert
               variant="light"
-              color="blue"
-              title="No PSS configuration selected"
+              color="yellow"
+              title="No active remote computer"
             >
-              You need to select a PSS configuration to start
+              You need to activate a remote computer before you can interact
+              with a PSS diagram.
             </Alert>
           </Flex>
+        ) : kind == "rfs" &&
+          remoteComputer.kind == RemoteComputerKind.flight_computer ? (
+          <Flex p={"lg"} justify={"center"} align={"center"}>
+            <Alert
+              variant="light"
+              color="yellow"
+              title="RFS PSS diagram unavailable"
+            >
+              The RFS PSS diagram is not available when the active remote
+              computer is a flight computer.
+            </Alert>
+          </Flex>
+        ) : (
+          <Box w={"100%"}>
+            <section
+              data-highlight-states={datapointVisibility}
+              className={classes.container}
+              ref={containerRef}
+            />
+          </Box>
         )}
       </Flex>
     </>
-  );
-}
-
-interface PssSelectorProps {
-  onChange: (pss: Pss | null) => void;
-}
-
-function PssSelector(props: PssSelectorProps) {
-  const [selected, setSelected] = useState<string | null>();
-  const {
-    remoteComputer,
-    isRemoteComputerLoading,
-    rocketPss,
-    rfsPss: _rfsPss,
-    isPssLoading,
-  } = useRemoteComputer();
-
-  useEffect(() => {
-    if (!selected || !rocketPss) return props.onChange(null);
-    props.onChange(rocketPss);
-  }, [selected]);
-
-  useEffect(() => {
-    if (!remoteComputer) return;
-    setSelected(null);
-  }, [remoteComputer]);
-
-  const handleStateMachineChange = (value: string | null) => {
-    setSelected(value);
-  };
-
-  const loading = isRemoteComputerLoading || isPssLoading;
-
-  return (
-    <Select
-      placeholder={"Select a PSS configuration"}
-      data={[{ label: "Rocket", value: "rocket" }]}
-      disabled={loading}
-      value={selected}
-      onChange={handleStateMachineChange}
-      clearable
-      allowDeselect
-      rightSection={loading ? <Loader size="xs" /> : <React.Fragment />}
-      rightSectionWidth={40}
-    />
   );
 }
 

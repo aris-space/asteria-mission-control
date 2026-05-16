@@ -1,10 +1,7 @@
-use crate::{
-    datatypes::NamedPssDatapointValue,
-    parser::statemachine::StateMachine,
-    web::datatypes::{OptionalResult, RemoteComputerPss},
-};
+use crate::{parser::statemachine::StateMachine, web::datatypes::OptionalResult};
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
+use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use asteria_messages::Message;
 use serde::Serialize;
 use std::fmt::Display;
@@ -14,7 +11,6 @@ use std::fmt::Display;
 pub enum EventKind {
     Remote,
     StateMachine,
-    Pss,
     PssData,
     Ping,
     MavlinkMessage,
@@ -31,8 +27,7 @@ impl Display for EventKind {
 pub enum Event {
     Remote(Option<String>),
     StateMachine(OptionalResult<StateMachine>),
-    Pss(RemoteComputerPss),
-    PssData(NamedPssDatapointValue),
+    PssData(NamedDatapointValue),
     MavlinkMessage(Message),
 }
 
@@ -45,7 +40,6 @@ impl From<Event> for SseEvent {
             Event::StateMachine(state_machine) => {
                 Self::Data(SseData::new_json(&state_machine).unwrap().event(EventKind::StateMachine.to_string()))
             }
-            Event::Pss(pss) => Self::Data(SseData::new_json(&pss).unwrap().event(EventKind::Pss.to_string())),
             Event::PssData(value) => Self::Data(SseData::new_json(value).unwrap().event(EventKind::PssData.to_string())),
             Event::MavlinkMessage(message) => {
                 Self::Data(SseData::new_json(message).unwrap().event(EventKind::MavlinkMessage.to_string()))

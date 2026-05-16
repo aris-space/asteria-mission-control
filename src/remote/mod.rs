@@ -23,10 +23,10 @@ pub const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 /// communication.
 /// This does not apply to heartbeat messages, those are never
 /// sent multiple times!
-pub const MAVLINK_RESEND_ATTEMPTS: usize = 5;
+pub const MAVLINK_RESEND_ATTEMPTS: usize = 3;
 
 /// Duration to wait between every message resend attempt.
-pub const MAVLINK_RESEND_TIMEOUT: Duration = Duration::from_secs(1);
+pub const MAVLINK_RESEND_TIMEOUT: Duration = Duration::from_millis(50);
 
 #[derive(Debug, thiserror::Error)]
 pub enum RemoteComputerError {
