@@ -1,6 +1,9 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
 import { useBackendLatency } from "@asteria/hooks/EventContext";
-import { useMavlinkTelemetryHealth } from "@asteria/hooks/MavlinkContext";
+import {
+  useMavlinkMessage,
+  useMavlinkTelemetryHealth,
+} from "@asteria/hooks/MavlinkContext";
 import {
   ActionIcon,
   Alert,
@@ -29,6 +32,7 @@ import {
 } from "@asteria/mission-control-client";
 import {
   IconAlertCircle,
+  IconAlertTriangle,
   IconPlug,
   IconPlugX,
   IconRocket,
@@ -330,6 +334,7 @@ function BackendLatency() {
 
 function MavlinkTelemetryHealth() {
   const { getLastMessageTimestamp } = useMavlinkTelemetryHealth();
+
   const [timeSinceLastMessage, setTimeSinceLastMessage] =
     useState<number>(Infinity);
 
@@ -354,9 +359,13 @@ function MavlinkTelemetryHealth() {
   return (
     <Tooltip
       label={
-        isTelemetryActive
-          ? `Received MavLink telemetry within last ${timeSinceLastMessage} milliseconds`
-          : "No MavLink telemetry received within last second"
+        <Stack gap={"xs"}>
+          {isTelemetryActive
+            ? `Received MavLink telemetry within last ${timeSinceLastMessage} milliseconds`
+            : "No MavLink telemetry received within last second"}
+          <UplinkHealth />
+          <DownlinkStats />
+        </Stack>
       }
     >
       <Badge color={telemetryCondition} size="md">
@@ -371,5 +380,110 @@ function MavlinkTelemetryHealth() {
         </Flex>
       </Badge>
     </Tooltip>
+  );
+}
+
+function UplinkHealth() {
+  const { remoteComputerBoard } = useRemoteComputer();
+  const uplinkTelemetryHealthMessage = useMavlinkMessage(
+    remoteComputerBoard as any,
+    "UplinkTelemetryHealth",
+  );
+
+  const {
+    numMsgLost,
+    numMsgProcessed,
+    numMsgReceived,
+    timeOfLastMsg,
+    timeOfLastProcessedMsg,
+  } = uplinkTelemetryHealthMessage?.message.content || {};
+
+  const fmt = (intVal?: number) => intVal?.toLocaleString("de-CH") || "--";
+  const fmtTimestamp = (timestamp?: number) => {
+    if (!timestamp) return "--.--";
+    // JavaScript UNIX timestamps are in milliseconds; the `timestamp` is in microseconds.
+    const timestampMs = timestamp / 1000;
+    const duration = Date.now() - timestampMs;
+    if (duration > 60000) return `${(duration / 60).toFixed(2)}m`;
+    else if (duration > 1000) return `${(duration / 1000).toFixed(2)}s`;
+    else return `${duration}ms`;
+  };
+
+  return (
+    <Flex direction={"column"} gap={"xs"}>
+      <Text size="sm" fw={600}>
+        Uplink Statistics
+      </Text>
+      {remoteComputerBoard ? (
+        <>
+          <Group>
+            <div>
+              <code>{fmt(numMsgProcessed)}</code> messages processed
+            </div>
+            <div>
+              <code>{fmt(numMsgReceived)}</code> messages received
+            </div>
+            <div>
+              <code>{fmt(numMsgLost)}</code> messages lost
+            </div>
+          </Group>
+          <div>
+            <code>{fmtTimestamp(timeOfLastProcessedMsg)}</code> since last
+            message was processed
+          </div>
+          <div>
+            <code>{fmtTimestamp(timeOfLastMsg)}</code> since last message was
+            received
+          </div>
+        </>
+      ) : (
+        <Alert
+          w="100%"
+          title="No active remote"
+          color="yellow"
+          variant="light"
+          icon={<IconAlertTriangle />}
+        />
+      )}
+    </Flex>
+  );
+}
+
+function DownlinkStats() {
+  const { remoteComputerBoard } = useRemoteComputer();
+  const downlinkTelemetryStatsMessage = useMavlinkMessage(
+    remoteComputerBoard as any,
+    "DownlinkTelemetryStats",
+  );
+
+  const { numBytesSent, numMessagesSent } =
+    downlinkTelemetryStatsMessage?.message.content || {};
+
+  const fmt = (intVal?: number) => intVal?.toLocaleString("de-CH") || "--";
+
+  return (
+    <Flex direction={"column"} gap="xs">
+      <Text size="sm" fw={600}>
+        Downlink Statistics
+      </Text>
+      {remoteComputerBoard ? (
+        <Group>
+          <div>
+            <code>{fmt(numBytesSent)}</code> bytes sent
+          </div>
+          <div>
+            <code>{fmt(numMessagesSent)}</code> messages sent
+          </div>
+        </Group>
+      ) : (
+        <Alert
+          w="100%"
+          title="No active remote"
+          color="yellow"
+          variant="light"
+          icon={<IconAlertTriangle />}
+        />
+      )}
+    </Flex>
   );
 }

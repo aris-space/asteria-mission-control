@@ -44,7 +44,7 @@ interface PssProps {
 }
 
 function PSS({ kind }: PssProps) {
-  const { remoteComputer } = useRemoteComputer();
+  const { remoteComputer, remoteComputerBoard } = useRemoteComputer();
   const { data: pssInfo } = kind == "rfs" ? useRfsPss() : useRocketPss();
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
   const { width, height } = useViewportSize();
@@ -62,13 +62,8 @@ function PSS({ kind }: PssProps) {
   const [[activeState, _transitionTimestamp], setActiveState] = useState<
     [string | null, number]
   >([null, Date.now()]);
-  const board = remoteComputer
-    ? remoteComputer.kind == RemoteComputerKind.flight_computer
-      ? "FlightComputer"
-      : "RfsComputer"
-    : null;
   const stateMachineStateMessage = useMavlinkMessage(
-    board as any,
+    remoteComputerBoard as any,
     "StateMachineState",
   );
 
@@ -187,7 +182,7 @@ function PSS({ kind }: PssProps) {
             };
 
             const message: Message = {
-              board: board as any,
+              board: remoteComputerBoard as any,
               message: {
                 type: "ManualActuatorChange",
                 content: action,
@@ -218,7 +213,7 @@ function PSS({ kind }: PssProps) {
         </div>
       );
     });
-  }, [height, width, pssInfo, datapointNodes, svgReady]);
+  }, [height, width, pssInfo, datapointNodes, svgReady, remoteComputerBoard]);
 
   return (
     <>

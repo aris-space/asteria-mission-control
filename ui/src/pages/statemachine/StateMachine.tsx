@@ -1,7 +1,6 @@
 import {
   ManualStateTransition,
   Message,
-  RemoteComputerKind,
   useSendMessage,
 } from "@asteria/mission-control-client";
 import { RefObject, useEffect, useRef, useState } from "react";
@@ -40,7 +39,8 @@ const MANUALLLY_REACHABLE_ATTR: string = "data-manually-reachable-state";
 const ABORT_TRANSITION_ATTR: string = "data-abort-transition";
 
 function StateMachine() {
-  const { remoteComputer, stateMachine } = useRemoteComputer();
+  const { remoteComputer, remoteComputerBoard, stateMachine } =
+    useRemoteComputer();
   const containerRef = useRef<HTMLDivElement>(null);
   const [pathIndex, setPathIndex] = useState<number>(0);
   // We need to also store the path index in a ref because the `handleManualStateTransition` method
@@ -51,13 +51,8 @@ function StateMachine() {
   const [[activeState, transitionTimestamp], setActiveState] = useState<
     [string | null, number]
   >([null, Date.now()]);
-  const board = remoteComputer
-    ? remoteComputer.kind == RemoteComputerKind.flight_computer
-      ? "FlightComputer"
-      : "RfsComputer"
-    : null;
   const stateMachineStateMessage = useMavlinkMessage(
-    board as any,
+    remoteComputerBoard as any,
     "StateMachineState",
   );
 
@@ -208,7 +203,7 @@ function StateMachine() {
       transitionIndex: pathIndexRef.current + 1,
     };
     const message: Message = {
-      board: board as any,
+      board: remoteComputerBoard as any,
       message: { type: "ManualStateTransition", content: transition },
     };
     sendMessage(
