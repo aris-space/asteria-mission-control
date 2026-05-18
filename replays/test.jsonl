@@ -1,0 +1,6 @@
+{"board":"SystemManagement","message":{"content":{"autopilot":"invalid","baseMode":0,"customMode":0,"mavlinkVersion":1,"systemStatus":"active","type":"gcs"},"type":"Heartbeat"},"timestamp":1779108817556}
+{"board":"RecoveryBoard","message":{"content":{"leftPos":0,"rightPos":0},"type":"SteeringActualPositions"},"timestamp":1779108817570}
+{"board":"SensorCarrier","message":{"content":{"orientationW":1.0,"orientationX":0.0,"orientationY":0.0,"orientationZ":0.0},"type":"OrientationData"},"timestamp":1779108817619}
+{"board":"FlightComputer","message":{"content":{"pathIndex":0,"state":[73,100,108,101,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},"type":"StateMachineState"},"timestamp":1779108817636}
+{"board":"SensorCarrier","message":{"content":{"velocityDown":0.0,"velocityEast":0.0,"velocityNorth":0.0,"velocityX":0.0,"velocityY":0.0,"velocityZ":0.0},"type":"VelocityData"},"timestamp":1779108817636}
+{"board":"FuelControlBoard","message":{"content":"open","type":"PressurizationVentValveState"},"timestamp":1779108817636}

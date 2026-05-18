@@ -81,6 +81,15 @@ pub enum MavlinkAddress {
     Serial { path: String, baud_rate: u32 },
 }
 
+impl From<MavlinkAddress> for mavlink_lib::MavlinkAddress {
+    fn from(value: MavlinkAddress) -> Self {
+        match value {
+            MavlinkAddress::Tcp { remote } => mavlink_lib::MavlinkAddress::Tcp { remote },
+            MavlinkAddress::Serial { path, baud_rate } => mavlink_lib::MavlinkAddress::Serial { path, baud_rate },
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct PssConfig {
     /// Path to a PSS diagram for the rocket.

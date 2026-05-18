@@ -16,7 +16,7 @@ To start the current development version of the mission control inside docker, y
 
 ```bash
 # Build new docker image and start it.
-# If you also want to have a local flight computer, start with the `--profile full` 
+# If you also want to have a local flight computer, start with the `--profile full`
 # flag instead.
 docker compose --profile mission-control up
 ```
@@ -33,7 +33,7 @@ In general, all API endpoints except the ones used for documentation are prefixe
 
 The backend needs a config file. The path of the config file can be specified as a CLI flag or through the `CONFIG_PATH` environment variable (see [usage](#usage)).
 
-Besides a few other things, the config mainly contains a list of available remote computers to which the mission control can connect to. 
+Besides a few other things, the config mainly contains a list of available remote computers to which the mission control can connect to.
 
 The config is written in TOML and follows the schema hosted by the backend on the `/api/config/schema` path.
 
@@ -62,10 +62,21 @@ There are some things which need to be followed whilst exporting the diagram as 
 The `fc.Dockerfile` can be used to build a docker image containing a built version of the flight computer contained in the remote-computers submodule.
 
 The image also contains a mavlink-router which automatically gets started and which expects a config to be mounted at `/etc/mavlink-router/main.conf`.
-Additionally, there is also a SSH server running inside the container at port `22` (needs to be mapped to non-standard host port, e.g. `2222`) which allows passwordless root logins. 
+Additionally, there is also a SSH server running inside the container at port `22` (needs to be mapped to non-standard host port, e.g. `2222`) which allows passwordless root logins.
 This means, `ssh -p 2222 root@localhost` connects into the container.
 
 The `docker-compose.yml` in the project root contains a fully configured setup for such a flight computer. By running `docker compose --profile flight-computer up -d`, there will be a MavLink TCP server at port `5766` to which the local mission control can connect. Also, the SSH server is mapped to port `2222`.
 
-If you want to test a full deployment of the mission control and a flight computer, run `docker compose --profile full up -d`. 
+If you want to test a full deployment of the mission control and a flight computer, run `docker compose --profile full up -d`.
 A statically compiled version of the mission control is then available under [http://localhost:8888](http://localhost:8888) which is connected to the flight computer running inside the docker container.
+
+## Replay MavLink messages from a log file
+
+The `mavlink-log-replay` crate contains the logic for replaying logged MavLink messages from the Mission Control backend.
+
+A docker image for the replay can be built using the `replay.Dockerfile` in the project root.
+Similarly to the flight computer docker image, it also contains a mavlink-router which expects a config to be mounted at `/etc/mavlink-router/main.conf`.
+
+MavLink logs which are worth replaying are stored in the `replays` directory.
+The `docker-compose.yml` in the project root contains a fully configured setup for such a replay "remote computer". By running `docker compose --profile replay up -d`, there will be a MavLink TCP server at port `5776` to which the local mission control can connect.
+If you also want to start the local flight-computer as part of the docker compose, the `remote-computers` or `full` (`full` also starts a mission control in a container) profile can be used.
