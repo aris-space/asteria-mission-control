@@ -1,2 +1,7 @@
 max_width = 125
 use_small_heuristics = "Max"
+
+ignore = [
+  "data-definitions",
+  "remote-computers",
+]
