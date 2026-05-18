@@ -41,8 +41,8 @@ jobs:
         with:
           token: ${{ secrets.ASTERIA_CI_TOKEN }}
           submodules: recursive
-      - name: Install stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Install nightly
+        uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
       - name: cargo fmt --check
