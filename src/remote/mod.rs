@@ -72,7 +72,8 @@ impl RemoteComputer {
         let token = CancellationToken::new();
         self.token = Some(token.clone());
 
-        let (mavlink_sender, mavlink_receiver) = mavlink_lib::tx_rx(self.mavlink_system_id, self.mavlink_address.clone().into());
+        let (mavlink_sender, mavlink_receiver) =
+            mavlink_lib::tx_rx(self.mavlink_system_id, self.mavlink_address.clone().into());
         let mavlink_sender = Arc::new(mavlink_sender);
 
         let msg_tx = self.msg_tx.clone();
