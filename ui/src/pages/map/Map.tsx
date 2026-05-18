@@ -1,4 +1,4 @@
-import { useMavlinkMessage } from "@asteria/hooks/EventContext";
+import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 import {
   Alert,
   Box,
