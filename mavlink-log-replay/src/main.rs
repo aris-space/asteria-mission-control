@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::process::exit;
 use std::time::Duration;
 
@@ -32,6 +33,13 @@ async fn main() {
         log::error!("Unable to open log file at '{}': {err}", cli.path);
         exit(1)
     });
+
+    let path = Path::new(&cli.path).canonicalize().unwrap_or_else(|err| {
+        log::error!("Unable to canonicalize log file path: {err}");
+        exit(1)
+    });
+
+    log::info!("Using log file at '{}'", path.display());
 
     let (mavlink_sender, _mavlink_receiver) = mavlink_lib::tx_rx(MAVLINK_SYSTEM_ID, cli.mavlink_address.into());
 

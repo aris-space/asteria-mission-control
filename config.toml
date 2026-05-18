@@ -11,7 +11,7 @@ mavlink = { protocol = "tcp", remote = "localhost:5766" }
 
 [remote.docker-replay]
 kind = "flight computer"
-description = "Pseudo flight computer replaying the MavLink messages form a log file. Only needed for development purposes!"
+description = "Pseudo flight computer replaying the MavLink messages from a log file. Only needed for development purposes!"
 mavlink = { protocol = "tcp", remote = "localhost:5776" }
 
 [remote.hermes-2-asd]
