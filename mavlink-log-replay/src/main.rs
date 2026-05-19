@@ -15,7 +15,7 @@ use crate::cli::Cli;
 mod cli;
 
 /// MavLink ID of the replay "remote computer".
-const MAVLINK_SYSTEM_ID: u8 = 202;
+const MAVLINK_SYSTEM_ID: u8 = 1;
 
 #[derive(Deserialize, Clone)]
 struct LoggedMessage {
@@ -28,6 +28,11 @@ struct LoggedMessage {
 async fn main() {
     env_logger::init_from_env(Env::new().default_filter_or("info"));
     let cli = Cli::parse();
+
+    if cli.speed <= 0.0 {
+        log::error!("Replay speed has to be non-negative and must not be zero");
+        exit(1)
+    }
 
     let file = File::open(&cli.path).await.unwrap_or_else(|err| {
         log::error!("Unable to open log file at '{}': {err}", cli.path);
@@ -56,26 +61,28 @@ async fn main() {
             continue;
         }
 
-        let current = serde_json::from_str::<LoggedMessage>(&line).unwrap_or_else(|err| {
-            log::error!("Line {line_number} is not a valid logged message: {err}");
-            exit(1)
-        });
-        logged_messages.push(current);
+        match serde_json::from_str::<LoggedMessage>(&line) {
+            Ok(current) => logged_messages.push(current),
+            // We just ignore invalid message lines. It can happen pretty quickly that some lines
+            // get invalid because of changes to the `data-definitions` crate. In those cases we
+            // don't want the entire replay to be broken because of a single broken message.
+            Err(err) => log::warn!("Line {line_number} is not a valid logged message: {err}"),
+        };
     }
 
     log::info!("Starting replay of {} messages", logged_messages.len());
-    replay(&mavlink_sender, &logged_messages).await;
+    replay(&mavlink_sender, &logged_messages, cli.speed).await;
 
     if cli.repeat {
         loop {
-            log::info!("Restarting replay of {} messages", logged_messages.len());
-            replay(&mavlink_sender, &logged_messages).await;
             tokio::time::sleep(Duration::from_millis(cli.repeat_timeout_ms)).await;
+            log::info!("Restarting replay of {} messages", logged_messages.len());
+            replay(&mavlink_sender, &logged_messages, cli.speed).await;
         }
     }
 }
 
-async fn replay(sender: &MavlinkSender, messages: &[LoggedMessage]) {
+async fn replay(sender: &MavlinkSender, messages: &[LoggedMessage], speed: f32) {
     let mut last = Option::<u64>::None;
     for current in messages {
         let last_timestamp = match last {
@@ -89,7 +96,8 @@ async fn replay(sender: &MavlinkSender, messages: &[LoggedMessage]) {
 
         // Duration between the current message and the last message.
         let timeout = Duration::from_millis(current.timestamp - last_timestamp);
-        tokio::time::sleep(timeout).await;
+        let scaled_timeout = Duration::from_secs_f32(timeout.as_secs_f32() / speed);
+        tokio::time::sleep(scaled_timeout).await;
 
         if let Err(err) = sender.send(&current.message).await {
             log::warn!("Unable to send MavLink message: {err}");

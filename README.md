@@ -78,5 +78,10 @@ A docker image for the replay can be built using the `replay.Dockerfile` in the 
 Similarly to the flight computer docker image, it also contains a mavlink-router which expects a config to be mounted at `/etc/mavlink-router/main.conf`.
 
 MavLink logs which are worth replaying are stored in the `replays` directory.
+
+> [!IMPORTANT]
+> Please don't check in full MavLink log JSONL files. Ideally, the files stored (and tracked) in the `replays` directory
+> only contain some relevant subsequence of a MavLink log file.
+
 The `docker-compose.yml` in the project root contains a fully configured setup for such a replay "remote computer". By running `docker compose --profile replay up -d`, there will be a MavLink TCP server at port `5776` to which the local mission control can connect.
 If you also want to start the local flight-computer as part of the docker compose, the `remote-computers` or `full` (`full` also starts a mission control in a container) profile can be used.
