@@ -38,11 +38,11 @@ function useDiagramSvg(
       createSvg();
       if (!disableZoom) createZoom();
     } else if (containerRef.current) {
-        // Reset the SVG.
-        containerRef.current.innerHTML = "";
-        ref.current = null;
-        zoomRef.current = null;
-        setZoomDirty(false);
+      // Reset the SVG.
+      containerRef.current.innerHTML = "";
+      ref.current = null;
+      zoomRef.current = null;
+      setZoomDirty(false);
     }
   }, [diagram, containerRef.current]);
 
