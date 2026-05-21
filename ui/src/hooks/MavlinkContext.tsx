@@ -50,10 +50,7 @@ export function MavlinkProvider(props: PropsWithChildren) {
     lastMessageTimestamp.current = Date.now();
     const mavlinkMessage = JSON.parse(event.data) as MavlinkMessage;
     const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
-    mavlinkMessages.current = {
-      ...mavlinkMessages.current,
-      [messageId]: mavlinkMessage,
-    };
+    mavlinkMessages.current[messageId] = mavlinkMessage;
     Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
       if (cbMessageId == messageId) cb(mavlinkMessage);
     });
@@ -89,11 +86,7 @@ export function MavlinkProvider(props: PropsWithChildren) {
    * Remove a message callback function.
    * @param name identifier of the callback function
    */
-  const removeNotifier = (name: string) => {
-    const copy = notifiers.current;
-    delete copy[name];
-    notifiers.current = copy;
-  };
+  const removeNotifier = (name: string) => delete notifiers.current[name];
 
   /**
    * Get the last received message for a board and a message type.

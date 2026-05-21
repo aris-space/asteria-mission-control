@@ -45,11 +45,7 @@ export function PssDataProvider(props: PropsWithChildren) {
 
   useEvent<string>(EventKind.PSS_DATA, (event) => {
     const datapointValue = JSON.parse(event.data) as NamedDatapointValue;
-
-    datapointValues.current = {
-      [datapointValue.name]: datapointValue.value,
-      ...datapointValues.current,
-    };
+    datapointValues.current[datapointValue.name] = datapointValue.value;
     Object.values(notifiers.current).forEach(([name, cb]) => {
       if (name == datapointValue.name) cb(datapointValue.value);
     });
@@ -83,11 +79,7 @@ export function PssDataProvider(props: PropsWithChildren) {
    * Remove a value callback function.
    * @param id identifier of the callback function
    */
-  const removeNotifier = (id: string) => {
-    const copy = notifiers.current;
-    delete copy[id];
-    notifiers.current = copy;
-  };
+  const removeNotifier = (id: string) => delete notifiers.current[id];
 
   const getValue = (datapointName: string) => {
     return datapointValues.current[datapointName] || null;
