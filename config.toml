@@ -24,7 +24,11 @@ kind = "flight computer"
 description = "Flight computer connected via radio on serial."
 mavlink = { protocol = "serial", path = "/dev/ttyACM0", baud_rate = 115200 }
 
+[remote."RFSC"]
+kind = "rfs computer"
+description = "Remote filling station computer connected via IP."
+mavlink = { protocol = "tcp", remote = "rfsc.local:5766" }
+
 [pss]
 rocket_diagram_path = "./rocket-pss.svg"
-# TODO: Update this once we have a RFS diagram.
-rfs_diagram_path = "./rocket-pss.svg"
+rfs_diagram_path = "./rfs-pss.svg"
