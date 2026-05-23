@@ -52,6 +52,7 @@ export type Alignment = (typeof Alignment)[keyof typeof Alignment];
 export const Alignment = {
   left: "left",
   right: "right",
+  hidden: "hidden",
 } as const;
 
 /**
