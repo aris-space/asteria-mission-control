@@ -120,7 +120,7 @@ export function EventProvider(props: PropsWithChildren) {
       // We need to add the listener to the existing source.
       source.addEventListener(eventType, cb);
     }
-    listeners.current = { ...listeners.current, [id]: [eventType, cb] };
+    listeners.current[id] = [eventType, cb];
   };
 
   /**
@@ -133,9 +133,7 @@ export function EventProvider(props: PropsWithChildren) {
       // We need to remove the listener from the existing source.
       source.removeEventListener(listener[0], listener[1]);
     }
-    const copy = { ...listeners.current };
-    delete copy[id];
-    listeners.current = copy;
+    delete listeners.current[id];
   };
 
   return (
