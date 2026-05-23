@@ -318,23 +318,16 @@ function computeDatapointStyle(
     left: `${window.scrollX + bounds.left + bounds.width / 2}px`,
   };
 
-  if (info.align == "left") {
-    datapointContainerStyle.transform = "translateY(-50%)";
-  } else if (info.align == "right") {
+  if (info.align == "right") {
     datapointContainerStyle.transform = "translateY(-50%) translateX(-100%)";
   } else {
-    // hidden: center the datapoint on the cell
-    datapointContainerStyle.transform = "translateY(-50%) translateX(-50%)";
+    // left and hidden are both left-aligned
+    datapointContainerStyle.transform = "translateY(-50%)";
   }
-
-  const transformOrigin =
-    info.align == "left" || info.align == "right"
-      ? `center ${info.align}`
-      : "center center";
 
   const datapointStyle: CSSProperties = {
     transform: `scale(${transform.k})`,
-    transformOrigin,
+    transformOrigin: `center ${info.align == "right" ? "right" : "left"}`,
     display: "flex",
     whiteSpace: "nowrap",
     gap: "0.5rem",
