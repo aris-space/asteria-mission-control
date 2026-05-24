@@ -60,7 +60,9 @@ actix-web-lab = "0.24.3"
 asteria-datapoint-information = { package = "datapoint-information", path = "data-definitions/datapoint-information", features = [
   "mission-control"
 ] }
+asteria-datatypes = { package = "datatypes", path = "data-definitions/datatypes" }
 asteria-messages.workspace = true
+async-trait = "0.1.89"
 chrono = "0.4.42"
 clap.workspace = true
 env_logger.workspace = true
