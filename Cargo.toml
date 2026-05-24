@@ -13,6 +13,7 @@ asteria-messages = { package = "messages", path = "data-definitions/messages", d
   "mission-control",
   "pss",
   "derive_debug",
+  "derive_facet",
 ] }
 bincode = { version = "2.0.1", default-features = false, features = [
   "derive",
@@ -21,6 +22,7 @@ bincode = { version = "2.0.1", default-features = false, features = [
 clap = { version = "4.5.51", features = ["derive", "env"] }
 defmt = { version = "1.0.1" }
 env_logger = "0.11.8"
+facet = { version = "0.46.0" }
 log = "0.4.28"
 mavio = { version = "0.5.10", features = ["serde", "std", "tokio"] }
 mavlink-lib = { package = "mavlink", path = "mavlink" }
@@ -58,7 +60,8 @@ actix-files = { version = "0.6.9", optional = true }
 actix-web = { version = "4.11.0", features = ["rustls"] }
 actix-web-lab = "0.24.3"
 asteria-datapoint-information = { package = "datapoint-information", path = "data-definitions/datapoint-information", features = [
-  "mission-control"
+  "mission-control",
+  "csv"
 ] }
 asteria-datatypes = { package = "datatypes", path = "data-definitions/datatypes" }
 asteria-messages.workspace = true

@@ -1,15 +1,16 @@
 use std::path::PathBuf;
 
-use crate::intercept::Interceptor;
-use crate::parser::statemachine::StateMachine;
-use crate::remote::config::RemoteComputerConfig;
-use crate::web::state::StateInstance;
 use asteria_datatypes::status::ConfigHash;
 use asteria_messages::Message;
 use asteria_messages::datapoints::dp_flight_computer::Message as FcMessage;
 use asteria_messages::datapoints::dp_rfs_computer::Message as RfscMessage;
 use async_trait::async_trait;
 use gix::{Repository, ThreadSafeRepository};
+
+use crate::intercept::Interceptor;
+use crate::parser::statemachine::StateMachine;
+use crate::remote::config::RemoteComputerConfig;
+use crate::web::state::StateInstance;
 
 /// Interceptor looking for [`FcMessage::ConfigHash`] or [`RfscMessage::ConfigHash`] messages
 /// to update the [`StateMachine`] for the active remote computer in the [`StateInstance`].

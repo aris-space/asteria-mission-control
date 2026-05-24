@@ -4,3 +4,4 @@
 [submodule "data-definitions"]
 	path = data-definitions
 	url = ../asteria-data-definitions.git
+	branch = feat/csv-logger

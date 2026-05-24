@@ -11,10 +11,17 @@ use futures::stream::FuturesUnordered;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_stream::StreamExt;
 
-pub mod config;
-pub mod log;
-pub mod pss;
-pub mod sse;
+mod config;
+mod influx;
+mod log;
+mod pss;
+mod sse;
+
+pub use config::*;
+pub use influx::*;
+pub use log::*;
+pub use pss::*;
+pub use sse::*;
 
 /// Trait which can be implemented by different MavLink message
 /// consumers.

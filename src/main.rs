@@ -1,10 +1,6 @@
 use crate::cli::Cli;
 use crate::config::Config;
-use crate::intercept::Interceptors;
-use crate::intercept::config::ConfigInterceptor;
-use crate::intercept::log::LogInterceptor;
-use crate::intercept::pss::PssInterceptor;
-use crate::intercept::sse::SseInterceptor;
+use crate::intercept::*;
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::remote::{RemoteComputer, Remotes};
@@ -131,6 +127,7 @@ async fn main() {
         .with(PssInterceptor::new(broadcast.clone()))
         .with(LogInterceptor::new(mavlink_logfile))
         .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone()))
+        .with(InfluxInterceptor::new())
         .finish();
 
     tokio::spawn(async move { interceptors.execute_with_receiver(msg_rx).await });
