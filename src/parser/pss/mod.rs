@@ -3,7 +3,10 @@ use crate::parser::{cut_diagram_xml, parse_diagram_xml};
 use asteria_datapoint_information::datapoint::{DatapointHolder, DatapointInformation};
 use asteria_messages::Message;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs, ops::Not, path::PathBuf};
+use std::collections::HashMap;
+use std::fs;
+use std::ops::Not;
+use std::path::PathBuf;
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]

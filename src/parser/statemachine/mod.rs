@@ -5,11 +5,9 @@ use asteria_datapoint_information::datapoint::DatapointHolder;
 use asteria_messages::Message;
 use html_parser::Dom;
 use serde::Serialize;
-use std::{
-    collections::{HashMap, HashSet},
-    fs,
-    path::Path,
-};
+use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::path::Path;
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]

@@ -5,3 +5,5 @@ ignore = [
   "data-definitions",
   "remote-computers",
 ]
+
+imports_granularity = "Module"

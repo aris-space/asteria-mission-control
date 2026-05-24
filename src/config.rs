@@ -2,12 +2,10 @@ use crate::CONFIG_PATH;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{
-    collections::BTreeMap,
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]

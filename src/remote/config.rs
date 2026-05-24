@@ -4,7 +4,8 @@
 //! <https://github.com/aris-space/asteria-remote-computers/>
 
 use serde::Deserialize;
-use std::{collections::HashMap, path::PathBuf};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Deserialize)]
 pub struct RemoteComputerConfig {

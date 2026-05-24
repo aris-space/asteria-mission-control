@@ -1,6 +1,8 @@
 use crate::parser::statemachine::*;
 use crate::remote::{RemoteComputer, Remotes};
-use crate::web::{broadcast::Broadcast, datatypes::OptionalResult, event::Event};
+use crate::web::broadcast::Broadcast;
+use crate::web::datatypes::OptionalResult;
+use crate::web::event::Event;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;

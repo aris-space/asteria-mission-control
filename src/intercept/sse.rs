@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::{
-    intercept::Interceptor,
-    web::{broadcast::Broadcast, event::Event},
-};
+use crate::intercept::Interceptor;
+use crate::web::broadcast::Broadcast;
+use crate::web::event::Event;
 
 /// MavLink message interceptor which broadcasts the message
 /// in form of a [`Event::MavlinkMessage`] to all connected

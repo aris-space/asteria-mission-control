@@ -1,4 +1,5 @@
-use crate::{parser::statemachine::StateMachine, web::datatypes::OptionalResult};
+use crate::parser::statemachine::StateMachine;
+use crate::web::datatypes::OptionalResult;
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;

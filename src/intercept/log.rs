@@ -1,7 +1,9 @@
 use crate::intercept::Interceptor;
 use async_trait::async_trait;
 use chrono::Utc;
-use tokio::{fs::File, io::AsyncWriteExt, sync::Mutex};
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex;
 
 /// Interceptor used to write all MavLink messages into a logfile in a JSONL
 /// serialized format.

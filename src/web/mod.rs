@@ -2,13 +2,12 @@ use crate::PssDiagrams;
 use crate::config::Config;
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
-use crate::web::{datatypes::*, event::Event, state::StateInstance};
+use crate::web::datatypes::*;
+use crate::web::event::Event;
+use crate::web::state::StateInstance;
 
-use actix_web::{
-    Responder, error, get, put,
-    web::{Data, Json},
-};
-use actix_web::{delete, web};
+use actix_web::web::{Data, Json};
+use actix_web::{Responder, delete, error, get, put, web};
 use asteria_messages::Message;
 use broadcast::Broadcast;
 

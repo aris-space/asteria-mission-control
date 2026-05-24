@@ -5,10 +5,9 @@ use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
 use tokio_stream::StreamExt;
 
-use crate::{
-    intercept::Interceptor,
-    web::{broadcast::Broadcast, event::Event},
-};
+use crate::intercept::Interceptor;
+use crate::web::broadcast::Broadcast;
+use crate::web::event::Event;
 
 /// MavLink message interceptor which broadcasts the PSS
 /// datapoint values of the message in form of [`Event::PssData`]
