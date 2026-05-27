@@ -9,17 +9,22 @@ kind = "flight computer"
 description = "Flight computer running in a docker container. Only needed for development purposes!"
 mavlink = { protocol = "tcp", remote = "localhost:5766" }
 
-[remote."hermes-2-asd"]
+[remote.docker-replay]
+kind = "flight computer"
+description = "Pseudo flight computer replaying the MavLink messages from a log file. Only needed for development purposes!"
+mavlink = { protocol = "tcp", remote = "localhost:5776" }
+
+[remote.hermes-2-asd]
 kind = "flight computer"
 description = "Flight computer running on raspberry pi via asd."
 mavlink = { protocol = "tcp", remote = "hermes2.local:5766" }
 
-[remote."hermes-3-asd"]
+[remote.hermes-3-asd]
 kind = "flight computer"
 description = "Flight computer Hermes 3 running on raspberry pi via asd."
 mavlink = { protocol = "tcp", remote = "hermes3.local:5766" }
 
-[remote."FC-Radio"]
+[remote.FC-Radio]
 kind = "flight computer"
 description = "Flight computer connected via radio on serial."
 mavlink = { protocol = "serial", path = "/dev/ttyACM0", baud_rate = 115200 }

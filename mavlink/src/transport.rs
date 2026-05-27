@@ -1,4 +1,4 @@
-use crate::config::MavlinkAddress;
+use crate::MavlinkAddress;
 
 use std::pin::Pin;
 use std::task::{Context, Poll};

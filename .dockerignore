@@ -3,3 +3,5 @@ dist
 node_modules
 .github
 *.local
+mavlink-logs
+replays
