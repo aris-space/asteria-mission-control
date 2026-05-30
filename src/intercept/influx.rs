@@ -63,10 +63,8 @@ impl Interceptor for InfluxInterceptor {
     async fn on_message(&self, message: &asteria_messages::Message) {
         let datapoint = match influx::to_datapoint(message) {
             Ok(datapoint) => datapoint,
-            // FIXME: The debug print should be replaced with a display print once `thiserror` is
-            // derived in the influx datapoint information module.
             Err(err) => {
-                log::warn!("Unable to log message to influx database: {err:?}");
+                log::warn!("Unable to convert message to datapoint: {err}");
                 return log::debug!("The problematic message was: {message:?}");
             }
         };

@@ -984,6 +984,7 @@ dependencies = [
  "facet-reflect",
  "gated-derive",
  "serde",
+ "thiserror 2.0.18",
  "utoipa",
 ]
 
