@@ -132,6 +132,8 @@ async fn main() {
             &config.influx.organization,
             &cli.influx_token,
             config.influx.bucket.clone(),
+            state.clone(),
+            config.clone(),
         ))
         .finish();
 
