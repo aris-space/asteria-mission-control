@@ -92,6 +92,7 @@ toml = { version = "0.9.8", features = ["serde"] }
 utoipa = { workspace = true, features = ["actix_extras"] }
 utoipa-actix-web = "0.1.2"
 utoipa-rapidoc = { version = "6.0.0", features = ["actix-web"] }
+influxdb2 = { version = "0.5.2", default-features = false, features = ["rustls", "gzip"] }
 
 [features]
 default = []

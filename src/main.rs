@@ -127,7 +127,12 @@ async fn main() {
         .with(PssInterceptor::new(broadcast.clone()))
         .with(LogInterceptor::new(mavlink_logfile))
         .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone()))
-        .with(InfluxInterceptor::new())
+        .with(InfluxInterceptor::new(
+            &config.influx.address,
+            &config.influx.organization,
+            &cli.influx_token,
+            config.influx.bucket.clone(),
+        ))
         .finish();
 
     tokio::spawn(async move { interceptors.execute_with_receiver(msg_rx).await });
