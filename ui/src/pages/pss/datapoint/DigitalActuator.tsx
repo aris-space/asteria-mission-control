@@ -37,7 +37,7 @@ export function DigitalActuator({
 
   const defaultBg =
     colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0];
-  const backgroundColor = right ? theme.colors.orange[5] : defaultBg;
+  const backgroundColor = right ? theme.colors.orange[2] : defaultBg;
 
   return (
     <Paper
@@ -71,7 +71,9 @@ export function DigitalActuator({
           borderRadius: theme.radius.sm,
           borderWidth: 1,
           borderStyle: "solid",
-          borderColor: theme.colors[buttonColor][allowed ? 7 : 4],
+          borderColor: allowed
+            ? theme.colors[buttonColor][7]
+            : theme.colors["dark"][2],
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -79,7 +81,9 @@ export function DigitalActuator({
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
           backgroundColor: theme.colors[buttonColor][1],
-          color: theme.colors[buttonColor][allowed ? 7 : 4],
+          color: allowed
+            ? theme.colors[buttonColor][7]
+            : theme.colors["dark"][2],
           transform: right
             ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
             : "translateX(0)",
