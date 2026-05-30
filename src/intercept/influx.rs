@@ -30,7 +30,10 @@ impl Interceptor for InfluxInterceptor {
             Ok(datapoint) => datapoint,
             // FIXME: The debug print should be replaced with a display print once `thiserror` is
             // derived in the influx datapoint information module.
-            Err(err) => return log::warn!("Unable to log message to influx database: {err:?}"),
+            Err(err) => {
+                log::warn!("Unable to log message to influx database: {err:?}");
+                return log::debug!("The problematic message was: {message:?}");
+            }
         };
 
         let mut builder = DataPoint::builder(datapoint.measurement.clone());
