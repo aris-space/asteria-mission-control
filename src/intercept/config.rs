@@ -64,7 +64,7 @@ impl Interceptor for ConfigInterceptor {
 
         let state_machine = StateMachine::new(&rc_config, &self.configs_repository_path);
 
-        let mut state_guard = self.state.write().await;
-        state_guard.set_state_machine(Some(state_machine)).await;
+        let mut guard = self.state.write().await;
+        guard.set_state_machine(Some(state_machine)).await;
     }
 }

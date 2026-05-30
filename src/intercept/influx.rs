@@ -16,6 +16,8 @@ use crate::web::state::StateInstance;
 /// of datapoints and only then attempt a buffered write to save on bandwidth.
 const DATAPOINT_BUFFER_SIZE: usize = 128;
 
+/// Interceptor used to write all MavLink messages which can be converted into
+/// a influx datapoint to the configured influx database.
 pub struct InfluxInterceptor {
     client: Client,
     bucket: String,
@@ -45,7 +47,6 @@ impl InfluxInterceptor {
                 ctrl_c().await.expect("Should receive CTRL-C");
 
                 let mut buffer = buffer.lock().await;
-                // The buffer is now full and we can try writing the datapoints to the database.
                 let datapoints = std::mem::replace(buffer.as_mut(), Vec::with_capacity(DATAPOINT_BUFFER_SIZE));
 
                 if let Err(err) = client.write(&bucket, futures::stream::iter(datapoints)).await {
