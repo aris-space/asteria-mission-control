@@ -9,14 +9,7 @@ import {
   useMantineTheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  CONTAINER_HEIGHT,
-  GAP,
-  HORIZONTAL_PADDING,
-  SLIDER_PADDING,
-  SLOT_WIDTH,
-  VERTICAL_PADDING,
-} from ".";
+import { CONTAINER_HEIGHT, GAP, SLOT_WIDTH } from ".";
 
 interface DprActuatorProps {
   enabled: boolean;
@@ -33,12 +26,16 @@ export function DprActuator({
 }: DprActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
-  const color = allowed ? (enabled ? "green" : "red") : "dark";
+  const buttonColorName = enabled ? "green" : "red";
+  const buttonColor = theme.colors[buttonColorName][2];
+  const borderAndTextColor = allowed
+    ? theme.colors[buttonColorName][8]
+    : theme.colors["dark"][2];
   const [inputValue, setInputValue] = useState<number | string>(setpoint);
 
   return (
     <Paper
-      withBorder
+      shadow="xs"
       radius="md"
       style={{
         width: "fit-content",
@@ -49,7 +46,6 @@ export function DprActuator({
         display: "grid",
         height: CONTAINER_HEIGHT,
         gap: GAP,
-        padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
         gridTemplateColumns: `${SLOT_WIDTH} calc(${SLOT_WIDTH} - 2 * ${GAP}) ${SLOT_WIDTH}`,
         alignItems: "stretch",
       }}
@@ -92,7 +88,7 @@ export function DprActuator({
           onChange={setInputValue}
           disabled={!allowed}
           placeholder="Input"
-          step={0.1}
+          step={1}
           variant="unstyled"
           size="xs"
           styles={{
@@ -100,12 +96,11 @@ export function DprActuator({
               width: "100%",
               textAlign: "center",
               fontWeight: 500,
-              backgroundColor: theme.colors.gray[2],
+              backgroundColor: "white",
             },
           }}
         />
       </Box>
-      <Box style={{ zIndex: 1 }} />
       <Box
         onClick={() => {
           if (!allowed) return;
@@ -117,31 +112,30 @@ export function DprActuator({
         }}
         style={{
           position: "absolute",
-          top: SLIDER_PADDING,
-          bottom: SLIDER_PADDING,
-          left: SLIDER_PADDING,
-          width: `calc(${SLOT_WIDTH} - 2 * ${SLIDER_PADDING})`,
+          top: 0,
+          bottom: 0,
+          width: `calc(${SLOT_WIDTH})`,
           zIndex: 2,
-          cursor: allowed ? "pointer" : "default",
-          borderRadius: theme.radius.sm,
-          borderWidth: 1,
+          cursor: allowed ? "pointer" : "not-allowed",
+          borderRadius: theme.radius.md,
+          borderWidth: 2,
           borderStyle: "solid",
-          borderColor: theme.colors[color][9],
+          borderColor: borderAndTextColor,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: theme.colors[color][1],
-          color: theme.colors[color][9],
+          backgroundColor: buttonColor,
+          color: borderAndTextColor,
           transform: enabled
-            ? `translateX(calc(${SLOT_WIDTH} * 2 + calc(${HORIZONTAL_PADDING} * 2)))`
+            ? `translateX(calc(${SLOT_WIDTH} * 2)`
             : "translateX(0)",
         }}
       >
         <Text p="xs" size="sm" fw={600} ff={enabled ? "monospace" : "text"}>
-          {enabled ? setpoint : "Off"}
+          {enabled ? setpoint : "Closed"}
         </Text>
       </Box>
     </Paper>

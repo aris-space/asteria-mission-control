@@ -4,7 +4,7 @@ import {
   useMantineTheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import { CONTAINER_HEIGHT, GAP, HORIZONTAL_PADDING, VERTICAL_PADDING } from ".";
+import { CONTAINER_HEIGHT } from ".";
 import { useEffect, useRef, useState } from "react";
 
 // Threshold between previous and new value such that it indicates
@@ -43,7 +43,7 @@ export function AnalogSensor({ value, unit, precision }: AnalogSensorProps) {
 
   return (
     <Paper
-      withBorder
+      shadow="xs"
       radius="md"
       style={{
         display: "flex",
@@ -53,15 +53,14 @@ export function AnalogSensor({ value, unit, precision }: AnalogSensorProps) {
           colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0],
         overflow: "hidden",
         height: CONTAINER_HEIGHT,
-        gap: `calc(${GAP} / 2)`,
-        padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
+        width: "8rem",
       }}
     >
-      <Text p="xs" size="sm" fw={600} ff={"monospace"}>
+      <Text p="6pt" size="sm" fw={600} ff={"monospace"}>
         {fmt(value, precision)}
       </Text>
       <Tendency tendency={tendency} />
-      <Text p="xs" size="sm" fw={500}>
+      <Text p="6pt" size="sm" fw={500}>
         {unit}
       </Text>
     </Paper>
@@ -83,7 +82,7 @@ function Tendency({ tendency }: TendencyProps) {
   return (
     <svg
       height={"1em"}
-      viewBox="0 0 100 100"
+      viewBox="0 0 80 100"
       preserveAspectRatio="xMidYMid meet"
       style={{ verticalAlign: "middle", transform: `translateY(${translate})` }}
     >
@@ -92,7 +91,7 @@ function Tendency({ tendency }: TendencyProps) {
         stroke={theme.colors[color][5]}
         strokeWidth={15}
         strokeLinecap="round"
-        points={`20,50 50,${centerY} 80,50`}
+        points={`10,50 40,${centerY} 70,50`}
       />
     </svg>
   );

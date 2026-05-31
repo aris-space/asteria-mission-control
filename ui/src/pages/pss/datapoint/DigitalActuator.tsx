@@ -5,14 +5,7 @@ import {
   useMantineTheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  CONTAINER_HEIGHT,
-  GAP,
-  HORIZONTAL_PADDING,
-  SLIDER_PADDING,
-  SLOT_WIDTH,
-  VERTICAL_PADDING,
-} from ".";
+import { CONTAINER_HEIGHT, SLOT_WIDTH } from ".";
 
 interface DigitalActuatorProps {
   onChange: (active: boolean) => void;
@@ -60,18 +53,15 @@ export function DigitalActuator({
         overflow: "hidden",
         cursor: allowed ? "pointer" : "not-allowed",
         height: CONTAINER_HEIGHT,
-        gap: GAP,
-        width: `calc(1.5 * ${SLOT_WIDTH} + 2 * ${HORIZONTAL_PADDING})`,
-        padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
+        width: `calc(1.5 * ${SLOT_WIDTH})`,
       }}
     >
       <Box
         style={{
           position: "absolute",
-          top: SLIDER_PADDING,
-          bottom: SLIDER_PADDING,
-          left: SLIDER_PADDING,
-          width: `calc(${SLOT_WIDTH} - 2 * ${SLIDER_PADDING})`,
+          top: 0,
+          bottom: 0,
+          width: `calc(${SLOT_WIDTH})`,
           zIndex: 2,
           borderRadius: theme.radius.md,
           borderWidth: 2,
@@ -86,7 +76,7 @@ export function DigitalActuator({
           backgroundColor: buttonColor,
           color: borderAndTextColor,
           transform: notNormal
-            ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
+            ? `translateX(calc(${SLOT_WIDTH} * 0.5))`
             : "translateX(0)",
         }}
       >

@@ -15,13 +15,9 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 
-export const VERTICAL_PADDING: string = "0px";
-export const HORIZONTAL_PADDING: string = "0px";
 export const CONTAINER_HEIGHT: string = "2rem";
-export const CONTAINER_WIDTH: string = "6rem";
 export const SLOT_WIDTH: string = "4rem";
-export const GAP: string = "0.5rem";
-export const SLIDER_PADDING: string = "0px";
+export const GAP: string = "0.2rem";
 
 interface DatapointProps extends Pick<
   ExtendedDatapointInformation,
@@ -91,6 +87,7 @@ function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
               defaultEnabled={kind.default_enabled}
               enabled={enabled}
               onChange={handleDigitalActuatorChange}
+              stateText={["Open", "Closed"]}
             />
           );
         }
@@ -117,13 +114,13 @@ function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
   }
 }
 
-function DatapointLoader() {
+export function DatapointLoader() {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
 
   return (
     <Paper
-      withBorder
+      shadow="xs"
       radius="md"
       style={{
         position: "relative",
@@ -131,7 +128,6 @@ function DatapointLoader() {
           colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0],
         overflow: "hidden",
         height: CONTAINER_HEIGHT,
-        padding: VERTICAL_PADDING,
       }}
     >
       <Flex h="100%" px="xs" align={"center"}>

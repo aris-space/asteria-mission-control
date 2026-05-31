@@ -13,6 +13,7 @@ import { DigitalActuator } from "./datapoint/DigitalActuator";
 import { DprActuator } from "./datapoint/DprActuator";
 import { DigitalSensor } from "./datapoint/DigitalSensor";
 import { AnalogSensor } from "./datapoint/AnalogSensor";
+import { DatapointLoader } from "./datapoint";
 
 export default function Demo() {
   // DigitalActuator state
@@ -160,6 +161,10 @@ export default function Demo() {
           />
         </Group>
       </Stack>
+
+      <Divider />
+
+      <DatapointLoader></DatapointLoader>
     </Stack>
   );
 }
