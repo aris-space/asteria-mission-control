@@ -19,6 +19,8 @@ interface DigitalActuatorProps {
   enabled: boolean;
   allowed: boolean;
   defaultEnabled: boolean;
+  /** Label for [enabled, disabled] */
+  stateText: [string, string];
 }
 
 export function DigitalActuator({
@@ -26,40 +28,44 @@ export function DigitalActuator({
   enabled,
   allowed,
   defaultEnabled,
+  stateText = ["Open", "Closed"],
 }: DigitalActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
-  const buttonColor = enabled ? "teal" : "red";
 
   // Boolean whether the "knob" of the actuator should be at the right of the datapoint indicator.
   // If the actuator is _not_ enabled by default, we want the "enabled" state to be on the right.
-  const right = defaultEnabled !== enabled;
+  const notNormal = defaultEnabled !== enabled;
 
+  const buttonColorName = enabled ? "green" : "red";
+  const buttonColor = theme.colors[buttonColorName][2];
   const defaultBg =
     colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0];
-  const backgroundColor = right ? theme.colors.orange[2] : defaultBg;
+  const backgroundColor = notNormal ? buttonColor : defaultBg;
+  const borderAndTextColor = allowed
+    ? theme.colors[buttonColorName][8]
+    : theme.colors["dark"][2];
 
   return (
     <Paper
-      withBorder
+      onClick={() => {
+        if (!allowed) return;
+        onChange(!enabled);
+      }}
+      shadow="xs"
       radius="md"
       style={{
         position: "relative",
         backgroundColor,
         overflow: "hidden",
+        cursor: allowed ? "pointer" : "not-allowed",
         height: CONTAINER_HEIGHT,
         gap: GAP,
         width: `calc(1.5 * ${SLOT_WIDTH} + 2 * ${HORIZONTAL_PADDING})`,
         padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
       }}
     >
-      <Box style={{ zIndex: 1 }} />
-      <Box style={{ zIndex: 1 }} />
       <Box
-        onClick={() => {
-          if (!allowed) return;
-          onChange(!enabled);
-        }}
         style={{
           position: "absolute",
           top: SLIDER_PADDING,
@@ -67,32 +73,28 @@ export function DigitalActuator({
           left: SLIDER_PADDING,
           width: `calc(${SLOT_WIDTH} - 2 * ${SLIDER_PADDING})`,
           zIndex: 2,
-          cursor: allowed ? "pointer" : "not-allowed",
-          borderRadius: theme.radius.sm,
-          borderWidth: 1,
+          borderRadius: theme.radius.md,
+          borderWidth: 2,
           borderStyle: "solid",
-          borderColor: allowed
-            ? theme.colors[buttonColor][7]
-            : theme.colors["dark"][2],
+          borderColor: borderAndTextColor,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: theme.colors[buttonColor][1],
-          color: allowed
-            ? theme.colors[buttonColor][7]
-            : theme.colors["dark"][2],
-          transform: right
+          backgroundColor: buttonColor,
+          color: borderAndTextColor,
+          transform: notNormal
             ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
             : "translateX(0)",
         }}
       >
         <Text p="xs" size="sm" fw={600}>
-          {enabled ? "Open" : "Closed"}
+          {stateText[enabled ? 0 : 1]}
         </Text>
       </Box>
     </Paper>
   );
+  s;
 }

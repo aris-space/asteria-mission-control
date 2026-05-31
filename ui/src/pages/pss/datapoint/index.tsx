@@ -15,12 +15,13 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 
-export const VERTICAL_PADDING: string = "4px";
-export const HORIZONTAL_PADDING: string = "6px";
-export const CONTAINER_HEIGHT: string = "2.5rem";
-export const SLOT_WIDTH: string = "5rem";
+export const VERTICAL_PADDING: string = "0px";
+export const HORIZONTAL_PADDING: string = "0px";
+export const CONTAINER_HEIGHT: string = "2rem";
+export const CONTAINER_WIDTH: string = "6rem";
+export const SLOT_WIDTH: string = "4rem";
 export const GAP: string = "0.5rem";
-export const SLIDER_PADDING: string = "4px";
+export const SLIDER_PADDING: string = "0px";
 
 interface DatapointProps extends Pick<
   ExtendedDatapointInformation,
