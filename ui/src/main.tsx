@@ -24,6 +24,7 @@ import StateMachine from "./pages/statemachine/StateMachine";
 import PSS from "./pages/pss/PSS";
 import Health from "./pages/health/Health";
 import Telemetry from "./pages/telemetry/Telemetry";
+import Demo from "./pages/pss/Demo";
 import { PssDataProvider } from "./hooks/PssDataContext";
 
 const queryClient = new QueryClient({
@@ -81,6 +82,7 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="pss/rfs" element={<PSS kind="rfs" />} />
                         <Route path="health" element={<Health />} />
                         <Route path="telemetry" element={<Telemetry />} />
+                        <Route path="pss/demo" element={<Demo />} />
                       </Routes>
                     </Layout>
                   </BrowserRouter>
