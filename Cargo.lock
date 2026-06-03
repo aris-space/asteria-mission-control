@@ -407,6 +407,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
+name = "arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d036a3c4ab069c7b410a2ce876bd74808d2d0888a82667669f8e783a898bf1"
+dependencies = [
+ "derive_arbitrary",
+]
+
+[[package]]
 name = "arc-swap"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -433,6 +442,7 @@ dependencies = [
  "html_parser",
  "log",
  "mavio",
+ "mavlink",
  "messages",
  "quick-xml 0.38.4",
  "schemars",
@@ -440,7 +450,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tokio-serial",
  "tokio-stream",
  "tokio-util",
  "toml 0.9.8",
@@ -574,6 +583,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "can-hal"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "defmt",
+ "embedded-can",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "cargo-manifest"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -684,6 +703,15 @@ name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
+
+[[package]]
+name = "concurrent-queue"
+version = "2.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973"
+dependencies = [
+ "crossbeam-utils",
+]
 
 [[package]]
 name = "cookie"
@@ -857,6 +885,7 @@ name = "data-core"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "can-hal",
  "data-macros",
  "datapoint-information",
  "mavio",
@@ -887,13 +916,48 @@ dependencies = [
 name = "datatypes"
 version = "0.1.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datapoint-information",
+ "defmt",
  "gated-derive",
  "serde",
  "thiserror 2.0.18",
  "utoipa",
+ "watchable",
+]
+
+[[package]]
+name = "defmt"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6e524506490a1953d237cb87b1cfc1e46f88c18f10a22dfe0f507dc6bfc7f7f"
+dependencies = [
+ "bitflags 1.3.2",
+ "defmt-macros",
+]
+
+[[package]]
+name = "defmt-macros"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f0a27770e9c8f719a79d8b638281f4d828f77d8fd61e0bd94451b9b85e576a0b"
+dependencies = [
+ "defmt-parser",
+ "proc-macro-error2",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "defmt-parser"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
+dependencies = [
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -903,6 +967,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ececcb659e7ba858fb4f10388c250a7252eb0a27373f1a72b8748afdd248e587"
 dependencies = [
  "powerfmt",
+]
+
+[[package]]
+name = "derive_arbitrary"
+version = "1.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e567bd82dcff979e4b03460c307b3cdc9e96fde3d73bed1496d2bc75d9dd62a"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -966,9 +1041,11 @@ dependencies = [
 name = "dp-engine-control-board"
 version = "0.5.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -978,9 +1055,11 @@ dependencies = [
 name = "dp-flight-computer"
 version = "0.3.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -990,9 +1069,11 @@ dependencies = [
 name = "dp-fuel-control-board"
 version = "0.5.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1002,9 +1083,11 @@ dependencies = [
 name = "dp-oxidizer-control-board"
 version = "0.5.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1016,6 +1099,7 @@ version = "0.3.0"
 dependencies = [
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1025,9 +1109,11 @@ dependencies = [
 name = "dp-recovery-board"
 version = "0.3.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1035,11 +1121,13 @@ dependencies = [
 
 [[package]]
 name = "dp-rfs-computer"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1049,9 +1137,11 @@ dependencies = [
 name = "dp-sensor-carrier"
 version = "0.3.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1061,9 +1151,11 @@ dependencies = [
 name = "dp-system-management"
 version = "0.3.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "data-core",
  "datatypes",
+ "defmt",
  "gated-derive",
  "serde",
  "utoipa",
@@ -1086,6 +1178,15 @@ name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
+
+[[package]]
+name = "embedded-can"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9d2e857f87ac832df68fa498d18ddc679175cf3d2e4aa893988e5601baf9438"
+dependencies = [
+ "nb",
+]
 
 [[package]]
 name = "embedded-io"
@@ -1154,6 +1255,17 @@ checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "event-listener"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67b215c49b2b248c855fb73579eb1f4f26c38ffdc12973e20e07b91d78d5646e"
+dependencies = [
+ "concurrent-queue",
+ "parking",
+ "pin-project-lite",
 ]
 
 [[package]]
@@ -2783,6 +2895,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "mavlink"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "mavio",
+ "messages",
+ "serde",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-serial",
+]
+
+[[package]]
 name = "mavlink-dialects"
 version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2806,6 +2931,21 @@ dependencies = [
  "mavio",
  "tbytes",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "mavlink-log-replay"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "mavio",
+ "mavlink",
+ "messages",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -2923,6 +3063,7 @@ dependencies = [
  "dp-system-management",
  "gated-derive",
  "serde",
+ "thiserror 2.0.18",
  "utoipa",
 ]
 
@@ -2979,6 +3120,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nb"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8d5439c4ad607c3c23abf66de8c8bf57ba8adcd1f129e699851a6e43935d339d"
+
+[[package]]
 name = "nix"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3033,6 +3180,12 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
+
+[[package]]
+name = "parking"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
 
 [[package]]
 name = "parking_lot"
@@ -3198,6 +3351,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
 dependencies = [
  "proc-macro2",
+ "syn",
+]
+
+[[package]]
+name = "proc-macro-error-attr2"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
+name = "proc-macro-error2"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
+dependencies = [
+ "proc-macro-error-attr2",
+ "proc-macro2",
+ "quote",
  "syn",
 ]
 
@@ -4367,6 +4542,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "76f218a38c84bcb33c25ec7059b07847d465ce0e0a76b995e134a45adcb6af76"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "watchable"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45b42a2f611916b5965120a9cde2b60f2db4454826dd9ad5e6f47c24a5b3b259"
+dependencies = [
+ "event-listener",
+ "futures-util",
+ "parking_lot",
+ "thiserror 1.0.69",
 ]
 
 [[package]]

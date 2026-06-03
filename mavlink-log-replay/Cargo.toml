@@ -1,0 +1,15 @@
+[package]
+name = "mavlink-log-replay"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+asteria-messages.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+log.workspace = true
+mavio.workspace = true
+mavlink-lib.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true

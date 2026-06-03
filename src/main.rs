@@ -33,7 +33,6 @@ use utoipa_rapidoc::RapiDoc;
 
 mod cli;
 mod config;
-mod mavlink;
 mod parser;
 mod remote;
 mod web;

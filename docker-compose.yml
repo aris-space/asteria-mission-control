@@ -1,50 +1,68 @@
 services:
-    mission-control:
-        profiles: ["mission-control", "full"]
-        build:
-            context: .
-            dockerfile: ./Dockerfile
-        ports:
-            # map container port 80 to host port 8888
-            - "8888:80"
-        volumes:
-            - ./remote-computers/flight-computer/configs:/app/remote-computers/flight-computer/configs:ro
-            - ./remote-computers/state-machines:/app/remote-computers/state-machines:ro
-            - ./config.toml:/app/config.toml:ro
+  mission-control:
+    profiles: ["mission-control", "full"]
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      # map container port 80 to host port 8888
+      - "8888:80"
+    volumes:
+      - ./remote-computers/flight-computer/configs:/app/remote-computers/flight-computer/configs:ro
+      - ./remote-computers/state-machines:/app/remote-computers/state-machines:ro
+      - ./config.toml:/app/config.toml:ro
 
-    flight-computer:
-        profiles: ["flight-computer", "full"]
-        build:
-            context: .
-            dockerfile: ./fc.Dockerfile
-        cap_add:
-            # needed to create the virtual can interface
-            - NET_ADMIN
-        configs:
-            - source: mavlink-router
-              target: /etc/mavlink-router/main.conf
-        ports:
-            # MavLink router TCP server.
-            - "5766:5766"
-            # SSH daemon.
-            - "2222:22"
-        volumes:
-            - ./remote-computers/flight-computer/configs:/app/configs:ro
-        command: flight-computer /app/configs/drop_test_campaign/drogue_out_drop_test_template.toml
+  flight-computer:
+    profiles: ["flight-computer", "remote-computers", "full"]
+    build:
+      context: .
+      dockerfile: ./fc.Dockerfile
+    cap_add:
+      # needed to create the virtual can interface
+      - NET_ADMIN
+    configs:
+      - source: mavlink-router
+        target: /etc/mavlink-router/main.conf
+    ports:
+      # MavLink router TCP server.
+      - "5766:5766"
+      # SSH daemon.
+      - "2222:22"
+    volumes:
+      - ./remote-computers/flight-computer/configs:/app/configs:ro
+    command: flight-computer /app/configs/drop_test_campaign/drogue_out_drop_test_template.toml
+
+  replay:
+    profiles: ["replay", "remote-computers", "full"]
+    build:
+      context: .
+      dockerfile: ./replay.Dockerfile
+    cap_add:
+      # needed to create the virtual can interface
+      - NET_ADMIN
+    configs:
+      - source: mavlink-router
+        target: /etc/mavlink-router/main.conf
+    ports:
+      # MavLink router TCP server.
+      - "5776:5766"
+    volumes:
+      - ./replays:/app/replays:ro
+    command: mavlink-log-replay --path /app/replays/droptest.jsonl --speed 1.5 tcp localhost:5766
 
 configs:
-    mavlink-router:
-        content: |
-            [General]
-            TcpServerPort = 5766
-            Forwarding = True
+  mavlink-router:
+    content: |
+      [General]
+      TcpServerPort = 5766
+      Forwarding = True
 
-            # -------------------------------------
-            # UDP ENDPOINT DEFINITIONS
-            # -------------------------------------
+      # -------------------------------------
+      # UDP ENDPOINT DEFINITIONS
+      # -------------------------------------
 
-            # Endpoint for the flight computer connection
-            [UdpEndpoint flight_computer]
-            Mode = Server
-            Address = 127.0.0.1
-            Port = 5760
+      # Endpoint for the flight computer connection
+      [UdpEndpoint flight_computer]
+      Mode = Server
+      Address = 127.0.0.1
+      Port = 5760

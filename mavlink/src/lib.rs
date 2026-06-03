@@ -1,4 +1,4 @@
-use crate::{config::MavlinkAddress, mavlink::transport::AsyncTransportStream};
+use crate::transport::AsyncTransportStream;
 
 use asteria_messages::Message;
 use mavio::{
@@ -24,6 +24,14 @@ pub enum MavlinkError {
     Connection(tokio::io::Error),
     #[error("Mavio error: {0}")]
     Mavio(mavio::Error),
+}
+
+#[derive(Debug, Clone)]
+pub enum MavlinkAddress {
+    /// IP address and port used for TCP communication
+    Tcp { remote: String },
+    /// Path to a serial device together with the baud rate used
+    Serial { path: String, baud_rate: u32 },
 }
 
 /// Get a new MavLink sender and receiver for a given MavLink address.
@@ -103,9 +111,8 @@ impl MavlinkReceiver {
                     let mut recv_error_count = self.errors.lock().await;
                     if *recv_error_count == MAX_RECV_ERROR_COUNT {
                         return Err(MavlinkError::Mavio(mavio::Error::Io(io_error)));
-                    } else {
-                        *recv_error_count += 1;
                     }
+                    *recv_error_count += 1;
                     log::warn!("Unable to receive mavlink message due to I/O error: {}", mavio::Error::Io(io_error));
                     continue;
                 }
@@ -120,7 +127,7 @@ impl MavlinkReceiver {
             if let Err(err) = frame.validate_checksum::<Message>() {
                 log::warn!("Received mavlink message with invalid checksum: {err}");
                 continue;
-            };
+            }
 
             let message = match frame.decode::<Message>() {
                 Ok(message) => message,

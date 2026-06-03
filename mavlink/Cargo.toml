@@ -1,0 +1,16 @@
+[package]
+name = "mavlink"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+asteria-messages.workspace = true
+log.workspace = true
+mavio.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-serial = "5.4.5"
+
+[lints]
+workspace = true

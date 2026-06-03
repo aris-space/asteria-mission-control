@@ -198,6 +198,27 @@ export type DatapointValue =
     });
 
 /**
+ * A digital input, mostly for proximity sensors.
+ */
+export type DigitalIn = (typeof DigitalIn)[keyof typeof DigitalIn];
+
+export const DigitalIn = {
+  off: "off",
+  on: "on",
+} as const;
+
+/**
+ * The state of a digital out.
+This is a [`Settable`] with the value being 0.0 for off and 1.0 for on.
+ */
+export type DigitalOut = (typeof DigitalOut)[keyof typeof DigitalOut];
+
+export const DigitalOut = {
+  off: "off",
+  on: "on",
+} as const;
+
+/**
  * Telemetry statistics for a downlink.
  */
 export interface DownlinkTelemetryStats {
@@ -212,6 +233,33 @@ export interface DownlinkTelemetryStats {
    */
   numMessagesSent: number;
 }
+
+/**
+ * Struct representing the gains of the dpr controller
+ */
+export interface DprGainInfo {
+  /** The DPR derivative gain */
+  d: number;
+  /** The DPR integral gain */
+  i: number;
+  /** The DPR max opening time in ms */
+  maxMs: number;
+  /** The DPR min opening time in ms */
+  minMs: number;
+  /** The DPR proportional gain */
+  p: number;
+}
+
+/**
+ * Enum representing the state of a dpr loop.
+ */
+export type DprLoopInfo = (typeof DprLoopInfo)[keyof typeof DprLoopInfo];
+
+export const DprLoopInfo = {
+  activeNominal: "activeNominal",
+  activeOverPressure: "activeOverPressure",
+  passive: "passive",
+} as const;
 
 export interface StatusCommonMessage {
   /**
@@ -444,27 +492,6 @@ export type EngineControlBoardMessage =
   the value will be set to `NaN`. */
       content: Celsius;
       type: "OxidizerTankTemperature";
-    }
-  | {
-      type: "FiringAborted";
-    }
-  | {
-      type: "FiringCompleted";
-    }
-  | {
-      type: "FiringInitiated";
-    }
-  | {
-      type: "IgnitionDetected";
-    }
-  | {
-      type: "CombustionDetected";
-    }
-  | {
-      type: "FiringAbortInitiation";
-    }
-  | {
-      type: "FiringInitiation";
     }
   | {
       /** ## Type
@@ -755,6 +782,10 @@ export type FlightComputerMessage =
 
 export interface FuelControlBoardStatus {
   common: StatusCommonMessage;
+  /** State of the DPR Control Gain */
+  dprGainInfo: DprGainInfo;
+  /** State of the DPR Control Loop */
+  dprLoopInfo: DprLoopInfo;
   /** State of the Keller BUS used to read pressure, indicates whether a single sensor is online or not. */
   pressureBus: SensorStatus;
   /** State of the ADS1120 device used to read thermocouples */
@@ -1005,6 +1036,86 @@ export type FueldControlBoardMessage =
   The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
       content: NormallyOpenValve;
       type: "FuelVentValveControlRFS";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `FuelControlBoard`
+
+  ## Purpose
+  Sets the proportional Fuel DPR Gain
+
+  ## Reaction
+  The Fuel Control Board shall adjust the proportional DPR gain accordingly */
+      content: number;
+      type: "FuelDprGainP";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `FuelControlBoard`
+
+  ## Purpose
+  Sets the integral Fuel DPR Gain
+
+  ## Reaction
+  The Fuel Control Board shall adjust the integral DPR gain accordingly */
+      content: number;
+      type: "FuelDprGainI";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `FuelControlBoard`
+
+  ## Purpose
+  Sets the derivative Fuel DPR Gain
+
+  ## Reaction
+  The Fuel Control Board shall adjust the derivative DPR gain accordingly */
+      content: number;
+      type: "FuelDprGainD";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `FuelControlBoard`
+
+  ## Purpose
+  Sets the minimum opening time ms of the DPR
+
+  ## Reaction
+  The Fuel Control Board shall adjust the derivative DPR minimum opening time accordingly */
+      content: number;
+      type: "FuelDprMinOpeningTime";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `FuelControlBoard`
+
+  ## Purpose
+  Sets the maximum opening time ms of the DPR
+
+  ## Reaction
+  The Fuel Control Board shall adjust the derivative DPR maximum opening time accordingly */
+      content: number;
+      type: "FuelDprMaxOpeningTime";
     };
 
 /**
@@ -1188,6 +1299,18 @@ export interface ImuData {
   angularVelocityZ: number;
 }
 
+/**
+ * The state of an inverted digital out.
+This is a [`Settable`] with the value being 0.0 for off and 1.0 for on.
+ */
+export type InvertedDigitalOut =
+  (typeof InvertedDigitalOut)[keyof typeof InvertedDigitalOut];
+
+export const InvertedDigitalOut = {
+  off: "off",
+  on: "on",
+} as const;
+
 export interface MagnetometerData {
   /** Magnetic field along Down axis in μT. Range: ±4915.2 μT */
   magneticFieldDown: number;
@@ -1205,115 +1328,55 @@ export interface MagnetometerData {
 
 export interface RfsComputerStatus {
   common: StatusCommonMessage;
-  /** `true` if the remote filling station asserts control over the PSS valves via CAN.
-  In other words, if passive mode is disabled. */
-  hasPssControl: boolean;
   /** `Armed` if the remote filling station is in a `Armed` state for ignition
   This is a software arming state of the RFS state machine that is part of the RFS hardware arming */
   isIgnitionArmed: ArmingState;
 }
 
 /**
- * Enum representing the state of a valve.
+ * The state of a throttleable valve.
+This is a [`Settable`] with the value being 0.0 for fully closed up to 1.0 for fully open.
+
+Note that the default behaviour is a bit weird here, as the valves don't reset on powerloss,
+but they start closed (`Default` gives a closed state).
  */
-export type ValveState = (typeof ValveState)[keyof typeof ValveState];
-
-export const ValveState = {
-  active: "active",
-  inactive: "inactive",
-} as const;
-
-export interface RfsComputerValveStates {
-  /** The current active state of the normally closed GOX igniter valve. */
-  goxIgnVlv: ValveState;
-  /** The current active state of the normally closed GOX purge valve. */
-  goxPrgVlv: ValveState;
-  /** The current active state of the normally closed H2 igniter valve. */
-  h2IgnVlv: ValveState;
-  /** The current active state of the normally closed H2 purge valve. */
-  h2PrgVlv: ValveState;
-  /** The current active state of the normally off spark plug. */
-  ignSpkPlg: ValveState;
+export interface ThrottleableValve {
+  /**
+   * The openness in percent (0 being fully closed, 100 being fully open)
+   * @minimum 0
+   */
+  openness_percent: number;
 }
 
 export type RfsComputerMessage =
   | {
-      /** # `RfsComputerBuildInfo`
-  Firmware build metadata emitted by the RFS Computer.
+      /** Software build metadata periodically emitted by the RFS Computer.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
-
-  ## Direction
-  - **Emitted by:** `RfsComputer`
-  - **Received by:** `unspecified`
-
-  ## Purpose
-  Allows version tracking and verification of the RFS Computer firmware.
-
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
+  # CAN
+  - **Kind**: Debug message
+  - **Sent by**: RFS Computer */
       content: BuildInformationCommon;
       type: "BuildInfo";
     }
   | {
-      /** # `RfsComputerConfigHash`
-  First 5 hex characters of the config file Git Object Hash currently
+      /** First 5 hex characters of the config file Git Object Hash currently
   loaded by the Rfs Computer.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
-
-  ## Direction
-  - **Emitted by:** `RfsComputer`
-  - **Received by:** `unspecified`
-
-  ## Purpose
-  Allows Rfs Computer config file tracking.
-
-  ## Reaction
-  Receivers may log or display the config hash. */
+  This is used to auto-select the state machine in the mission control */
       content: ConfigHash;
       type: "ConfigHash";
     }
   | {
-      /** # `RfsComputerStatus`
-  Periodic status message emitted by the RFS Computer.
+      /** Periodic status message emitted by the RFS Computer.
 
-  ## Type
-  - `Periodic @ 1 Hz`
+  Contains runtime health of the RFS Computer.
+  It is also used to only ignite if the RFS is armed.
 
-  ## Direction
-  - **Emitted by:** `RfsComputer`
-  - **Received by:** `unspecified`
-
-  ## Purpose
-  Communicates the runtime health and status of the RFS Computer.
-
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks.
-  It is also used to only ingite if the RFS is armed and ensure exclusive PSS control. */
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
       content: RfsComputerStatus;
       type: "Status";
-    }
-  | {
-      /** # `RfsComputerValveStates`
-  Periodic status message emitted by the Remote Filling Station Computer.
-
-  ## Type
-  - `Periodic @ 5 Hz`
-
-  ## Direction
-  - **Emitted by:** `RfsComputer`
-  - **Received by:** `EngineControlBoard` (mainly)
-
-  ## Purpose
-  Communicates the actuator state of the actuators in the Remote Filling Station controllable via CAN.
-  This includes the ingiter valves and the spark plug.
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: RfsComputerValveStates;
-      type: "ValveStates";
     }
   | {
       /** The current state of the rfs computer state machine. */
@@ -1337,84 +1400,253 @@ export type RfsComputerMessage =
       type: "DownlinkTelemetryStats";
     }
   | {
-      /** # `GoxIgniterValveControl`
-  Controls the GOX igniter valve on the RFS from the ECU.
+      /** The current active state of the normally off spark plug.
 
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `RemoteFillingStation`
-
-  ## Purpose
-  This is needed during the ignition sequence where the engine control board controls the igniter
-  and thus needs to open and close valves.
-
-  ## Reaction
-  The remote filling station shall adjust the GOX igniter valve state accordingly. */
-      content: ValveState;
-      type: "GoxIgniterValveControl";
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
+      content: DigitalOut;
+      type: "IgniterSparkPlugState";
     }
   | {
-      /** # `H2IgniterValveControl`
-  Controls the H2 igniter valve on the RFS from the ECU.
+      /** The current active state of the normally closed GOX igniter valve.
 
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `RemoteFillingStation`
-
-  ## Purpose
-  This is needed during the ignition sequence where the engine control board controls the igniter
-  and thus needs to open and close valves.
-
-  ## Reaction
-  The remote filling station shall adjust the H2 igniter valve state accordingly. */
-      content: ValveState;
-      type: "H2IgniterValveControl";
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
+      content: NormallyClosedValve;
+      type: "GoxIgniterValveState";
     }
   | {
-      /** # `IgniterSparkPlugControl`
-  Controls the igniter spark plug on the RFS from the ECU.
+      /** The current active state of the normally closed H2 igniter valve.
 
-  ## Type
-  - `Event`: sent by the ECU
-
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `RemoteFillingStation`
-
-  ## Purpose
-  This is needed during the ignition sequence where the engine control board controls the igniter
-  and thus needs to open and close valves and activate the spark plug.
-
-  ## Reaction
-  The remote filling station shall adjust spark plug state accordingly. */
-      content: ValveState;
-      type: "IgniterSparkPlugControl";
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
+      content: NormallyClosedValve;
+      type: "H2IgniterValveState";
     }
   | {
-      /** # `IgniterPurgeControl`
-  Controls the GOX and H2 purge valves on the RFS from the ECU.
+      /** The current active state of the normally closed GOX purge valve.
 
-  ## Type
-  - `Event`: sent by the ECU
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
+      content: NormallyClosedValve;
+      type: "GoxPurgeValveState";
+    }
+  | {
+      /** The current active state of the normally closed H2 purge valve.
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `RemoteFillingStation`
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
+      content: NormallyClosedValve;
+      type: "H2PurgeValveState";
+    }
+  | {
+      /** The current active state of the normally open N2 bleed valve. */
+      content: NormallyOpenValve;
+      type: "N2BleedValveState";
+    }
+  | {
+      /** The current active state of the normally closed LOX purge valve. */
+      content: NormallyClosedValve;
+      type: "LoxPurgeValveState";
+    }
+  | {
+      /** The current active state of the normally open GOX bleed valve. */
+      content: NormallyOpenValve;
+      type: "GoxBleedValveState";
+    }
+  | {
+      /** The current active state of the normally closed N2 purge valve. */
+      content: NormallyClosedValve;
+      type: "N2PurgeValveState";
+    }
+  | {
+      /** The current active state of the normally closed N2 fill valve. */
+      content: NormallyClosedValve;
+      type: "N2FillValveState";
+    }
+  | {
+      /** The current active state of the normally open H2 bleed valve. */
+      content: NormallyOpenValve;
+      type: "H2BleedValveState";
+    }
+  | {
+      /** The current active state of the normally closed LOX bleed valve. */
+      content: NormallyClosedValve;
+      type: "LoxBleedValveState";
+    }
+  | {
+      /** The current active state of the normally closed pneumatic booster valve. */
+      content: NormallyClosedValve;
+      type: "BoosterValveState";
+    }
+  | {
+      /** The current active state of the normally closed LOX decoupler extend valve. */
+      content: NormallyClosedValve;
+      type: "LoxDecouplerExtendValveState";
+    }
+  | {
+      /** The current active state of the normally closed LOX decoupler retract valve. */
+      content: NormallyClosedValve;
+      type: "LoxDecouplerRetractValveState";
+    }
+  | {
+      /** The current active state of the normally closed N2 decoupler extend valve. */
+      content: NormallyClosedValve;
+      type: "N2DecouplerExtendValveState";
+    }
+  | {
+      /** The current active state of the normally closed N2 decoupler retract valve. */
+      content: NormallyClosedValve;
+      type: "N2DecouplerRetractValveState";
+    }
+  | {
+      /** The current active state of the normally closed N2 shower valves. */
+      content: NormallyClosedValve;
+      type: "N2ShowerValvesState";
+    }
+  | {
+      /** The current active state of the normally closed N2 engine purge valve valve. */
+      content: NormallyClosedValve;
+      type: "N2RocketPurgeValveState";
+    }
+  | {
+      /** The current active state of the rocket power output. */
+      content: InvertedDigitalOut;
+      type: "RocketPowerState";
+    }
+  | {
+      /** The current active state of the Maxon board power output. */
+      content: InvertedDigitalOut;
+      type: "MaxonBoardPowerState";
+    }
+  | {
+      /** The current active state of the FSS heating output. */
+      content: DigitalOut;
+      type: "FssHeatingState";
+    }
+  | {
+      /** The current active state of the pressure sensor heating output. */
+      content: DigitalOut;
+      type: "PressureSensorHeatingState";
+    }
+  | {
+      /** The current active state of the ETH pump power output. */
+      content: DigitalOut;
+      type: "EthPumpPowerState";
+    }
+  | {
+      /** The current active state of the custom output 1. */
+      content: DigitalOut;
+      type: "Custom1State";
+    }
+  | {
+      /** The current active state of the custom output 2. */
+      content: DigitalOut;
+      type: "Custom2State";
+    }
+  | {
+      /** The current active state of the custom output 3. */
+      content: DigitalOut;
+      type: "Custom3State";
+    }
+  | {
+      /** The current openness state of the LOX fill valve */
+      content: ThrottleableValve;
+      type: "LoxFillValveState";
+    }
+  | {
+      /** The temperature of the LOx line. */
+      content: Celsius;
+      type: "LoxTemperature";
+    }
+  | {
+      /** The temperature of the igniter. */
+      content: Celsius;
+      type: "IgniterTemperature";
+    }
+  | {
+      /** The temperature inside the DACS cabinet. */
+      content: Celsius;
+      type: "CabinetTemperature";
+    }
+  | {
+      /** The ambient temperature. */
+      content: Celsius;
+      type: "AmbientTemperature";
+    }
+  | {
+      /** Whether the LOx decoupler is in its retracted state, from the proximity sensor. */
+      content: DigitalIn;
+      type: "LoxDecouplerProximity";
+    }
+  | {
+      /** Whether the N2 decoupler is in its retracted state, from the proximity sensor. */
+      content: DigitalIn;
+      type: "N2DecouplerProximity";
+    }
+  | {
+      /** Whether the valves are receiving power (arming relay state). */
+      content: DigitalIn;
+      type: "ValvesArmed";
+    }
+  | {
+      /** Whether the spark plug is receiving power (arming relay state). */
+      content: DigitalIn;
+      type: "IgniterArmed";
+    }
+  | {
+      /** The pressure from the igniter block.
 
-  ## Purpose
-  This is needed during the ignition sequence where the engine control board controls the ignition
-  and thus needs to open and close valves.
-
-  ## Reaction
-  The remote filling station shall adjust the GOX and H2 purge valve state accordingly. */
-      content: ValveState;
-      type: "IgniterPurgeControl";
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
+      content: BarG;
+      type: "IgniterPressure";
+    }
+  | {
+      /** Pressure of the N2 pre-booster line. */
+      content: BarG;
+      type: "N2PreBoosterPressure";
+    }
+  | {
+      /** Pressure of the H2 purge line. */
+      content: BarG;
+      type: "H2PurgePressure";
+    }
+  | {
+      /** Pressure of the N2 post-booster line. */
+      content: BarG;
+      type: "N2PostBoosterPressure";
+    }
+  | {
+      /** Pressure of the LOX line. */
+      content: BarG;
+      type: "LoxPressure";
+    }
+  | {
+      /** Pressure of the purge line. */
+      content: BarG;
+      type: "PurgePressure";
+    }
+  | {
+      /** Pressure of the pneumatic line. */
+      content: BarG;
+      type: "PneumaticPressure";
+    }
+  | {
+      /** Pressure of the GOX igniter line. */
+      content: BarG;
+      type: "GoxPressure";
+    }
+  | {
+      /** Pressure of the H2 igniter line. */
+      content: BarG;
+      type: "H2Pressure";
     }
   | {
       /** Command a manual state transition on the RFSC.
@@ -1431,6 +1663,66 @@ export type RfsComputerMessage =
   Upon change, an "actuator states" message will be emitted. */
       content: ManualActuatorChange;
       type: "ManualActuatorChange";
+    }
+  | {
+      /** Controls the GOX igniter valve on the RFS from the FC.
+
+  This is needed during the ignition sequence where the flight computer controls the igniter
+  and thus needs to open and close valves.
+
+  # CAN
+  - **Kind**: Event message
+  - **Sent by**: Flight Computer */
+      content: NormallyClosedValve;
+      type: "GoxIgniterValveControl";
+    }
+  | {
+      /** Controls the H2 igniter valve on the RFS from the FC.
+
+  This is needed during the ignition sequence where the flight computer controls the igniter
+  and thus needs to open and close valves.
+
+  # CAN
+  - **Kind**: Event message
+  - **Sent by**: Flight Computer */
+      content: NormallyClosedValve;
+      type: "H2IgniterValveControl";
+    }
+  | {
+      /** Controls the igniter spark plug on the RFS from the FC.
+
+  This is needed during the ignition sequence where the flight computer controls the igniter
+  and thus needs to activate the spark plug.
+
+  # CAN
+  - **Kind**: Event message
+  - **Sent by**: Flight Computer */
+      content: DigitalOut;
+      type: "IgniterSparkPlugControl";
+    }
+  | {
+      /** Controls the H2 purge valve on the RFS from the FC.
+
+  This is needed during the ignition sequence where the flight computer controls the ignition
+  and thus needs to purge.
+
+  # CAN
+  - **Kind**: Event message
+  - **Sent by**: Flight Computer */
+      content: NormallyClosedValve;
+      type: "H2IgniterPurgeControl";
+    }
+  | {
+      /** Controls the GOX purge valve on the RFS from the FC.
+
+  This is needed during the ignition sequence where the flight computer controls the ignition
+  and thus needs to purge.
+
+  # CAN
+  - **Kind**: Event message
+  - **Sent by**: Flight Computer */
+      content: NormallyClosedValve;
+      type: "GoxIgniterPurgeControl";
     };
 
 export type SystemManagementMessage =
@@ -2140,6 +2432,10 @@ export type SensorCarrierMessage =
 
 export interface OxidizerControlBoardStatus {
   common: StatusCommonMessage;
+  /** State of the DPR Control Gain */
+  dprGainInfo: DprGainInfo;
+  /** State of the DPR Control Loop */
+  dprLoopInfo: DprLoopInfo;
   /** State of the Keller BUS used to read pressure, indicates whether a single sensor is online or not. */
   pressureBus: SensorStatus;
   /** State of the ADS1120 device used to read thermocouples */
@@ -2252,7 +2548,7 @@ export type OxidizerControlBoardMessage =
 
   ## Reaction
   Receivers may log the data or use it for diagnostics and system health checks. */
-      content: NormallyClosedValve;
+      content: NormallyOpenValve;
       type: "OxidizerVentValveState";
     }
   | {
@@ -2284,7 +2580,7 @@ export type OxidizerControlBoardMessage =
 
   ## Reaction
   The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: NormallyClosedValve;
+      content: NormallyOpenValve;
       type: "OxidizerVentValveControlFC";
     }
   | {
@@ -2316,8 +2612,88 @@ export type OxidizerControlBoardMessage =
 
   ## Reaction
   The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: NormallyClosedValve;
+      content: NormallyOpenValve;
       type: "OxidizerVentValveControlRFS";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `OxidizerControlBoard`
+
+  ## Purpose
+  Sets the proportional Oxidizer DPR Gain
+
+  ## Reaction
+  The Oxidizer Control Board shall adjust the proportional DPR gain accordingly */
+      content: number;
+      type: "OxidizerDprGainP";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `OxidizerControlBoard`
+
+  ## Purpose
+  Sets the integral Oxidizer DPR Gain
+
+  ## Reaction
+  The Oxidizer Control Board shall adjust the integral DPR gain accordingly */
+      content: number;
+      type: "OxidizerDprGainI";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `OxidizerControlBoard`
+
+  ## Purpose
+  Sets the derivative Oxidizer DPR Gain
+
+  ## Reaction
+  The Oxidizer Control Board shall adjust the derivative DPR gain accordingly */
+      content: number;
+      type: "OxidizerDprGainD";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `OxidizerControlBoard`
+
+  ## Purpose
+  Sets the minimum opening time ms of the DPR
+
+  ## Reaction
+  The Oxidizer Control Board shall adjust the derivative DPR minimum opening time accordingly */
+      content: number;
+      type: "OxidizerDprMinOpeningTime";
+    }
+  | {
+      /** ## Type
+  - `Event`: sent by the FC
+
+  ## Direction
+  - **Emitted by:** `FlightComputer`
+  - **Received by:** `OxidizerControlBoard`
+
+  ## Purpose
+  Sets the maximum opening time ms of the DPR
+
+  ## Reaction
+  The Oxidizer Control Board shall adjust the derivative DPR maximum opening time accordingly */
+      content: number;
+      type: "OxidizerDprMaxOpeningTime";
     };
 
 /**
