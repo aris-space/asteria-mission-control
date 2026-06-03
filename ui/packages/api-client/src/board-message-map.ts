@@ -47,10 +47,6 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "ValveStates",
-      hasContent: true,
-    },
-    {
       type: "StateMachineState",
       hasContent: true,
     },
@@ -60,6 +56,194 @@ export const BOARD_MESSAGE_MAP = {
     },
     {
       type: "DownlinkTelemetryStats",
+      hasContent: true,
+    },
+    {
+      type: "IgniterSparkPlugState",
+      hasContent: true,
+    },
+    {
+      type: "GoxIgniterValveState",
+      hasContent: true,
+    },
+    {
+      type: "H2IgniterValveState",
+      hasContent: true,
+    },
+    {
+      type: "GoxPurgeValveState",
+      hasContent: true,
+    },
+    {
+      type: "H2PurgeValveState",
+      hasContent: true,
+    },
+    {
+      type: "N2BleedValveState",
+      hasContent: true,
+    },
+    {
+      type: "LoxPurgeValveState",
+      hasContent: true,
+    },
+    {
+      type: "GoxBleedValveState",
+      hasContent: true,
+    },
+    {
+      type: "N2PurgeValveState",
+      hasContent: true,
+    },
+    {
+      type: "N2FillValveState",
+      hasContent: true,
+    },
+    {
+      type: "H2BleedValveState",
+      hasContent: true,
+    },
+    {
+      type: "LoxBleedValveState",
+      hasContent: true,
+    },
+    {
+      type: "BoosterValveState",
+      hasContent: true,
+    },
+    {
+      type: "LoxDecouplerExtendValveState",
+      hasContent: true,
+    },
+    {
+      type: "LoxDecouplerRetractValveState",
+      hasContent: true,
+    },
+    {
+      type: "N2DecouplerExtendValveState",
+      hasContent: true,
+    },
+    {
+      type: "N2DecouplerRetractValveState",
+      hasContent: true,
+    },
+    {
+      type: "N2ShowerValvesState",
+      hasContent: true,
+    },
+    {
+      type: "N2RocketPurgeValveState",
+      hasContent: true,
+    },
+    {
+      type: "RocketPowerState",
+      hasContent: true,
+    },
+    {
+      type: "MaxonBoardPowerState",
+      hasContent: true,
+    },
+    {
+      type: "FssHeatingState",
+      hasContent: true,
+    },
+    {
+      type: "PressureSensorHeatingState",
+      hasContent: true,
+    },
+    {
+      type: "EthPumpPowerState",
+      hasContent: true,
+    },
+    {
+      type: "Custom1State",
+      hasContent: true,
+    },
+    {
+      type: "Custom2State",
+      hasContent: true,
+    },
+    {
+      type: "Custom3State",
+      hasContent: true,
+    },
+    {
+      type: "LoxFillValveState",
+      hasContent: true,
+    },
+    {
+      type: "LoxTemperature",
+      hasContent: true,
+    },
+    {
+      type: "IgniterTemperature",
+      hasContent: true,
+    },
+    {
+      type: "CabinetTemperature",
+      hasContent: true,
+    },
+    {
+      type: "AmbientTemperature",
+      hasContent: true,
+    },
+    {
+      type: "LoxDecouplerProximity",
+      hasContent: true,
+    },
+    {
+      type: "N2DecouplerProximity",
+      hasContent: true,
+    },
+    {
+      type: "ValvesArmed",
+      hasContent: true,
+    },
+    {
+      type: "IgniterArmed",
+      hasContent: true,
+    },
+    {
+      type: "IgniterPressure",
+      hasContent: true,
+    },
+    {
+      type: "N2PreBoosterPressure",
+      hasContent: true,
+    },
+    {
+      type: "H2PurgePressure",
+      hasContent: true,
+    },
+    {
+      type: "N2PostBoosterPressure",
+      hasContent: true,
+    },
+    {
+      type: "LoxPressure",
+      hasContent: true,
+    },
+    {
+      type: "PurgePressure",
+      hasContent: true,
+    },
+    {
+      type: "PneumaticPressure",
+      hasContent: true,
+    },
+    {
+      type: "GoxPressure",
+      hasContent: true,
+    },
+    {
+      type: "H2Pressure",
+      hasContent: true,
+    },
+    {
+      type: "ManualStateTransition",
+      hasContent: true,
+    },
+    {
+      type: "ManualActuatorChange",
       hasContent: true,
     },
     {
@@ -75,15 +259,11 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "IgniterPurgeControl",
+      type: "H2IgniterPurgeControl",
       hasContent: true,
     },
     {
-      type: "ManualStateTransition",
-      hasContent: true,
-    },
-    {
-      type: "ManualActuatorChange",
+      type: "GoxIgniterPurgeControl",
       hasContent: true,
     },
   ],
@@ -268,6 +448,26 @@ export const BOARD_MESSAGE_MAP = {
       type: "FuelVentValveControlRFS",
       hasContent: true,
     },
+    {
+      type: "FuelDprGainP",
+      hasContent: true,
+    },
+    {
+      type: "FuelDprGainI",
+      hasContent: true,
+    },
+    {
+      type: "FuelDprGainD",
+      hasContent: true,
+    },
+    {
+      type: "FuelDprMinOpeningTime",
+      hasContent: true,
+    },
+    {
+      type: "FuelDprMaxOpeningTime",
+      hasContent: true,
+    },
   ],
   OxidizerControlBoard: [
     {
@@ -314,6 +514,26 @@ export const BOARD_MESSAGE_MAP = {
       type: "OxidizerVentValveControlRFS",
       hasContent: true,
     },
+    {
+      type: "OxidizerDprGainP",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerDprGainI",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerDprGainD",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerDprMinOpeningTime",
+      hasContent: true,
+    },
+    {
+      type: "OxidizerDprMaxOpeningTime",
+      hasContent: true,
+    },
   ],
   EngineControlBoard: [
     {
@@ -351,34 +571,6 @@ export const BOARD_MESSAGE_MAP = {
     {
       type: "OxidizerTankTemperature",
       hasContent: true,
-    },
-    {
-      type: "FiringAborted",
-      hasContent: false,
-    },
-    {
-      type: "FiringCompleted",
-      hasContent: false,
-    },
-    {
-      type: "FiringInitiated",
-      hasContent: false,
-    },
-    {
-      type: "IgnitionDetected",
-      hasContent: false,
-    },
-    {
-      type: "CombustionDetected",
-      hasContent: false,
-    },
-    {
-      type: "FiringAbortInitiation",
-      hasContent: false,
-    },
-    {
-      type: "FiringInitiation",
-      hasContent: false,
     },
     {
       type: "OxidizerMainValveControlFC",
