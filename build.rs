@@ -11,7 +11,7 @@ fn set_git_version() {
             if output.status.success() {
                 let str = String::from_utf8_lossy(&output.stdout);
                 let split = str.trim().split('-').collect::<Vec<_>>();
-                format!("{}-r{}-{}", &split[0], split[1], split[2])
+                format!("{}-r{}-{}", split[0], split[1], split[2])
             } else {
                 println!("cargo::warning=Unable to get git version: {}", String::from_utf8_lossy(&output.stderr));
                 String::from("v?.?.?")
