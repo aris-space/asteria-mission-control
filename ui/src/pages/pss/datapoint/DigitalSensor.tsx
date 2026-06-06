@@ -5,13 +5,7 @@ import {
   useMantineTheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  CONTAINER_HEIGHT,
-  HORIZONTAL_PADDING,
-  SLIDER_PADDING,
-  SLOT_WIDTH,
-  VERTICAL_PADDING,
-} from ".";
+import { CONTAINER_HEIGHT, SLOT_WIDTH } from ".";
 
 interface DigitalSensorProps {
   enabled: boolean;
@@ -22,48 +16,47 @@ export function DigitalSensor({ enabled, defaultEnabled }: DigitalSensorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
 
+  const notNormal = defaultEnabled !== enabled;
+  const buttonColorName = enabled ? "green" : "red";
+  const buttonColor = theme.colors[buttonColorName][2];
+  const defaultBg =
+    colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0];
+  const backgroundColor = notNormal ? buttonColor : defaultBg;
+
   return (
     <Paper
-      withBorder
+      shadow="xs"
       radius="md"
       style={{
         position: "relative",
-        backgroundColor:
-          colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0],
+        backgroundColor,
         overflow: "hidden",
         height: CONTAINER_HEIGHT,
-        width: `calc(1.5 * ${SLOT_WIDTH} + 2 * ${HORIZONTAL_PADDING})`,
-        padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
+        width: `calc(1.5 * ${SLOT_WIDTH})`,
       }}
     >
-      <Box style={{ zIndex: 1 }} />
-      <Box style={{ zIndex: 1 }} />
       <Box
         style={{
           position: "absolute",
-          top: SLIDER_PADDING,
-          bottom: SLIDER_PADDING,
-          left: SLIDER_PADDING,
-          width: `calc(${SLOT_WIDTH} - 2 * ${SLIDER_PADDING})`,
+          top: 0,
+          bottom: 0,
+          width: `calc(${SLOT_WIDTH})`,
           zIndex: 2,
-          borderRadius: theme.radius.sm,
-          borderWidth: 1,
+          borderRadius: theme.radius.md,
+          borderWidth: 2,
           borderStyle: "solid",
-          borderColor: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          borderColor: theme.colors[buttonColorName][8],
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: enabled
-            ? theme.colors.green[1]
-            : theme.colors.red[1],
-          color: enabled ? theme.colors.green[9] : theme.colors.red[9],
-          transform:
-            enabled && defaultEnabled
-              ? `translateX(calc(${SLOT_WIDTH} * 0.5 + calc(${HORIZONTAL_PADDING} * 2)))`
-              : "translateX(0)",
+          backgroundColor: buttonColor,
+          color: theme.colors[buttonColorName][8],
+          transform: notNormal
+            ? `translateX(calc(${SLOT_WIDTH} * 0.5))`
+            : "translateX(0)",
         }}
       >
         <Text p="xs" size="sm" fw={600}>

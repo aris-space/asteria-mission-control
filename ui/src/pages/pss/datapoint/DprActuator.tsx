@@ -9,29 +9,33 @@ import {
   useMantineTheme,
   useMantineColorScheme,
 } from "@mantine/core";
-import {
-  CONTAINER_HEIGHT,
-  GAP,
-  HORIZONTAL_PADDING,
-  SLIDER_PADDING,
-  SLOT_WIDTH,
-  VERTICAL_PADDING,
-} from ".";
+import { CONTAINER_HEIGHT, GAP, SLOT_WIDTH } from ".";
 
 interface DprActuatorProps {
   enabled: boolean;
+  allowed: boolean;
   setpoint: number;
   onChange: (active: boolean, value: number) => void;
 }
 
-export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
+export function DprActuator({
+  enabled,
+  allowed,
+  setpoint,
+  onChange,
+}: DprActuatorProps) {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
+  const buttonColorName = enabled ? "green" : "red";
+  const buttonColor = theme.colors[buttonColorName][2];
+  const borderAndTextColor = allowed
+    ? theme.colors[buttonColorName][8]
+    : theme.colors["dark"][2];
   const [inputValue, setInputValue] = useState<number | string>(setpoint);
 
   return (
     <Paper
-      withBorder
+      shadow="xs"
       radius="md"
       style={{
         width: "fit-content",
@@ -42,7 +46,6 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
         display: "grid",
         height: CONTAINER_HEIGHT,
         gap: GAP,
-        padding: `${VERTICAL_PADDING} ${HORIZONTAL_PADDING}`,
         gridTemplateColumns: `${SLOT_WIDTH} calc(${SLOT_WIDTH} - 2 * ${GAP}) ${SLOT_WIDTH}`,
         alignItems: "stretch",
       }}
@@ -64,6 +67,7 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
               color="dark"
               h={"fit-content"}
               variant="light"
+              disabled={!allowed}
               onClick={() => onChange(enabled, Number(inputValue))}
             >
               SET
@@ -82,8 +86,9 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
         <NumberInput
           value={inputValue}
           onChange={setInputValue}
+          disabled={!allowed}
           placeholder="Input"
-          step={0.1}
+          step={1}
           variant="unstyled"
           size="xs"
           styles={{
@@ -91,14 +96,14 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
               width: "100%",
               textAlign: "center",
               fontWeight: 500,
-              backgroundColor: theme.colors.gray[2],
+              backgroundColor: "white",
             },
           }}
         />
       </Box>
-      <Box style={{ zIndex: 1 }} />
       <Box
         onClick={() => {
+          if (!allowed) return;
           // When deactivating the DPR, set the value of the setpoint input
           // to the current value such that "spaming" activate-deactivate
           // doesn't change the setpoint.
@@ -107,33 +112,30 @@ export function DprActuator({ enabled, setpoint, onChange }: DprActuatorProps) {
         }}
         style={{
           position: "absolute",
-          top: SLIDER_PADDING,
-          bottom: SLIDER_PADDING,
-          left: SLIDER_PADDING,
-          width: `calc(${SLOT_WIDTH} - 2 * ${SLIDER_PADDING})`,
+          top: 0,
+          bottom: 0,
+          width: `calc(${SLOT_WIDTH})`,
           zIndex: 2,
-          cursor: "pointer",
-          borderRadius: theme.radius.sm,
-          borderWidth: 1,
+          cursor: allowed ? "pointer" : "not-allowed",
+          borderRadius: theme.radius.md,
+          borderWidth: 2,
           borderStyle: "solid",
-          borderColor: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          borderColor: borderAndTextColor,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           transition:
             "transform 0.4s ease-in-out, background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease",
-          backgroundColor: enabled
-            ? theme.colors.green[1]
-            : theme.colors.red[1],
-          color: enabled ? theme.colors.green[9] : theme.colors.red[9],
+          backgroundColor: buttonColor,
+          color: borderAndTextColor,
           transform: enabled
-            ? `translateX(calc(${SLOT_WIDTH} * 2 + calc(${HORIZONTAL_PADDING} * 2)))`
+            ? `translateX(calc(${SLOT_WIDTH} * 2)`
             : "translateX(0)",
         }}
       >
         <Text p="xs" size="sm" fw={600} ff={enabled ? "monospace" : "text"}>
-          {enabled ? setpoint : "Off"}
+          {enabled ? setpoint : "Closed"}
         </Text>
       </Box>
     </Paper>

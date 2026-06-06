@@ -2748,6 +2748,8 @@ export type OptionalResultStateMachine =
       kind: "some";
       /** Representation of a state machine diagram. */
       value: {
+        /** Allowed actuators for every state. */
+        allowedActuators: { [key: string]: string[] };
         /** State machine diagram SVG without the drawio XML content. */
         diagram: string;
         /** Initial state of the state machine. */
@@ -2808,6 +2810,11 @@ export interface ServerInfo {
 }
 
 /**
+ * Allowed actuators for every state.
+ */
+export type StateMachineAllowedActuators = { [key: string]: string[] };
+
+/**
  * Allowed manual transitions for every state and whether they
 are an abort transition.
  */
@@ -2824,6 +2831,8 @@ export type StateMachineStateNodes = { [key: string]: string };
  * Representation of a state machine diagram.
  */
 export interface StateMachine {
+  /** Allowed actuators for every state. */
+  allowedActuators: StateMachineAllowedActuators;
   /** State machine diagram SVG without the drawio XML content. */
   diagram: string;
   /** Initial state of the state machine. */

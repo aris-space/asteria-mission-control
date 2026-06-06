@@ -15,21 +15,19 @@ import {
   useMantineTheme,
 } from "@mantine/core";
 
-export const VERTICAL_PADDING: string = "4px";
-export const HORIZONTAL_PADDING: string = "6px";
-export const CONTAINER_HEIGHT: string = "2.5rem";
-export const SLOT_WIDTH: string = "5rem";
-export const GAP: string = "0.5rem";
-export const SLIDER_PADDING: string = "4px";
+export const CONTAINER_HEIGHT: string = "2rem";
+export const SLOT_WIDTH: string = "4rem";
+export const GAP: string = "0.2rem";
 
 interface DatapointProps extends Pick<
   ExtendedDatapointInformation,
   "kind" | "name"
 > {
+  allowed: boolean;
   onChange: (name: string, value: number) => void;
 }
 
-function Datapoint({ kind, name, onChange }: DatapointProps) {
+function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
   const value = usePssDatapointValue(name);
 
   const handleDigitalActuatorChange = (active: boolean) => {
@@ -73,7 +71,6 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
           );
         }
       }
-      break;
     }
     case "actuator": {
       switch (kind.kind) {
@@ -86,9 +83,11 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
           } & DatapointValue;
           return (
             <DigitalActuator
+              allowed={allowed}
               defaultEnabled={kind.default_enabled}
               enabled={enabled}
               onChange={handleDigitalActuatorChange}
+              stateText={["Open", "Closed"]}
             />
           );
         }
@@ -101,6 +100,7 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
           } & DatapointValue;
           return (
             <DprActuator
+              allowed={allowed}
               enabled={enabled}
               setpoint={setpoint}
               onChange={handleDprActuatorChange}
@@ -114,13 +114,13 @@ function Datapoint({ kind, name, onChange }: DatapointProps) {
   }
 }
 
-function DatapointLoader() {
+export function DatapointLoader() {
   const { colorScheme } = useMantineColorScheme();
   const theme = useMantineTheme();
 
   return (
     <Paper
-      withBorder
+      shadow="xs"
       radius="md"
       style={{
         position: "relative",
@@ -128,7 +128,6 @@ function DatapointLoader() {
           colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0],
         overflow: "hidden",
         height: CONTAINER_HEIGHT,
-        padding: VERTICAL_PADDING,
       }}
     >
       <Flex h="100%" px="xs" align={"center"}>
