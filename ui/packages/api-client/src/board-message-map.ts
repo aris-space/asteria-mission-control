@@ -143,15 +143,7 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "FssHeatingState",
-      hasContent: true,
-    },
-    {
-      type: "PressureSensorHeatingState",
-      hasContent: true,
-    },
-    {
-      type: "EthPumpPowerState",
+      type: "RocketHeatingState",
       hasContent: true,
     },
     {
@@ -187,6 +179,10 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
+      type: "SmartBoxTemperature",
+      hasContent: true,
+    },
+    {
       type: "LoxDecouplerProximity",
       hasContent: true,
     },
@@ -200,6 +196,14 @@ export const BOARD_MESSAGE_MAP = {
     },
     {
       type: "IgniterArmed",
+      hasContent: true,
+    },
+    {
+      type: "ValvesArmedSmartBox",
+      hasContent: true,
+    },
+    {
+      type: "RocketConnected",
       hasContent: true,
     },
     {
