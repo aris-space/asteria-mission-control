@@ -4,6 +4,7 @@ import {
 } from "@asteria/mission-control-client";
 import { DigitalActuator } from "./DigitalActuator";
 import { DprActuator } from "./DprActuator";
+import { FractionalActuator } from "./FractionalActuator";
 import { DigitalSensor } from "./DigitalSensor";
 import { AnalogSensor } from "./AnalogSensor";
 import { usePssDatapointData as usePssDatapointValue } from "@asteria/hooks/PssDataContext";
@@ -107,7 +108,21 @@ function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
             />
           );
         }
-        case "fractional":
+        case "fractional": {
+          const {
+            value: { percent },
+          } = value as {
+            component: "actuator";
+            kind: "fractional";
+          } & DatapointValue;
+          return (
+            <FractionalActuator
+              allowed={allowed}
+              percent={percent}
+              onChange={(fraction) => onChange(name, fraction)}
+            />
+          );
+        }
       }
       return <div />;
     }
