@@ -37,6 +37,9 @@ export function FractionalActuator({
   const borderAndTextColor = allowed
     ? theme.colors[buttonColorName][8]
     : theme.colors["dark"][2];
+  const defaultBg =
+    colorScheme === "dark" ? theme.colors.dark[6] : theme.colors.gray[0];
+  const backgroundColor = isOpen ? buttonColor : defaultBg;
 
   const displayText = isFull
     ? "Open"
@@ -62,11 +65,9 @@ export function FractionalActuator({
         radius="md"
         style={{
           position: "relative",
-          backgroundColor:
-            colorScheme === "dark"
-              ? theme.colors.dark[6]
-              : theme.colors.gray[0],
+          backgroundColor,
           overflow: "hidden",
+          transition: "background-color 0.3s ease",
           height: CONTAINER_HEIGHT,
           // 3-zone layout: [knob-left | gear-center | knob-right]
           // knob slides between left and right zone
@@ -84,7 +85,7 @@ export function FractionalActuator({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 3,
+            zIndex: 1,
           }}
         >
           <ActionIcon
@@ -144,12 +145,15 @@ export function FractionalActuator({
         <Slider
           value={sliderValue}
           onChange={setSliderValue}
+          size="xl"
           min={0}
           max={100}
-          step={1}
+          step={5}
           marks={[
             { value: 0, label: "0%" },
+            { value: 25, label: "25%" },
             { value: 50, label: "50%" },
+            { value: 75, label: "75%" },
             { value: 100, label: "100%" },
           ]}
           mb="xl"
