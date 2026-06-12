@@ -14,13 +14,13 @@ import { IconSettings } from "@tabler/icons-react";
 import { CONTAINER_HEIGHT, SLOT_WIDTH } from ".";
 
 interface FractionalActuatorProps {
-  percent: number; // 0-1 fraction
+  fraction: number; // 0-1 fraction
   allowed: boolean;
   onChange: (fraction: number) => void;
 }
 
 export function FractionalActuator({
-  percent,
+  fraction,
   allowed,
   onChange,
 }: FractionalActuatorProps) {
@@ -29,8 +29,8 @@ export function FractionalActuator({
   const [modalOpen, setModalOpen] = useState(false);
   const [sliderValue, setSliderValue] = useState(0);
 
-  const isOpen = percent > 0;
-  const isFull = percent >= 1.0;
+  const isOpen = fraction > 0;
+  const isFull = fraction >= 1.0;
 
   const buttonColorName = isFull ? "green" : isOpen ? "yellow" : "red";
   const buttonColor = theme.colors[buttonColorName][2];
@@ -44,12 +44,12 @@ export function FractionalActuator({
   const displayText = isFull
     ? "Open"
     : isOpen
-      ? `${Math.round(percent * 100)}%`
+      ? `${Math.round(fraction * 100)}%`
       : "Closed";
 
   const handleGearClick = () => {
     if (!allowed) return;
-    setSliderValue(Math.round(percent * 100));
+    setSliderValue(Math.round(fraction * 100));
     setModalOpen(true);
   };
 

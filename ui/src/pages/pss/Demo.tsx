@@ -23,7 +23,7 @@ export default function Demo() {
   const [daDefault, setDaDefault] = useState(false);
 
   // FractionalActuator state
-  const [faPercent, setFaPercent] = useState(0);
+  const [faFraction, setFaFraction] = useState(0);
   const [faAllowed, setFaAllowed] = useState(true);
 
   // DprActuator state
@@ -79,9 +79,9 @@ export default function Demo() {
       <Stack gap="sm">
         <Text fw={600}>FractionalActuator</Text>
         <FractionalActuator
-          percent={faPercent}
+          fraction={faFraction}
           allowed={faAllowed}
-          onChange={setFaPercent}
+          onChange={setFaFraction}
         />
         <Group gap="lg" align="flex-end">
           <Switch
@@ -90,9 +90,9 @@ export default function Demo() {
             onChange={(e) => setFaAllowed(e.currentTarget.checked)}
           />
           <NumberInput
-            label="percent (0–1)"
-            value={faPercent}
-            onChange={(v) => setFaPercent(Number(v))}
+            label="Fraction (0–1)"
+            value={faFraction}
+            onChange={(v) => setFaFraction(Number(v))}
             step={0.1}
             min={0}
             max={1}

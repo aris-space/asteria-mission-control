@@ -110,7 +110,7 @@ function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
         }
         case "fractional": {
           const {
-            value: { percent },
+            value: { fraction },
           } = value as {
             component: "actuator";
             kind: "fractional";
@@ -118,7 +118,7 @@ function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
           return (
             <FractionalActuator
               allowed={allowed}
-              percent={percent}
+              fraction={fraction}
               onChange={(fraction) => onChange(name, fraction)}
             />
           );
