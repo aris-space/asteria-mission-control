@@ -30,13 +30,17 @@ export type ActuatorValue =
   | {
       kind: "digital";
       value: {
+        /** Whether this actuator is in some logical On state.
+  (ie. Open for valves, On for outputs) */
         enabled: boolean;
       };
     }
   | {
       kind: "dpr";
       value: {
+        /** Whether the DPR is running the control logic */
         enabled: boolean;
+        /** The setpoint in barg for the control logic */
         setpoint: number;
       };
     }
