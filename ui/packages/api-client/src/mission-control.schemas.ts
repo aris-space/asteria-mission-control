@@ -47,7 +47,8 @@ export type ActuatorValue =
   | {
       kind: "fractional";
       value: {
-        percent: number;
+        /** Openness in range [0, 1]. */
+        fraction: number;
       };
     };
 
