@@ -1,4 +1,7 @@
-# asteria-mission-control
+# ASTERIA Mission Control
+
+This repository contains all custom code which runs on the mission control computers,
+and interfaces with the [remote computers](http://github.com/aris-space/asteria-remote-computers/) via MavLink.
 
 ## Backend
 
@@ -8,7 +11,7 @@ The built binary has some bundled CLI flags which can be used to configure the A
 
 To get an overview of the available flags, run the binary with the `--help` argument.
 
-#### Using Docker
+### Using Docker
 
 The project contains a `Dockerfile` which builds a full stack version of the ASTERIA mission control. The backend web server is used to serve the statically built frontend.
 
@@ -23,7 +26,7 @@ docker compose --profile mission-control up
 
 after that you should be able to open the mission control UI on [http://localhost:8888](http://localhost:8888).
 
-### Documentation
+### Internal Documentation
 
 The API is documented using [OpenAPI](https://www.openapis.org/). An interactive playground of the API is available under the `/docs/ui` path and the OpenAPI schema can be found under the `/docs/openapi.json` path.
 
@@ -41,7 +44,7 @@ The config is written in TOML and follows the schema hosted by the backend on th
 
 The code for the mission control UI is located in [the ui subdirectory](./ui/)
 
-## Diagrams
+### Diagrams
 
 For the state machine and PSS views we use [draw.io](https://www.drawio.com) diagrams exported as SVG.
 There are some things which need to be followed whilst exporting the diagram as a SVG such that the SVGs can successfully be used by the mission control:
@@ -57,7 +60,37 @@ There are some things which need to be followed whilst exporting the diagram as 
 
 ![Screenshot of SVG export on draw.io](./docs/svg-export.png)
 
-## Local flight computer setup
+## Logging
+
+The mission control logs in 3 ways: warnings to stdoud and messages to a **jsonl** file as well as a **InfluxDB**
+
+### Setting Up the Environment
+
+- Create a new file named `.env` in the repository directory.
+- Add the following environment variables to the `.env` file:
+
+  ```sh
+  INFLUXDB_USERNAME=Admin
+  INFLUXDB_PASSWORD=<your_secure_password> # Choose a password for your local InfluxDB database and Grafana; must be between 8 and 72 characters long
+  INFLUXDB_TOKEN_LOCAL=<your_local_influxdb_token> # Choose any token you prefer
+  ```
+
+### Startup
+
+Start the logging with `docker compose --profile logging up`, and shut down again with `docker compose down`.
+
+### Access InfluxDB database and Grafana UI
+
+- the local InfluxDB database can be reached [here](http://localhost:8086)
+  - Username: Admin
+  - Password: defined in your `.env` file
+- the local Grafana instance can be reached [here](http://localhost:3000)
+  - Username: Admin
+  - Password: defined in your `.env` file (same as for local InfluxDB)
+
+## Development Utilities
+
+### Local flight computer setup
 
 The `fc.Dockerfile` can be used to build a docker image containing a built version of the flight computer contained in the remote-computers submodule.
 
@@ -70,7 +103,7 @@ The `docker-compose.yml` in the project root contains a fully configured setup f
 If you want to test a full deployment of the mission control and a flight computer, run `docker compose --profile full up -d`.
 A statically compiled version of the mission control is then available under [http://localhost:8888](http://localhost:8888) which is connected to the flight computer running inside the docker container.
 
-## Replay MavLink messages from a log file
+### Replay MavLink messages from a log file
 
 The `mavlink-log-replay` crate contains the logic for replaying logged MavLink messages from the Mission Control backend.
 

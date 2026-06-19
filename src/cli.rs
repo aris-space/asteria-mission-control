@@ -16,7 +16,7 @@ pub struct Cli {
     /// Path to the config file
     pub config_path: String,
 
-    #[arg(short = 'i', long = "influx-token", env = "INFLUX_TOKEN")]
+    #[arg(short = 'i', long = "influx-token", env = "INFLUXDB_TOKEN_LOCAL")]
     /// The access token to use for connecting to the influx database.
     pub influx_token: String,
 
