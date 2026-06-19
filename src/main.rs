@@ -12,7 +12,8 @@ use crate::web::{
 use actix_cors::Cors;
 use actix_web::{App, HttpServer, middleware, web::Data};
 use asteria_datapoint_information::datapoint::{DatapointHolder, NamedDatapointValue};
-use asteria_messages::{Message, datapoints::dp_flight_computer};
+use asteria_messages::Message;
+use asteria_messages::datapoints::{dp_flight_computer, dp_rfs_computer};
 use chrono::Utc;
 use clap::Parser;
 use env_logger::Env;
@@ -233,7 +234,9 @@ fn start_mavlink_message_handler(
                 }
             }
 
-            if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash)) = &message {
+            if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash))
+            | Message::RfsComputer(dp_rfs_computer::Message::ConfigHash(hash)) = &message
+            {
                 handle_config_hash_message(hash.hash, &config.configs_repository_path, &state).await;
             }
 

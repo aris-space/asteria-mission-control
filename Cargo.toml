@@ -11,7 +11,8 @@ arbitrary = { version = "1.4.1", features = ["derive"] }
 asteria-messages = { package = "messages", path = "data-definitions/messages", default-features = false, features = [
   "mavlink",
   "mission-control",
-  "pss"
+  "pss",
+  "derive_debug",
 ] }
 bincode = { version = "2.0.1", default-features = false, features = [
   "derive",

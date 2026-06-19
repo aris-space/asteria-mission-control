@@ -20,6 +20,7 @@ pub enum Alignment {
     #[default]
     Left,
     Right,
+    Hidden,
 }
 
 /// Optional additional data for diagram vertices.

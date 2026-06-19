@@ -256,6 +256,14 @@ function StateMachine() {
       .selectAll(`[${ABORT_TRANSITION_ATTR}`)
       .attr(ABORT_TRANSITION_ATTR, null);
     if (stateMachine && activeState) {
+      if (stateMachine.manualTransitions[activeState] === undefined) {
+        notifications.show({
+          title: "Transitions for current state are undefined",
+          message: `Failed to get transitions for '${activeState}'`,
+          color: "red",
+        });
+        return;
+      }
       stateMachine.manualTransitions[activeState].forEach(([state, abort]) => {
         const stateId = stateMachine.stateNodes[state];
         d3.select(svgRef.current)

@@ -213,7 +213,7 @@ function PSS({ kind }: PssProps) {
         <div data-datapoint-container-for={name} key={name} style={styles[0]}>
           <div style={styles[1]}>
             {datapoint}
-            <span>{info.label}</span>
+            {info.align !== "hidden" && <span>{info.label}</span>}
           </div>
         </div>
       );
@@ -318,22 +318,21 @@ function computeDatapointStyle(
     left: `${window.scrollX + bounds.left + bounds.width / 2}px`,
   };
 
-  if (info.align == "left") {
-    // It's left aligned.
-    datapointContainerStyle.transform = "translateY(-50%)";
-  } else {
-    // It's right aligned.
+  if (info.align == "right") {
     datapointContainerStyle.transform = "translateY(-50%) translateX(-100%)";
+  } else {
+    // left and hidden are both left-aligned
+    datapointContainerStyle.transform = "translateY(-50%)";
   }
 
   const datapointStyle: CSSProperties = {
     transform: `scale(${transform.k})`,
-    transformOrigin: `center ${info.align}`,
+    transformOrigin: `center ${info.align == "right" ? "right" : "left"}`,
     display: "flex",
     whiteSpace: "nowrap",
     gap: "0.5rem",
     alignItems: "center",
-    flexDirection: info.align == "left" ? "row" : "row-reverse",
+    flexDirection: info.align == "right" ? "row-reverse" : "row",
   };
 
   return [datapointContainerStyle, datapointStyle];
