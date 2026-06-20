@@ -35,6 +35,7 @@ impl InfluxInterceptor {
         state: StateInstance,
         config: Arc<Config>,
     ) -> Self {
+        log::info!("Sending datapoint to InfluxDB at {address}");
         let client = Client::new(address, organization, token);
         let buffer = Arc::new(Mutex::new(Vec::with_capacity(DATAPOINT_BUFFER_SIZE)));
 
@@ -65,8 +66,8 @@ impl Interceptor for InfluxInterceptor {
         let datapoint = match influx::to_datapoint(message) {
             Ok(datapoint) => datapoint,
             Err(err) => {
-                log::warn!("Unable to convert message to datapoint: {err}");
-                return log::debug!("The problematic message was: {message:?}");
+                log::warn!("Unable to convert message {message:?} to datapoint: {err}");
+                return;
             }
         };
 
@@ -111,8 +112,11 @@ impl Interceptor for InfluxInterceptor {
             return;
         }
 
+        log::debug!("Uploading {} datapoints", buffer.len());
+
         // The buffer is now full and we can try writing the datapoints to the database.
         let datapoints = std::mem::replace(buffer.as_mut(), Vec::with_capacity(DATAPOINT_BUFFER_SIZE));
+        drop(buffer);
 
         if let Err(err) = self.client.write(&self.bucket, futures::stream::iter(datapoints)).await {
             return log::error!("Unable to upload datapoints to influx database: {err}");

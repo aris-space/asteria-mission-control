@@ -1,5 +1,6 @@
 use crate::MavlinkAddress;
 
+use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::io::{AsyncRead, AsyncWrite, Error as IoError, ReadBuf};
@@ -15,6 +16,7 @@ use tokio_serial::{SerialPortBuilderExt, SerialStream};
 ///
 /// **Important**: UDP cannot be used as an async transport stream because the `read_exact` doesn't exist
 /// for UDP. It would need quite some extra work to get UDP to work correctly.
+#[derive(Debug)]
 pub enum AsyncTransportStream {
     Tcp(TcpStream),
     Serial(SerialStream),

@@ -63,6 +63,9 @@ impl Interceptor for ConfigInterceptor {
         };
 
         let state_machine = StateMachine::new(&rc_config, &self.configs_repository_path);
+        if let Err(err) = &state_machine {
+            return log::error!("Remote computer state machine is not valid: {err}");
+        }
 
         let mut guard = self.state.write().await;
         guard.set_state_machine(Some(state_machine)).await;

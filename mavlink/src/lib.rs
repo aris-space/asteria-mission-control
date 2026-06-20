@@ -95,10 +95,9 @@ impl MavlinkReceiver {
     /// Returns [`Ok`] when the receiving end of the message channel closed.
     pub async fn forward(&self, msg_tx: &UnboundedSender<Message>) -> Result<(), MavlinkError> {
         let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
+        log::info!("Successfully connected to mavlink stream: {transport:?}");
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
-
-        log::info!("Successfully connected to mavlink broadcast");
 
         loop {
             // A frame was received.

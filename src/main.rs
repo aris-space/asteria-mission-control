@@ -70,7 +70,6 @@ async fn main() {
     let config = match Config::parse(Path::new(&cli.config_path)) {
         Ok(config) => {
             log::debug!("Using config: {config:?}");
-            config.remotes.keys().for_each(|name| log::info!("Found remote '{name}'"));
             config
         }
         Err(err) => {
@@ -87,7 +86,7 @@ async fn main() {
         });
 
     if let Ok(path) = mavlink_logfile_path.canonicalize() {
-        log::info!("Using MavLink log file at '{}'", path.display());
+        log::info!("Logging MavLink messages to '{}'", path.display());
     }
 
     let pss_diagrams = match (Pss::new(&config.pss.rocket_diagram_path), Pss::new(&config.pss.rfs_diagram_path)) {
