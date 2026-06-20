@@ -83,8 +83,9 @@ impl Interceptor for InfluxInterceptor {
             Err(_) => String::from("unknown-mc"),
         };
 
-        let mut builder =
-            DataPoint::builder(datapoint.measurement.clone()).timestamp(Utc::now().timestamp()).tag("system", system);
+        let mut builder = DataPoint::builder(datapoint.measurement.clone())
+            .timestamp(Utc::now().timestamp_nanos_opt().expect("won't be used after year 2200"))
+            .tag("system", system);
         for (name, value) in datapoint.fields.into_iter() {
             let value = match value {
                 FieldValue::Bool(bool) => influxdb2::models::FieldValue::Bool(bool),
