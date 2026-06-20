@@ -132,7 +132,7 @@
             "type": "influxdb",
             "uid": "P951FEA4DE68E13C5"
           },
-          "query": "from(bucket: \"$bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"mission_id\"] == \"$mission_id\")\n  |> filter(fn: (r) => r[\"_field\"] == \"prz_mnl_p\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")\n",
+          "query": "from(bucket: \"$bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure_sensor\")\n  |> filter(fn: (r) => r[\"sensor_id\"] == \"oss_tnk_p1\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")\n",
           "refId": "A"
         }
       ],
@@ -581,9 +581,9 @@
     "list": [
       {
         "current": {
-          "selected": false,
-          "text": "HERMES",
-          "value": "HERMES"
+          "selected": true,
+          "text": "ASTERIA",
+          "value": "ASTERIA"
         },
         "datasource": {
           "type": "influxdb",
@@ -605,9 +605,10 @@
       },
       {
         "current": {
+          "isNone": true,
           "selected": false,
-          "text": "rfs_test",
-          "value": "rfs_test"
+          "text": "None",
+          "value": ""
         },
         "datasource": {
           "type": "influxdb",
@@ -651,7 +652,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Logging Dashboard",
+  "title": "PSS Dashboard",
   "uid": "aekuxsfj8g4qoa",
   "version": 1,
   "weekStart": ""
