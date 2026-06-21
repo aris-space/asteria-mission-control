@@ -48,6 +48,7 @@ implicit_hasher = "allow"  # We'll only ever use the default hasher
 missing_errors_doc = "allow"  # Important, but the needing a section is not always pretty.
 missing_panics_doc = "allow"  # Functions shouldn't panic, if contain panic code, it should be unreachable
 must_use_candidate = "allow"  # Not all `new` calls are problematic to not use
+unsafe_derive_deserialize = "allow"  # Appears when serde and facet are both derived
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
 
