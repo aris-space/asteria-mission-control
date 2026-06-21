@@ -3,7 +3,13 @@
 This repository contains all custom code which runs on the mission control computers,
 and interfaces with the [remote computers](http://github.com/aris-space/asteria-remote-computers/) via MavLink.
 
+## Usage
+
+To start a full installation, with frontend, backend and logging, run `just run` or `just run-sudo` if you need tty access for the radio link.
+
 ## Backend
+
+The rust code of the backend is directly within the root `src`.
 
 ### Usage
 
@@ -62,7 +68,7 @@ There are some things which need to be followed whilst exporting the diagram as 
 
 ## Logging
 
-The mission control logs in 3 ways: warnings to stdoud and messages to a **jsonl** file as well as a **InfluxDB**
+The mission control logs in 3 ways: warnings to stdout, mavlink messages to a **jsonl** file and additionally to a **InfluxDB**
 
 ### Setting Up the Environment
 
@@ -84,7 +90,7 @@ Start the logging with `docker compose --profile logging up`, and shut down agai
 - the local InfluxDB database can be reached [here](http://localhost:8086)
   - Username: Admin
   - Password: defined in your `.env` file
-- the local Grafana instance can be reached [here](http://localhost:3000)
+- the local Grafana instance can be reached [here](http://localhost:3001)
   - Username: Admin
   - Password: defined in your `.env` file (same as for local InfluxDB)
 

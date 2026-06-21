@@ -1,10 +1,10 @@
-# This file slightly simplifies starting the MC
+# This file slightly simplifies starting the MC.
 
+# the backend needs to have the token variable from .env loaded
 set dotenv-load := true
 
 # Start the backend
 backend:
-    # needs to have variable from .env loaded
     cargo run
 
 # Build the backend (for use with sudo)
@@ -12,7 +12,7 @@ build-backend:
     cargo build
 
 # Start the backend with sudo, necessary for certain tty ports, but only works with default cargo target
-backend-sudo:
+backend-sudo: build-backend
     sudo "target/debug/asteria-mission-control"
 
 # Start the frontend
@@ -20,10 +20,14 @@ backend-sudo:
 frontend:
     npm run dev
 
+# Starts the InfluxDB and Grafana (in the background!)
+logging:
+    docker compose --profile logging up --detach
+
 # Start both the backend and frontend
 [parallel]
-run: frontend backend
+run: frontend backend logging
 
 # Start the backend with sudo, and the frontend normally
 [parallel]
-run-sudo: frontend backend-sudo
+run-sudo: frontend backend-sudo logging
