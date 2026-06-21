@@ -24,7 +24,7 @@
           "type": "influxdb",
           "uid": "P951FEA4DE68E13C5"
         },
-        "enable": true,
+        "enable": false,
         "iconColor": "red",
         "name": "State Transitions",
         "target": {
@@ -37,7 +37,7 @@
           "type": "influxdb",
           "uid": "P951FEA4DE68E13C5"
         },
-        "enable": true,
+        "enable": false,
         "iconColor": "red",
         "name": "Actuator Transitions",
         "target": {
@@ -136,7 +136,7 @@
           "refId": "A"
         }
       ],
-      "title": "Pressurization Line Pressure",
+      "title": "Pressurization Line Pressure [barg]",
       "transformations": [
         {
           "id": "renameByRegex",
@@ -232,7 +232,7 @@
           "refId": "A"
         }
       ],
-      "title": "FSS Tank Pressures",
+      "title": "FSS Tank Pressures [barg]",
       "transformations": [
         {
           "id": "renameByRegex",
@@ -328,7 +328,7 @@
           "refId": "A"
         }
       ],
-      "title": "OSS Tank Pressures",
+      "title": "OSS Tank Pressures [barg]",
       "transformations": [
         {
           "id": "renameByRegex",
@@ -424,7 +424,7 @@
           "refId": "A"
         }
       ],
-      "title": "Engine Pressures",
+      "title": "Engine Pressures [barg]",
       "transformations": [
         {
           "id": "renameByRegex",
@@ -450,7 +450,6 @@
             "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -520,7 +519,7 @@
           "refId": "A"
         }
       ],
-      "title": "Temperatures",
+      "title": "Temperatures [°C]",
       "transformations": [
         {
           "id": "renameByRegex",
