@@ -3,3 +3,4 @@ mavlink-logs
 .DS_Store
 .Trash-*
 .env
+.vscode
