@@ -105,7 +105,20 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"prz_copv_p\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Pressurization Pressure Sensor"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -132,20 +145,12 @@
             "type": "influxdb",
             "uid": "P951FEA4DE68E13C5"
           },
-          "query": "from(bucket: \"$bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure_sensor\")\n  |> filter(fn: (r) => r[\"sensor_id\"] == \"oss_tnk_p1\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")\n",
+          "query": "from(bucket: \"$bucket\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r[\"_measurement\"] == \"pressure_sensor\")\n  |> filter(fn: (r) => r[\"sensor_id\"] == \"prz_copv_p\")\n  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)\n  |> yield(name: \"mean\")\n",
           "refId": "A"
         }
       ],
       "title": "Pressurization Line Pressure [barg]",
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": ".*sensor_id=\"([a-zA-Z_0-9]+)\".*",
-            "renamePattern": "$1"
-          }
-        }
-      ],
+      "transformations": [],
       "type": "timeseries"
     },
     {
@@ -201,7 +206,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"fss_tnk_p1\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Fuel Tank Pressure Sensor 1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"fss_tnk_p2\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Fuel Tank Pressure Sensor 2"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -233,15 +263,7 @@
         }
       ],
       "title": "FSS Tank Pressures [barg]",
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": ".*sensor_id=\"([a-zA-Z_0-9]+)\".*",
-            "renamePattern": "$1"
-          }
-        }
-      ],
+      "transformations": [],
       "type": "timeseries"
     },
     {
@@ -297,7 +319,56 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"oss_tnk_p1\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Oxidizer Tank Pressure Sensor 1"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"oss_tnk_p2\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Oxidizer Tank Pressure Sensor 2"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"oss_tnk_dps\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Oxidizer Differential Pressure Sensor"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"oss_tnk_t\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Oxidizer Tank Temperature Sensor"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -329,15 +400,7 @@
         }
       ],
       "title": "OSS Tank Pressures [barg]",
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": ".*sensor_id=\"([a-zA-Z_0-9]+)\".*",
-            "renamePattern": "$1"
-          }
-        }
-      ],
+      "transformations": [],
       "type": "timeseries"
     },
     {
@@ -393,7 +456,44 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"eng_oxd_p\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Injector Oxidizer Pressure Sensor"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"eng_cc_p\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Chamber Pressure Sensor"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"eng_inj_p\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Injector Fuel Pressure Sensor"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -425,15 +525,7 @@
         }
       ],
       "title": "Engine Pressures [barg]",
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": ".*sensor_id=\"([a-zA-Z_0-9]+)\".*",
-            "renamePattern": "$1"
-          }
-        }
-      ],
+      "transformations": [],
       "type": "timeseries"
     },
     {
@@ -488,7 +580,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"oss_tnk_t\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Oxidizer Tank Temperature Sensor"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"eng_inj_t\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Injector Fuel Temperature Sensor"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -520,15 +637,7 @@
         }
       ],
       "title": "Temperatures [°C]",
-      "transformations": [
-        {
-          "id": "renameByRegex",
-          "options": {
-            "regex": ".*sensor_id=\"([a-zA-Z_0-9]+)\".*",
-            "renamePattern": "$1"
-          }
-        }
-      ],
+      "transformations": [],
       "type": "timeseries"
     },
     {
@@ -584,7 +693,20 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "/.*\"oss_tnk_dps\".*/"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Oxidizer Differential Pressure Sensor"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -616,7 +738,8 @@
         }
       ],
       "title": "Tank Levels",
-      "type": "timeseries"
+      "type": "timeseries",
+      "transformations": []
     }
   ],
   "refresh": "1s",
@@ -655,7 +778,13 @@
     "to": "now"
   },
   "timepicker": {
-    "refresh_intervals": ["250ms", "500ms", "1s", "2s", "5s"]
+    "refresh_intervals": [
+      "250ms",
+      "500ms",
+      "1s",
+      "2s",
+      "5s"
+    ]
   },
   "timezone": "browser",
   "title": "PSS Dashboard",
