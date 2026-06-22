@@ -90,7 +90,14 @@ impl Interceptor for InfluxInterceptor {
             let value = match value {
                 FieldValue::Bool(bool) => influxdb2::models::FieldValue::Bool(bool),
                 FieldValue::I64(int) => influxdb2::models::FieldValue::I64(int),
-                FieldValue::F64(float) => influxdb2::models::FieldValue::F64(float),
+                FieldValue::F64(float) => {
+                    if float.is_nan() {
+                        // InfluxDB line protocol does not support NaN.
+                        // Easiest solution is to just ignore all messages with a NaN in there.
+                        return;
+                    }
+                    influxdb2::models::FieldValue::F64(float)
+                }
                 FieldValue::String(cow) => influxdb2::models::FieldValue::String(cow.to_string()),
             };
             builder = builder.field(name, value)
