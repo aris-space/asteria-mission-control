@@ -164,8 +164,18 @@ impl StateMachine {
         state_nodes.retain(|label, _| rc_config.state_machine.states.contains_key(label));
 
         // Check whether the config references any invalid actuators in the `allowed_actuators`
-        // field of any state.
+        // field of any state, or in `always_allowed_actuators` from telemetry.
         let mut invalid_actuators = Vec::new();
+
+        let invalid_always_allowed = rc_config
+            .telemetry
+            .always_allowed_actuators
+            .iter()
+            .filter(|actuator| !Message::DATAPOINTS.iter().any(|dp| dp.name == *actuator))
+            .cloned()
+            .collect::<Vec<_>>();
+        invalid_actuators.extend(invalid_always_allowed);
+
         let allowed_actuators = rc_config
             .state_machine
             .states
@@ -177,9 +187,18 @@ impl StateMachine {
                     .filter(|actuator| !Message::DATAPOINTS.iter().any(|dp| dp.name == *actuator))
                     .cloned()
                     .collect::<Vec<_>>();
-                let result = invalid_state_actuators.is_empty().then_some((name.clone(), state.allowed_actuators.clone()));
-                invalid_actuators.extend(invalid_state_actuators);
-                result
+                if !invalid_state_actuators.is_empty() {
+                    invalid_actuators.extend(invalid_state_actuators);
+                    return None;
+                }
+                // Merge per-state allowed actuators with the always_allowed ones.
+                let mut merged = state.allowed_actuators.clone();
+                for always in &rc_config.telemetry.always_allowed_actuators {
+                    if !merged.contains(always) {
+                        merged.push(always.clone());
+                    }
+                }
+                Some((name.clone(), merged))
             })
             .collect::<HashMap<_, _>>();
 

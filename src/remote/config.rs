@@ -9,6 +9,14 @@ use std::{collections::HashMap, path::PathBuf};
 #[derive(Deserialize)]
 pub struct RemoteComputerConfig {
     pub state_machine: StateMachineConfig,
+    #[serde(default)]
+    pub telemetry: TelemetryConfig,
+}
+
+#[derive(Deserialize, Default)]
+pub struct TelemetryConfig {
+    #[serde(default)]
+    pub always_allowed_actuators: Vec<String>,
 }
 
 #[derive(Deserialize)]

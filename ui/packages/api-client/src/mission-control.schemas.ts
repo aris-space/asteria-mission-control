@@ -30,20 +30,25 @@ export type ActuatorValue =
   | {
       kind: "digital";
       value: {
+        /** Whether this actuator is in some logical On state.
+  (ie. Open for valves, On for outputs) */
         enabled: boolean;
       };
     }
   | {
       kind: "dpr";
       value: {
+        /** Whether the DPR is running the control logic */
         enabled: boolean;
+        /** The setpoint in barg for the control logic */
         setpoint: number;
       };
     }
   | {
       kind: "fractional";
       value: {
-        percent: number;
+        /** Openness in range [0, 1]. */
+        fraction: number;
       };
     };
 
@@ -133,6 +138,24 @@ export type Celsius = number;
  */
 export interface ConfigHash {
   hash: number[];
+}
+
+/**
+ * Enum representing the status of a sensor.
+ */
+export type SensorStatus = (typeof SensorStatus)[keyof typeof SensorStatus];
+
+export const SensorStatus = {
+  offline: "offline",
+  online: "online",
+} as const;
+
+/**
+ * Status of the Controllino
+ */
+export interface ControllinoStatus {
+  /** `Online` if connection exists, `Offline` otherwise. */
+  online: SensorStatus;
 }
 
 export type DPRValve =
@@ -273,16 +296,6 @@ export interface StatusCommonMessage {
    */
   microsSinceRestart: number;
 }
-
-/**
- * Enum representing the status of a sensor.
- */
-export type SensorStatus = (typeof SensorStatus)[keyof typeof SensorStatus];
-
-export const SensorStatus = {
-  offline: "offline",
-  online: "online",
-} as const;
 
 export interface EngineControlBoardStatus {
   /** `Armed` if the engine is armed and the main valves receive power, ie engine arming Pin is pulled */
@@ -1328,6 +1341,7 @@ export interface MagnetometerData {
 
 export interface RfsComputerStatus {
   common: StatusCommonMessage;
+  controllino: ControllinoStatus;
   /** `Armed` if the remote filling station is in a `Armed` state for ignition
   This is a software arming state of the RFS state machine that is part of the RFS hardware arming */
   isIgnitionArmed: ArmingState;
@@ -1525,19 +1539,9 @@ export type RfsComputerMessage =
       type: "MaxonBoardPowerState";
     }
   | {
-      /** The current active state of the FSS heating output. */
+      /** The current active state of the rocket heating output. */
       content: DigitalOut;
-      type: "FssHeatingState";
-    }
-  | {
-      /** The current active state of the pressure sensor heating output. */
-      content: DigitalOut;
-      type: "PressureSensorHeatingState";
-    }
-  | {
-      /** The current active state of the ETH pump power output. */
-      content: DigitalOut;
-      type: "EthPumpPowerState";
+      type: "RocketHeatingState";
     }
   | {
       /** The current active state of the custom output 1. */
@@ -1580,6 +1584,11 @@ export type RfsComputerMessage =
       type: "AmbientTemperature";
     }
   | {
+      /** The temperature inside the SMART box. */
+      content: Celsius;
+      type: "SmartBoxTemperature";
+    }
+  | {
       /** Whether the LOx decoupler is in its retracted state, from the proximity sensor. */
       content: DigitalIn;
       type: "LoxDecouplerProximity";
@@ -1598,6 +1607,16 @@ export type RfsComputerMessage =
       /** Whether the spark plug is receiving power (arming relay state). */
       content: DigitalIn;
       type: "IgniterArmed";
+    }
+  | {
+      /** Whether the valves of the smart box are receiving power (arming relay state). */
+      content: ArmingState;
+      type: "ValvesArmedSmartBox";
+    }
+  | {
+      /** Whether the rocket is given power and is connected. */
+      content: DigitalIn;
+      type: "RocketConnected";
     }
   | {
       /** The pressure from the igniter block.

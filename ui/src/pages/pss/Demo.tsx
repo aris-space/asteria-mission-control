@@ -11,6 +11,7 @@ import {
 import { useState } from "react";
 import { DigitalActuator } from "./datapoint/DigitalActuator";
 import { DprActuator } from "./datapoint/DprActuator";
+import { FractionalActuator } from "./datapoint/FractionalActuator";
 import { DigitalSensor } from "./datapoint/DigitalSensor";
 import { AnalogSensor } from "./datapoint/AnalogSensor";
 import { DatapointLoader } from "./datapoint";
@@ -20,6 +21,10 @@ export default function Demo() {
   const [daEnabled, setDaEnabled] = useState(false);
   const [daAllowed, setDaAllowed] = useState(true);
   const [daDefault, setDaDefault] = useState(false);
+
+  // FractionalActuator state
+  const [faFraction, setFaFraction] = useState(0);
+  const [faAllowed, setFaAllowed] = useState(true);
 
   // DprActuator state
   const [dprEnabled, setDprEnabled] = useState(false);
@@ -64,6 +69,35 @@ export default function Demo() {
             label="defaultEnabled"
             checked={daDefault}
             onChange={(e) => setDaDefault(e.currentTarget.checked)}
+          />
+        </Group>
+      </Stack>
+
+      <Divider />
+
+      {/* FractionalActuator */}
+      <Stack gap="sm">
+        <Text fw={600}>FractionalActuator</Text>
+        <FractionalActuator
+          fraction={faFraction}
+          allowed={faAllowed}
+          onChange={setFaFraction}
+        />
+        <Group gap="lg" align="flex-end">
+          <Switch
+            label="allowed"
+            checked={faAllowed}
+            onChange={(e) => setFaAllowed(e.currentTarget.checked)}
+          />
+          <NumberInput
+            label="Fraction (0–1)"
+            value={faFraction}
+            onChange={(v) => setFaFraction(Number(v))}
+            step={0.1}
+            min={0}
+            max={1}
+            size="xs"
+            w={110}
           />
         </Group>
       </Stack>
