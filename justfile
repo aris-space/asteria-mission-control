@@ -13,7 +13,7 @@ build-backend:
 
 # Start the backend with sudo, necessary for certain tty ports, but only works with default cargo target
 backend-sudo: build-backend
-    sudo "target/debug/asteria-mission-control"
+    sudo INFLUXDB_TOKEN_LOCAL="$INFLUXDB_TOKEN_LOCAL" "target/debug/asteria-mission-control"
 
 # Start the frontend
 [working-directory('ui')]
