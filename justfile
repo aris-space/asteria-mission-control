@@ -1,6 +1,6 @@
 # This file slightly simplifies starting the MC.
-
 # the backend needs to have the token variable from .env loaded
+
 set dotenv-load := true
 
 # Start the backend
@@ -20,8 +20,9 @@ backend-sudo: build-backend
 frontend:
     npm run dev
 
-# Starts the InfluxDB and Grafana (in the background!)
+# Starts the InfluxDB and Grafana (in the background, and restarts it first)
 logging:
+    docker compose --profile full down
     docker compose --profile logging up --detach
 
 # Start both the backend and frontend
