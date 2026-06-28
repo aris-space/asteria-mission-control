@@ -91,8 +91,8 @@ impl Interceptor for InfluxInterceptor {
                 FieldValue::Bool(bool) => influxdb2::models::FieldValue::Bool(bool),
                 FieldValue::I64(int) => influxdb2::models::FieldValue::I64(int),
                 FieldValue::F64(float) => {
-                    if float.is_nan() {
-                        // InfluxDB line protocol does not support NaN.
+                    if !float.is_finite() {
+                        // InfluxDB line protocol does not support NaN / Inf.
                         // Easiest solution is to just ignore all messages with a NaN in there.
                         return;
                     }
