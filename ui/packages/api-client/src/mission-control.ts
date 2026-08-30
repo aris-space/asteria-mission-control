@@ -158,6 +158,88 @@ export function useInfo<
 }
 
 /**
+ * @summary Transition into the next abort state from the current state of the active state machine.
+When the transition message is successfully sent, the name of the target abort state is
+returned.
+ */
+export const abort = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<string>(
+    { url: `/api/abort`, method: "PUT", signal },
+    options,
+  );
+};
+
+export const getAbortMutationOptions = <
+  TError = ErrorType<string>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof abort>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof abort>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["abort"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof abort>>,
+    void
+  > = () => {
+    return abort(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AbortMutationResult = NonNullable<
+  Awaited<ReturnType<typeof abort>>
+>;
+
+export type AbortMutationError = ErrorType<string>;
+
+/**
+ * @summary Transition into the next abort state from the current state of the active state machine.
+When the transition message is successfully sent, the name of the target abort state is
+returned.
+ */
+export const useAbort = <TError = ErrorType<string>, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof abort>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof abort>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getAbortMutationOptions(options), queryClient);
+};
+
+/**
  * @summary Get the TOML schema for the config file.
  */
 export const configSchema = (
