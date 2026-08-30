@@ -27,6 +27,10 @@ pub struct State {
     /// The state machine of the active remote. [`None`] if no remote is currently
     /// active, or the config of the active remote hasn't been received.
     state_machine: OptionalResult<StateMachine>,
+    /// Tuple containing the name of the current state of the state machine and the
+    /// path index of the state machine. [`None`] if no remote is currently active, or
+    /// the current state of the active remote's state machine hasn't been received.
+    state_machine_state: Option<(String, u32)>,
 
     remotes: Arc<Remotes>,
     broadcast: Arc<Broadcast>,
@@ -34,7 +38,8 @@ pub struct State {
 
 impl State {
     pub fn new(remotes: Arc<Remotes>, broadcast: Arc<Broadcast>) -> StateInstance {
-        let instance = Self { remotes, active_remote: None, state_machine: OptionalResult::None, broadcast };
+        let instance =
+            Self { remotes, active_remote: None, state_machine: OptionalResult::None, state_machine_state: None, broadcast };
         Arc::new(RwLock::new(instance))
     }
 
@@ -97,10 +102,24 @@ impl State {
             // currently active one.
             self.broadcast.broadcast(Event::StateMachine(new_state_machine.clone())).await;
             self.state_machine = new_state_machine;
+
+            if matches!(self.state_machine, OptionalResult::None | OptionalResult::Error(..)) {
+                // We no longer have an active state machine. We thus need to clear
+                // the stored current state.
+                self.state_machine_state = None;
+            }
         }
+    }
+
+    pub fn set_state_machine_state(&mut self, state_name: String, path_index: u32) {
+        self.state_machine_state = Some((state_name, path_index))
     }
 
     pub fn get_state_machine(&self) -> &OptionalResult<StateMachine> {
         &self.state_machine
+    }
+
+    pub fn get_state_machine_state(&self) -> &Option<(String, u32)> {
+        &self.state_machine_state
     }
 }

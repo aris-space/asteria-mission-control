@@ -1,5 +1,5 @@
 use crate::PssDiagrams;
-use crate::config::Config;
+use crate::config::{Config, RemoteComputerKind};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::web::datatypes::*;
@@ -8,7 +8,10 @@ use crate::web::state::StateInstance;
 
 use actix_web::web::{Data, Json};
 use actix_web::{Responder, delete, error, get, put, web};
+use asteria_datatypes::status::ManualStateTransition;
 use asteria_messages::Message;
+use asteria_messages::datapoints::dp_flight_computer::Message as FcMessage;
+use asteria_messages::datapoints::dp_rfs_computer::Message as RfscMessage;
 use broadcast::Broadcast;
 
 pub mod broadcast;
@@ -177,4 +180,53 @@ pub async fn send_message(message: Json<Message>, state: Data<StateInstance>) ->
             error::ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
         })
         .map(|_| ())
+}
+
+/// Transition into the next abort state from the current state of the active state machine.
+/// When the transition message is successfully sent, the name of the target abort state is
+/// returned.
+#[utoipa::path(responses((status = OK, body = String), (status = BAD_REQUEST, body = String), (status = INTERNAL_SERVER_ERROR, body = String)))]
+#[put("/abort")]
+pub async fn abort(state: Data<StateInstance>, config: Data<Config>) -> actix_web::Result<String> {
+    let state = state.read().await;
+
+    let (remote_name, remote) = state
+        .get_active_remote()
+        .map_err(|err| error::ErrorBadRequest(format!("Unable to transition into next abort state: {err}")))?;
+
+    let OptionalResult::Some(active_machine) = state.get_state_machine() else {
+        Err(error::ErrorBadRequest(String::from("Missing state machine for active remote")))?
+    };
+
+    let Some((state_name, path_index)) = state.get_state_machine_state() else {
+        Err(error::ErrorInternalServerError(String::from("Current state machine state is not known")))?
+    };
+
+    let Some(manual_transitions) = active_machine.manual_transitions.get(state_name) else {
+        Err(error::ErrorBadRequest(format!("State '{state_name}' has no manual transitions")))?
+    };
+
+    let Some((abort_state_name, _)) = manual_transitions.iter().find(|(_, is_abort)| *is_abort) else {
+        Err(error::ErrorBadRequest(format!("State '{state_name}' cannot transition into an abort state")))?
+    };
+
+    let mut transition = ManualStateTransition { transition_index: *path_index + 1, ..Default::default() };
+    let len = abort_state_name.len().min(transition.state.len());
+    transition.state[..len].copy_from_slice(&abort_state_name.as_bytes()[..len]);
+
+    let message = match config.remotes[remote_name].kind {
+        RemoteComputerKind::FlightComputer => Message::FlightComputer(FcMessage::ManualStateTransition(transition)),
+        RemoteComputerKind::RfsComputer => Message::RfsComputer(RfscMessage::ManualStateTransition(transition)),
+    };
+
+    let remote = remote.read().await;
+
+    remote
+        .send_mavlink_message(message)
+        .await
+        .map_err(|err| {
+            log::error!("Unable to transition into next abort state: Error whilst sending MavLink message: {err}");
+            error::ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
+        })
+        .map(|_| abort_state_name.clone())
 }
