@@ -1,8 +1,6 @@
 use crate::parser::statemachine::*;
 use crate::remote::{RemoteComputer, Remotes};
-use crate::web::broadcast::Broadcast;
 use crate::web::datatypes::OptionalResult;
-use crate::web::event::Event;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -33,13 +31,11 @@ pub struct State {
     state_machine_state: Option<(String, u32)>,
 
     remotes: Arc<Remotes>,
-    broadcast: Arc<Broadcast>,
 }
 
 impl State {
-    pub fn new(remotes: Arc<Remotes>, broadcast: Arc<Broadcast>) -> StateInstance {
-        let instance =
-            Self { remotes, active_remote: None, state_machine: OptionalResult::None, state_machine_state: None, broadcast };
+    pub fn new(remotes: Arc<Remotes>) -> StateInstance {
+        let instance = Self { remotes, active_remote: None, state_machine: OptionalResult::None, state_machine_state: None };
         Arc::new(RwLock::new(instance))
     }
 
@@ -92,15 +88,14 @@ impl State {
         Ok(())
     }
 
-    pub async fn set_state_machine(&mut self, state_machine: impl Into<OptionalResult<StateMachine>>) {
+    /// Set the active state machine. Returns whether the new state machine is different from
+    /// the previous state machine ([`true`]) or not ([`false`]).
+    pub async fn set_state_machine(&mut self, state_machine: impl Into<OptionalResult<StateMachine>>) -> bool {
         let new_state_machine = state_machine.into();
+
+        // We only update the state machine if it is different from the
+        // currently active one.
         if self.state_machine != new_state_machine {
-            if let OptionalResult::Error(err) = &new_state_machine {
-                log::error!("{err}");
-            }
-            // We only update the state machine if it is different from the
-            // currently active one.
-            self.broadcast.broadcast(Event::StateMachine(new_state_machine.clone())).await;
             self.state_machine = new_state_machine;
 
             if matches!(self.state_machine, OptionalResult::None | OptionalResult::Error(..)) {
@@ -108,6 +103,10 @@ impl State {
                 // the stored current state.
                 self.state_machine_state = None;
             }
+
+            true
+        } else {
+            false
         }
     }
 

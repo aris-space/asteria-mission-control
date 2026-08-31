@@ -1,4 +1,5 @@
-use crate::web::event::EventKind;
+use crate::web::event::{Event as WebEvent, EventKind};
+use crate::web::state::StateInstance;
 
 use actix_web_lab::sse::{Data, Event, Sse};
 use actix_web_lab::util::InfallibleStream;
@@ -15,11 +16,12 @@ const PING_INTERVAL: u64 = 10;
 
 pub struct Broadcast {
     subscriptions: Mutex<Vec<tokio::sync::mpsc::Sender<Event>>>,
+    state: StateInstance,
 }
 
 impl Broadcast {
-    pub fn new() -> Arc<Self> {
-        let broadcast = Arc::new(Self { subscriptions: Mutex::new(Vec::new()) });
+    pub fn new(state: StateInstance) -> Arc<Self> {
+        let broadcast = Arc::new(Self { subscriptions: Mutex::new(Vec::new()), state });
         Broadcast::spawn_ping(broadcast.clone());
         broadcast
     }
@@ -56,10 +58,17 @@ impl Broadcast {
     pub async fn subscribe(&self) -> actix_web::Result<Sse<InfallibleStream<ReceiverStream<Event>>>> {
         let (tx, rx) = tokio::sync::mpsc::channel::<Event>(10);
         let mut subscriptions = self.subscriptions.lock().await;
-        if let Err(err) = tx.send(BroadcastEvent::Ping.into()).await {
-            log::warn!("Unable to send initial ping to new subscription: {err}");
-        }
         subscriptions.push(tx.clone());
+
+        // Send the initial ping to the newly connected client.
+        tx.send(BroadcastEvent::Ping.into()).await.expect("Receiver should not be dropped");
+
+        // Notify the newly connected client about the active remote and the active state machine.
+        let state = self.state.read().await;
+        let active_remote = state.get_active_remote().map(|(name, _)| name.clone()).ok();
+        let active_state_machine = state.get_state_machine().clone();
+        tx.send(WebEvent::Remote(active_remote).into()).await.expect("Receiver should not be dropped");
+        tx.send(WebEvent::StateMachine(active_state_machine).into()).await.expect("Receiver should not be dropped");
 
         Ok(Sse::from_infallible_receiver(rx))
     }

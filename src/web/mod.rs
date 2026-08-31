@@ -99,6 +99,7 @@ pub async fn deactivate_active_remote(
     state.remove_active_remote().await.map_err(error::ErrorBadRequest)?;
 
     broadcast.broadcast(Event::Remote(None)).await;
+    broadcast.broadcast(Event::StateMachine(OptionalResult::None)).await;
     Ok(Json(()))
 }
 

@@ -45,6 +45,11 @@ const defaultValue: RemoteComputerContextDefinition = {
   remoteComputerBoard: null,
 };
 
+// Because the first remote computer event should not trigger
+// a notification, we track whether the we already received
+// such an event.
+let isFirstRemoteComputerEvent = true;
+
 const RemoteComputerContext =
   createContext<RemoteComputerContextDefinition>(defaultValue);
 
@@ -84,6 +89,11 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
 
   useEvent<string>(EventKind.REMOTE, (event) => {
     const newActive = event.data;
+
+    if (isFirstRemoteComputerEvent) {
+      isFirstRemoteComputerEvent = false;
+      return;
+    }
 
     if (!newActive || newActive == "null") {
       notifications.show({ message: `Active remote got deactivated` });
