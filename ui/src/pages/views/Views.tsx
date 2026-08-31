@@ -1,6 +1,12 @@
-import { Card, Flex, SimpleGrid, Text, Title } from "@mantine/core";
-import { IconChartLine, IconSitemap } from "@tabler/icons-react";
-import { useNavigate } from "react-router";
+import { Box, Card, Flex, Text, useMantineTheme } from "@mantine/core";
+import {
+  IconChartLine,
+  IconGasStation,
+  IconHeartRateMonitor,
+  IconRocket,
+  IconSitemap,
+} from "@tabler/icons-react";
+import { Link } from "react-router";
 
 interface ViewCard {
   title: string;
@@ -12,7 +18,8 @@ interface ViewCard {
 const views: ViewCard[] = [
   {
     title: "State Machine",
-    description: "Visualize and interact with state machines",
+    description:
+      "Visualize and interact with the state machine of the active remote",
     icon: <IconSitemap size="2rem" />,
     path: "/statemachine",
   },
@@ -22,23 +29,56 @@ const views: ViewCard[] = [
     icon: <IconChartLine size="2rem" />,
     path: "/telemetry",
   },
+  {
+    title: "Health",
+    description:
+      "Visualize the last received message of different message kinds",
+    icon: <IconHeartRateMonitor size="2rem" />,
+    path: "/health",
+  },
+  {
+    title: "Rocket PSS",
+    description:
+      "Visualize and interact with the rocket PSS datapoints of the active remote",
+    icon: <IconRocket size="2rem" />,
+    path: "/pss/rocket",
+  },
+  {
+    title: "RFS PSS",
+    description:
+      "Visualize and interact with the RFS PSS datapoints of the active remote",
+    icon: <IconGasStation size="2rem" />,
+    path: "/pss/rfs",
+  },
 ];
 
 function Views() {
-  const navigate = useNavigate();
+  const theme = useMantineTheme();
 
   return (
-    <Flex direction="column" align="center" p="xl" gap="xl">
-      <Title order={2}>Asteria Mission Control</Title>
-      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" w="100%" maw={600}>
-        {views.map((view) => (
+    <Box
+      p="lg"
+      h="fit-content"
+      w="100%"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+        gap: theme.spacing.sm,
+      }}
+    >
+      {views.map((view) => (
+        <Link
+          to={view.path}
+          style={{
+            textDecoration: "none",
+          }}
+        >
           <Card
             key={view.path}
             withBorder
             radius="md"
             p="lg"
             style={{ cursor: "pointer" }}
-            onClick={() => navigate(view.path)}
           >
             <Flex direction="column" gap="sm">
               {view.icon}
@@ -50,9 +90,9 @@ function Views() {
               </Text>
             </Flex>
           </Card>
-        ))}
-      </SimpleGrid>
-    </Flex>
+        </Link>
+      ))}
+    </Box>
   );
 }
 
