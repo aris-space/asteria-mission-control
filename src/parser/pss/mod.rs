@@ -5,16 +5,18 @@ use asteria_messages::Message;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::ops::Not;
 use std::path::PathBuf;
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]
+#[expect(clippy::enum_variant_names)]
 pub enum PssError {
     #[error("Error whilst reading PSS diagram: {0}")]
     DiagramRead(std::io::Error),
     #[error("Error whilst parsing PSS diagram: {0}")]
     DiagramParse(quick_xml::de::DeError),
+    #[error("PSS diagram references the following datapoints which aren't produced by any message: {0:#?}")]
+    DiagramUnknownStates(Vec<String>),
 }
 
 #[derive(Deserialize, Serialize, Debug, Default, ToSchema, Clone)]
@@ -91,36 +93,21 @@ impl Pss {
 
         // List of all datapoint names which are defined in the diagram but aren't present
         // in the [`Message::DATAPOINTS`].
-        #[expect(unused)]
         let diagram_extra_datapoints = datapoint_nodes
             .keys()
             .filter(|name| Message::DATAPOINTS.iter().find(|dp| dp.name == name.as_str()).is_none())
+            .cloned()
             .collect::<Vec<_>>();
 
-        // List of all datapoint names which are present in [`Message::DATAPOINTS`] but which aren't
-        // present in the diagram.
-        #[expect(unused)]
-        let config_extra_datapoints = Message::DATAPOINTS
-            .iter()
-            .filter_map(|dp| datapoint_nodes.contains_key(dp.name).not().then_some(dp.name))
-            .collect::<Vec<_>>();
+        if !diagram_extra_datapoints.is_empty() {
+            return Err(PssError::DiagramUnknownStates(diagram_extra_datapoints));
+        }
 
-        // let datapoints = Message::DATAPOINTS;
-        // println!("datapoints = {datapoints:#?}");
+        // We don't check whether the diagram covers all produced datapoints, as the RFS PSS diagram
+        // doesn't contain all the datapoints of the rocket PSS and vice-versa.
 
-        // TODO: This should be the datapoint information returned from the PSS macro.
-        #[expect(unused)]
-        let datapoint_infos = Vec::<()>::new();
-
-        // TODO: What should we do with datapoints
-        // - Which are defined in the diagram but not available through the macro? Meaning they will never arise.
-        // - Which are not defined in the diagram but are available through the macro? Meaning they could arise and we wouldn't be able to display them.
-        // Should both be fatal?
-
-        // TODO: Ensure that the datapoints referenced in the diagram are valid (to the definition above).
-
-        // Final information which is returned about every datapoint. This includes the type of datapoint, to which side it's replacement
-        // element should be aligned, it's name and label, and the cell which should be replaced by the datapoint value in the diagram.
+        // Final information which is returned about every datapoint. This includes the type of datapoint, to which side its replacement
+        // element should be aligned, its name and label, and the cell which should be replaced by the datapoint value in the diagram.
         let datapoint_info = HashMap::from_iter(Message::DATAPOINTS.iter().filter_map(|datapoint| {
             let (cell, align) = datapoint_nodes.get(datapoint.name)?.clone();
             let info = ExtendedDatapointInformation { info: *datapoint, align, cell };
