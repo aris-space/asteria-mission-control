@@ -26,6 +26,8 @@ import Health from "./pages/health/Health";
 import Telemetry from "./pages/telemetry/Telemetry";
 import Demo from "./pages/pss/Demo";
 import { PssDataProvider } from "./hooks/PssDataContext";
+import { Navigate } from "react-router";
+import Views from "./pages/views/Views";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,6 +76,7 @@ createRoot(document.getElementById("root")!).render(
                   <BrowserRouter>
                     <Layout>
                       <Routes>
+                        <Route index element={<Views />} />
                         <Route path="statemachine" element={<StateMachine />} />
                         <Route
                           path="pss/rocket"
@@ -83,6 +86,8 @@ createRoot(document.getElementById("root")!).render(
                         <Route path="health" element={<Health />} />
                         <Route path="telemetry" element={<Telemetry />} />
                         <Route path="pss/demo" element={<Demo />} />
+
+                        <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Layout>
                   </BrowserRouter>
