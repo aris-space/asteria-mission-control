@@ -108,7 +108,6 @@ async fn main() {
     });
 
     let (msg_tx, msg_rx) = tokio::sync::mpsc::unbounded_channel();
-    let broadcast = Broadcast::new();
 
     let remotes = config
         .remotes
@@ -119,13 +118,14 @@ async fn main() {
         .collect::<Remotes>();
     let remotes = Arc::new(remotes);
 
-    let state = State::new(remotes.clone(), broadcast.clone());
+    let state = State::new(remotes.clone());
+    let broadcast = Broadcast::new(state.clone());
 
     let interceptors = Interceptors::builder()
         .with(SseInterceptor::new(broadcast.clone()))
         .with(PssInterceptor::new(broadcast.clone()))
         .with(LogInterceptor::new(mavlink_logfile))
-        .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone()))
+        .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone(), broadcast.clone()))
         .with(StateMachineStateInterceptor::new(state.clone()))
         .with(InfluxInterceptor::new(
             &config.influx.address,

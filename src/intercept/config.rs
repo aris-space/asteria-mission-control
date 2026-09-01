@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use asteria_datatypes::status::ConfigHash;
 use asteria_messages::Message;
@@ -10,19 +11,31 @@ use gix::{Repository, ThreadSafeRepository};
 use crate::intercept::Interceptor;
 use crate::parser::statemachine::StateMachine;
 use crate::remote::config::RemoteComputerConfig;
+use crate::web::broadcast::Broadcast;
+use crate::web::datatypes::OptionalResult;
+use crate::web::event::Event;
 use crate::web::state::StateInstance;
 
 /// Interceptor looking for [`FcMessage::ConfigHash`] or [`RfscMessage::ConfigHash`] messages
 /// to update the [`StateMachine`] for the active remote computer in the [`StateInstance`].
+///
+/// When the state machine changes, an [`Event::StateMachine`] is broadcast to all connected
+/// clients.
 pub struct ConfigInterceptor {
     state: StateInstance,
     repository: ThreadSafeRepository,
     configs_repository_path: PathBuf,
+    broadcast: Arc<Broadcast>,
 }
 
 impl ConfigInterceptor {
-    pub fn new(repository: Repository, configs_repository_path: PathBuf, state: StateInstance) -> Self {
-        Self { state, repository: repository.into_sync(), configs_repository_path }
+    pub fn new(
+        repository: Repository,
+        configs_repository_path: PathBuf,
+        state: StateInstance,
+        broadcast: Arc<Broadcast>,
+    ) -> Self {
+        Self { state, repository: repository.into_sync(), configs_repository_path, broadcast }
     }
 
     fn lookup_state_machine_config(&self, hash: &[u8; 5]) -> Result<StateMachine, String> {
@@ -68,13 +81,15 @@ impl Interceptor for ConfigInterceptor {
             _ => return,
         };
 
-        let state_machine = self.lookup_state_machine_config(hash);
+        let state_machine = OptionalResult::from(Some(self.lookup_state_machine_config(hash)));
         // If the lookup failed we also log an error on the backend.
-        if let Err(ref err) = state_machine {
+        if let OptionalResult::Error(ref err) = state_machine {
             log::error!("State machine config lookup failed: {err}")
         }
 
         let mut guard = self.state.write().await;
-        guard.set_state_machine(Some(state_machine)).await;
+        if guard.set_state_machine(state_machine.clone()).await {
+            self.broadcast.broadcast(Event::StateMachine(state_machine)).await;
+        };
     }
 }
