@@ -1,3 +1,15 @@
+/**
+ * Enum representing the active power source.
+ */
+export type ActivePowerSource =
+  (typeof ActivePowerSource)[keyof typeof ActivePowerSource];
+
+export const ActivePowerSource = {
+  battery: "battery",
+  external: "external",
+  none: "none",
+} as const;
+
 export type ActuatorKind =
   | {
       default_enabled: boolean;
@@ -71,30 +83,6 @@ export const ArmingState = {
 } as const;
 
 /**
- *
-Is `NAN` by default.
-A pressure in bar relative to atmospheric pressure (`barg`).
- */
-export type BarG = number;
-
-/**
- * The ID of a board in the rocket.
- */
-export type BoardId = (typeof BoardId)[keyof typeof BoardId];
-
-export const BoardId = {
-  flightComputer: "flightComputer",
-  rfsComputer: "rfsComputer",
-  sensorCarrier: "sensorCarrier",
-  communicationBoard: "communicationBoard",
-  engineControlBoard: "engineControlBoard",
-  powerBoard: "powerBoard",
-  recoveryBoard: "recoveryBoard",
-  fuelControlBoard: "fuelControlBoard",
-  oxidizerControlBoard: "oxidizerControlBoard",
-} as const;
-
-/**
  * Shared firmware build information used by all boards.
  */
 export interface BuildInformationCommon {
@@ -119,17 +107,141 @@ export interface BuildInformationCommon {
   unixTimestamp: number;
 }
 
-export interface CameraPowerStatus {
-  /** Whether the livestream camera(s) should be powered on (true=on, false=off). */
-  livePwrEnabled: boolean;
-  /** Whether the recording camera(s) should be powered on (true=on, false=off). */
-  recordingPwrEnabled: boolean;
+export interface StatusCommonMessage {
+  /**
+   * Number of errors encountered since startup.
+   * @minimum 0
+   */
+  errors: number;
+  /**
+   * Number of microseconds since the last board restart.
+   * @minimum 0
+   */
+  microsSinceRestart: number;
 }
 
 /**
- *
+ * Shared rail status structure for both 5V and 24V power rails.
+ */
+export interface RailStatus {
+  /** Current in amps. */
+  current: number;
+  /** Power in watts. */
+  power: number;
+  /** Voltage in volts. */
+  voltage: number;
+}
+
+export type BackplaneMessage =
+  | {
+      /** ## Type
+  - `Periodic @ 0.2 Hz`
+
+  ## Direction
+  - **Emitted by:** `Backplane`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Allows version tracking and verification of the backplane firmware.
+
+  ## Reaction
+  Receivers may log or display the firmware version and build metadata. */
+      content: BuildInformationCommon;
+      type: "BuildInfo";
+    }
+  | {
+      /** ## Type
+  - `Periodic @ 1 Hz`
+
+  ## Direction
+  - **Emitted by:** `Backplane`
+  - **Received by:** `unspecified`
+
+  ## Purpose
+  Communicates the runtime health of the backplane.
+
+  ## Reaction
+  Receivers may log the data or use it for diagnostics and system health checks. */
+      content: StatusCommonMessage;
+      type: "BoardStatus";
+    }
+  | {
+      /** ## Type
+  - Periodic @ 10Hz
+
+  ## Direction
+  - **Emitted by:** `Backplane`
+  - **Received by:** unspecified
+
+  ## Purpose
+  Reports the measured voltage, current, and power on the 5V power rail.
+
+  ## Reaction
+  Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
+      content: RailStatus;
+      type: "RailStatus5V";
+    }
+  | {
+      /** ## Type
+  - Periodic @ 10Hz
+
+  ## Direction
+  - **Emitted by:** `Backplane`
+  - **Received by:** unspecified
+
+  ## Purpose
+  Reports the measured voltage, current, and power on the 24V power rail.
+
+  ## Reaction
+  Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
+      content: RailStatus;
+      type: "RailStatus24V";
+    }
+  | {
+      /** ## Type
+  - Periodic @ 1 Hz
+
+  ## Direction
+  - **Emitted by:** `Backplane`
+  - **Received by:** unspecified
+
+  ## Purpose
+  Reports which power source is currently active.
+
+  ## Reaction
+  Receivers may log, display, or track this value. They may trigger warnings if the power source is not valid. */
+      content: ActivePowerSource;
+      type: "ActivePowerSource";
+    };
+
+/**
+ * A pressure in bar relative to atmospheric pressure (`barg`).
+
 Is `NAN` by default.
-A temperature in degrees Celsius.
+ */
+export type BarG = number;
+
+/**
+ * The ID of a board in the rocket.
+ */
+export type BoardId = (typeof BoardId)[keyof typeof BoardId];
+
+export const BoardId = {
+  flightComputer: "flightComputer",
+  rfsComputer: "rfsComputer",
+  sensorCarrier: "sensorCarrier",
+  communicationBoard: "communicationBoard",
+  engineControlBoard: "engineControlBoard",
+  backplane: "backplane",
+  recoveryBoard: "recoveryBoard",
+  fuelControlBoard: "fuelControlBoard",
+  oxidizerControlBoard: "oxidizerControlBoard",
+} as const;
+
+/**
+ * A temperature in degrees Celsius.
+
+Is `NAN` by default.
  */
 export type Celsius = number;
 
@@ -283,19 +395,6 @@ export const DprLoopInfo = {
   activeOverPressure: "activeOverPressure",
   passive: "passive",
 } as const;
-
-export interface StatusCommonMessage {
-  /**
-   * Number of errors encountered since startup.
-   * @minimum 0
-   */
-  errors: number;
-  /**
-   * Number of microseconds since the last board restart.
-   * @minimum 0
-   */
-  microsSinceRestart: number;
-}
 
 export interface EngineControlBoardStatus {
   /** `Armed` if the engine is armed and the main valves receive power, ie engine arming Pin is pulled */
@@ -572,9 +671,9 @@ export type EngineControlBoardMessage =
     };
 
 /**
- *
+ * Atmospheric pressure in hPa.
+
 Is `NAN` by default.
-Atmospheric pressure in hPa.
  */
 export type HPa = number;
 
@@ -1524,7 +1623,11 @@ export type RfsComputerMessage =
       type: "N2ShowerValvesState";
     }
   | {
-      /** The current active state of the normally closed N2 engine purge valve valve. */
+      /** The current active state of the normally closed N2 engine purge valve valve.
+
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
       content: NormallyClosedValve;
       type: "N2RocketPurgeValveState";
     }
@@ -1569,7 +1672,11 @@ export type RfsComputerMessage =
       type: "LoxTemperature";
     }
   | {
-      /** The temperature of the igniter. */
+      /** The temperature of the igniter.
+
+  # CAN
+  - **Kind**: Status message
+  - **Sent by**: RFS Computer */
       content: Celsius;
       type: "IgniterTemperature";
     }
@@ -1587,6 +1694,11 @@ export type RfsComputerMessage =
       /** The temperature inside the SMART box. */
       content: Celsius;
       type: "SmartBoxTemperature";
+    }
+  | {
+      /** A unused thermocouple on the RFS. */
+      content: Celsius;
+      type: "CustomT1";
     }
   | {
       /** Whether the LOx decoupler is in its retracted state, from the proximity sensor. */
@@ -1742,6 +1854,18 @@ export type RfsComputerMessage =
   - **Sent by**: Flight Computer */
       content: NormallyClosedValve;
       type: "GoxIgniterPurgeControl";
+    }
+  | {
+      /** Controls the N2 engine purge valve on the RFS from the FC.
+
+  This is needed during the ignition sequence where the flight computer controls the
+  ignition and thus needs to purge the engine.
+
+  # CAN
+  - **Kind**: Event message
+  - **Sent by**: Flight Computer */
+      content: NormallyClosedValve;
+      type: "N2RocketPurgeValveControl";
     };
 
 export type SystemManagementMessage =
@@ -1964,134 +2088,6 @@ export type RecoveryBoardMessage =
     }
   | {
       type: "DeploymentTrigger";
-    };
-
-/**
- * Shared rail status structure for both 5V and 24V power rails.
- */
-export interface RailStatus {
-  /** Current in amps. */
-  current: number;
-  /** Power in watts. */
-  power: number;
-  /** Voltage in volts. */
-  voltage: number;
-}
-
-export type PowerBoardMessage =
-  | {
-      /** # `PowerBoardBuildInfo`
-  Firmware build metadata emitted by the Power Board.
-
-  ## Type
-  - `Periodic @ 0.2 Hz`
-
-  ## Direction
-  - **Emitted by:** `PowerBoard`
-  - **Received by:** `unspecified`
-
-  ## Purpose
-  Allows version tracking and verification of the Power Board firmware.
-
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
-  | {
-      /** # `PowerBoardStatus`
-  Periodic status message emitted by the Power Board.
-
-  ## Type
-  - `Periodic @ 1 Hz`
-
-  ## Direction
-  - **Emitted by:** `PowerBoard`
-  - **Received by:** `unspecified`
-
-  ## Purpose
-  Communicates the runtime health of the Power Board.
-
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: StatusCommonMessage;
-      type: "BoardStatus";
-    }
-  | {
-      /** # `RailStatus5V`
-  Periodic telemetry message reporting the 5V rail parameters.
-
-  ## Type
-  - Periodic @ 10Hz
-
-  ## Direction
-  - **Emitted by:** `PowerBoard`
-  - **Received by:** unspecified
-
-  ## Purpose
-  Reports the measured voltage, current, and power on the 5V power rail.
-
-  ## Reaction
-  Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
-      content: RailStatus;
-      type: "RailStatus5V";
-    }
-  | {
-      /** # `RailStatus24V`
-  Periodic telemetry message reporting the 24V rail parameters.
-
-  ## Type
-  - Periodic @ 10Hz
-
-  ## Direction
-  - **Emitted by:** `PowerBoard`
-  - **Received by:** unspecified
-
-  ## Purpose
-  Reports the measured voltage, current, and power on the 24V power rail.
-
-  ## Reaction
-  Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
-      content: RailStatus;
-      type: "RailStatus24V";
-    }
-  | {
-      /** # `CameraPowerControl`
-  Controls the camera power lines.
-
-  ## Type
-  - `Event`: triggered to toggle camera power outputs
-
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `PowerBoard`
-
-  ## Purpose
-  Allows remote enabling/disabling of camera recording and live feed.
-
-  ## Reaction
-  The Power Board sets the respective output pins according to the fields. */
-      content: CameraPowerStatus;
-      type: "CameraPowerControl";
-    }
-  | {
-      /** # `CameraPowerStatus`
-  Periodic camera power status message emitted by the Power Board.
-
-  ## Type
-  - `Periodic @ 5 Hz`, and instantly when the status changes.
-
-  ## Direction
-  - **Emitted by:** `PowerBoard`
-  - **Received by:** `unspecified`
-
-  ## Purpose
-  Communicates what the power state of the cameras should be as set by the power board.
-
-  ## Reaction
-  No action required. */
-      content: CameraPowerStatus;
-      type: "CameraPowerStatus";
     };
 
 /**
@@ -2736,8 +2732,8 @@ export type Message =
       message: RecoveryBoardMessage;
     }
   | {
-      board: "PowerBoard";
-      message: PowerBoardMessage;
+      board: "Backplane";
+      message: BackplaneMessage;
     }
   | {
       board: "SensorCarrier";

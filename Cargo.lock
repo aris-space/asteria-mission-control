@@ -1115,6 +1115,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "dp-backplane"
+version = "0.4.0"
+dependencies = [
+ "arbitrary",
+ "bincode",
+ "data-core",
+ "datatypes",
+ "defmt",
+ "facet",
+ "gated-derive",
+ "serde",
+ "utoipa",
+]
+
+[[package]]
 name = "dp-engine-control-board"
 version = "0.5.0"
 dependencies = [
@@ -1165,19 +1180,6 @@ version = "0.5.0"
 dependencies = [
  "arbitrary",
  "bincode",
- "data-core",
- "datatypes",
- "defmt",
- "facet",
- "gated-derive",
- "serde",
- "utoipa",
-]
-
-[[package]]
-name = "dp-power-board"
-version = "0.3.0"
-dependencies = [
  "data-core",
  "datatypes",
  "defmt",
@@ -3429,11 +3431,11 @@ dependencies = [
  "data-core",
  "datapoint-information",
  "datatypes",
+ "dp-backplane",
  "dp-engine-control-board",
  "dp-flight-computer",
  "dp-fuel-control-board",
  "dp-oxidizer-control-board",
- "dp-power-board",
  "dp-recovery-board",
  "dp-rfs-computer",
  "dp-sensor-carrier",
