@@ -69,6 +69,10 @@ impl Interceptor for ConfigInterceptor {
         };
 
         let state_machine = self.lookup_state_machine_config(hash);
+        // If the lookup failed we also log an error on the backend.
+        if let Err(ref err) = state_machine {
+            log::error!("State machine config lookup failed: {err}")
+        }
 
         let mut guard = self.state.write().await;
         guard.set_state_machine(Some(state_machine)).await;
