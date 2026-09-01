@@ -198,7 +198,7 @@ pub async fn abort(state: Data<StateInstance>, config: Data<Config>) -> actix_we
         Err(error::ErrorBadRequest(String::from("Missing state machine for active remote")))?
     };
 
-    let Some((state_name, path_index)) = state.get_state_machine_state() else {
+    let Some((state_name, _path_index)) = state.get_state_machine_state() else {
         Err(error::ErrorInternalServerError(String::from("Current state machine state is not known")))?
     };
 
@@ -210,7 +210,8 @@ pub async fn abort(state: Data<StateInstance>, config: Data<Config>) -> actix_we
         Err(error::ErrorBadRequest(format!("State '{state_name}' cannot transition into an abort state")))?
     };
 
-    let mut transition = ManualStateTransition { transition_index: *path_index + 1, ..Default::default() };
+    // Abort transitions work with a transition index of zero.
+    let mut transition = ManualStateTransition { transition_index: 0, ..Default::default() };
     let len = abort_state_name.len().min(transition.state.len());
     transition.state[..len].copy_from_slice(&abort_state_name.as_bytes()[..len]);
 
