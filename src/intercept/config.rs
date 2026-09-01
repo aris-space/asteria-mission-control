@@ -24,6 +24,38 @@ impl ConfigInterceptor {
     pub fn new(repository: Repository, configs_repository_path: PathBuf, state: StateInstance) -> Self {
         Self { state, repository: repository.into_sync(), configs_repository_path }
     }
+
+    fn lookup_state_machine_config(&self, hash: &[u8; 5]) -> Result<StateMachine, String> {
+        let hash_str = String::from_utf8_lossy(hash);
+        let repository = self.repository.to_thread_local();
+
+        log::debug!("Looking up config file with hash {hash_str}");
+
+        let bytes = {
+            let Ok(object_id) = repository.rev_parse_single(hash) else {
+                return Err(format!("Could not find object with hash {hash_str} in configs repository",));
+            };
+
+            // We unwrap because we just got this object id from `rev_parse_single`
+            // so we know it exists.
+            let object = repository.find_object(object_id).unwrap();
+
+            let Ok(blob) = object.try_into_blob() else {
+                return Err("Object belongig to config hash is not a blob".to_string());
+            };
+
+            blob.data.clone()
+        };
+
+        let rc_config = match toml::from_slice::<RemoteComputerConfig>(&bytes) {
+            Ok(config) => config,
+            Err(err) => return Err(format!("Remote computer config is not valid: {err}")),
+        };
+
+        let state_machine = StateMachine::new(&rc_config, &self.configs_repository_path);
+
+        state_machine.map_err(|err| format!("Remote computer state machine is not valid: {err}"))
+    }
 }
 
 #[async_trait]
@@ -36,36 +68,7 @@ impl Interceptor for ConfigInterceptor {
             _ => return,
         };
 
-        let hash_str = String::from_utf8_lossy(hash);
-        let repository = self.repository.to_thread_local();
-
-        log::debug!("Looking up config file with hash {hash_str}");
-
-        let bytes = {
-            let Ok(object_id) = repository.rev_parse_single(hash) else {
-                return log::error!("Could not find object with hash {hash_str} in configs repository",);
-            };
-
-            // We unwrap because we just got this object id from `rev_parse_single`
-            // so we know it exists.
-            let object = repository.find_object(object_id).unwrap();
-
-            let Ok(blob) = object.try_into_blob() else {
-                return log::error!("Object belongig to config hash is not a blob");
-            };
-
-            blob.data.clone()
-        };
-
-        let rc_config = match toml::from_slice::<RemoteComputerConfig>(&bytes) {
-            Ok(config) => config,
-            Err(err) => return log::error!("Remote computer config is not valid: {err}"),
-        };
-
-        let state_machine = StateMachine::new(&rc_config, &self.configs_repository_path);
-        if let Err(err) = &state_machine {
-            return log::error!("Remote computer state machine is not valid: {err}");
-        }
+        let state_machine = self.lookup_state_machine_config(hash);
 
         let mut guard = self.state.write().await;
         guard.set_state_machine(Some(state_machine)).await;

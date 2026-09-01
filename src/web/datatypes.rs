@@ -28,12 +28,11 @@ pub enum OptionalResult<T: Clone + Serialize + utoipa::ToSchema> {
     None,
 }
 
-impl<T, E> From<Option<Result<T, E>>> for OptionalResult<T>
+impl<T> From<Option<Result<T, String>>> for OptionalResult<T>
 where
     T: Serialize + Clone + utoipa::ToSchema,
-    E: std::error::Error,
 {
-    fn from(result: Option<Result<T, E>>) -> Self {
+    fn from(result: Option<Result<T, String>>) -> Self {
         match result {
             Some(Ok(value)) => OptionalResult::Some(value),
             Some(Err(err)) => OptionalResult::Error(err.to_string()),
