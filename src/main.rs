@@ -126,6 +126,7 @@ async fn main() {
         .with(PssInterceptor::new(broadcast.clone()))
         .with(LogInterceptor::new(mavlink_logfile))
         .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone()))
+        .with(StateMachineStateInterceptor::new(state.clone()))
         .with(InfluxInterceptor::new(
             &config.influx.address,
             &config.influx.organization,
@@ -187,7 +188,8 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::state_machine)
         .service(web::rocket_pss)
         .service(web::rfs_pss)
-        .service(web::send_message);
+        .service(web::send_message)
+        .service(web::abort);
 }
 
 /// Start the heartbeat thread which periodically sends a MavLink heartbeat message

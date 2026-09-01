@@ -1,6 +1,7 @@
 import {
   ManualStateTransition,
   Message,
+  useAbort,
   useSendMessage,
 } from "@asteria/mission-control-client";
 import { RefObject, useEffect, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import {
   Alert,
   Badge,
   Box,
+  Button,
   Flex,
   Loader,
   Tooltip,
@@ -56,7 +58,16 @@ function StateMachine() {
     "StateMachineState",
   );
 
+  // Boolean whether the current state has a manual transition into
+  // an abort state.
+  const hasAbortTransition =
+    activeState &&
+    stateMachine?.manualTransitions[activeState].find(
+      ([_, isAbort]) => isAbort,
+    );
+
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
+  const { mutate: transitionIntoNextAbort, isPending: isAborting } = useAbort();
 
   const {
     isZoomDirty,
@@ -316,7 +327,18 @@ function StateMachine() {
         </Affix>
       )}
       <Affix position={{ bottom: "lg", left: "lg" }}>
-        {isSending && <Loader size={"sm"} />}
+        <Flex gap={"xs"} direction={"column"}>
+          {(isSending || isAborting) && <Loader size={"sm"} />}
+          {stateMachine && activeState && (
+            <Button
+              disabled={!hasAbortTransition}
+              color="red"
+              onClick={() => transitionIntoNextAbort()}
+            >
+              Abort
+            </Button>
+          )}
+        </Flex>
       </Affix>
       <Affix position={{ bottom: "lg", right: "lg" }}>
         {stateMachine && activeState && (
