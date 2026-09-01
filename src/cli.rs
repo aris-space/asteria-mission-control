@@ -16,6 +16,10 @@ pub struct Cli {
     /// Path to the config file
     pub config_path: String,
 
+    #[arg(short = 'i', long = "influx-token", env = "INFLUXDB_TOKEN_LOCAL")]
+    /// The access token to use for connecting to the influx database.
+    pub influx_token: String,
+
     #[cfg(feature = "static-frontend")]
     #[arg(short = 'f', long = "frontend", default_value_t = String::from("frontend"), env = "FRONTEND_PATH")]
     /// Path to the static frontend directory

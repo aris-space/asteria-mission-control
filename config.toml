@@ -37,3 +37,8 @@ mavlink = { protocol = "tcp", remote = "rfsc.local:5760" }
 [pss]
 rocket_diagram_path = "./rocket-pss.svg"
 rfs_diagram_path = "./rfs-pss.svg"
+
+[influx]
+address = "http://localhost:8086"
+organization = "ARIS"
+bucket = "ASTERIA"

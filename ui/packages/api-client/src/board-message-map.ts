@@ -183,6 +183,10 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
+      type: "CustomT1",
+      hasContent: true,
+    },
+    {
       type: "LoxDecouplerProximity",
       hasContent: true,
     },
@@ -270,6 +274,10 @@ export const BOARD_MESSAGE_MAP = {
       type: "GoxIgniterPurgeControl",
       hasContent: true,
     },
+    {
+      type: "N2RocketPurgeValveControl",
+      hasContent: true,
+    },
   ],
   SystemManagement: [
     {
@@ -327,7 +335,7 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: false,
     },
   ],
-  PowerBoard: [
+  Backplane: [
     {
       type: "BuildInfo",
       hasContent: true,
@@ -345,11 +353,7 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: true,
     },
     {
-      type: "CameraPowerControl",
-      hasContent: true,
-    },
-    {
-      type: "CameraPowerStatus",
+      type: "ActivePowerSource",
       hasContent: true,
     },
   ],

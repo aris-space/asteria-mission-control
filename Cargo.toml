@@ -12,6 +12,7 @@ asteria-messages = { package = "messages", path = "data-definitions/messages", d
   "mavlink",
   "mission-control",
   "pss",
+  "derive_facet",
   "derive_debug",
 ] }
 bincode = { version = "2.0.1", default-features = false, features = [
@@ -21,6 +22,7 @@ bincode = { version = "2.0.1", default-features = false, features = [
 clap = { version = "4.5.51", features = ["derive", "env"] }
 defmt = { version = "1.0.1" }
 env_logger = "0.11.8"
+facet = { version = "0.46.0" }
 log = "0.4.28"
 mavio = { version = "0.5.10", features = ["serde", "std", "tokio"] }
 mavlink-lib = { package = "mavlink", path = "mavlink" }
@@ -46,6 +48,7 @@ implicit_hasher = "allow"  # We'll only ever use the default hasher
 missing_errors_doc = "allow"  # Important, but the needing a section is not always pretty.
 missing_panics_doc = "allow"  # Functions shouldn't panic, if contain panic code, it should be unreachable
 must_use_candidate = "allow"  # Not all `new` calls are problematic to not use
+unsafe_derive_deserialize = "allow"  # Appears when serde and facet are both derived
 pedantic = { level = "warn", priority = -1 }
 unwrap_used = "deny"
 
@@ -58,9 +61,12 @@ actix-files = { version = "0.6.9", optional = true }
 actix-web = { version = "4.11.0", features = ["rustls"] }
 actix-web-lab = "0.24.3"
 asteria-datapoint-information = { package = "datapoint-information", path = "data-definitions/datapoint-information", features = [
-  "mission-control"
+  "mission-control",
+  "csv"
 ] }
+asteria-datatypes = { package = "datatypes", path = "data-definitions/datatypes" }
 asteria-messages.workspace = true
+async-trait = "0.1.89"
 chrono = "0.4.42"
 clap.workspace = true
 env_logger.workspace = true
@@ -87,6 +93,7 @@ toml = { version = "0.9.8", features = ["serde"] }
 utoipa = { workspace = true, features = ["actix_extras"] }
 utoipa-actix-web = "0.1.2"
 utoipa-rapidoc = { version = "6.0.0", features = ["actix-web"] }
+influxdb2 = { version = "0.5.2", default-features = false, features = ["rustls", "gzip"] }
 
 [features]
 default = []

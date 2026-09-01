@@ -1,13 +1,14 @@
 use crate::config::{Config, MavlinkAddress, RemoteComputerConfig};
 
-use asteria_messages::{
-    Message,
-    datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType},
-};
+use asteria_messages::Message;
+use asteria_messages::datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType};
 use mavio::Dialect;
 use mavlink_lib::{MavlinkError, MavlinkSender};
-use std::{collections::HashMap, sync::Arc, time::Duration};
-use tokio::sync::{RwLock, mpsc::UnboundedSender};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Duration;
+use tokio::sync::RwLock;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio_util::sync::CancellationToken;
 
 pub mod config;

@@ -1,6 +1,8 @@
 use crate::parser::statemachine::*;
 use crate::remote::{RemoteComputer, Remotes};
-use crate::web::{broadcast::Broadcast, datatypes::OptionalResult, event::Event};
+use crate::web::broadcast::Broadcast;
+use crate::web::datatypes::OptionalResult;
+use crate::web::event::Event;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -88,6 +90,9 @@ impl State {
     pub async fn set_state_machine(&mut self, state_machine: impl Into<OptionalResult<StateMachine>>) {
         let new_state_machine = state_machine.into();
         if self.state_machine != new_state_machine {
+            if let OptionalResult::Error(err) = &new_state_machine {
+                log::error!("{err}");
+            }
             // We only update the state machine if it is different from the
             // currently active one.
             self.broadcast.broadcast(Event::StateMachine(new_state_machine.clone())).await;

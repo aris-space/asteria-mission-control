@@ -1,10 +1,9 @@
 use intermediate::{MxFile, RootChild};
-use quick_xml::{
-    Reader, Writer,
-    events::{BytesStart, Event},
-};
+use quick_xml::events::{BytesStart, Event};
+use quick_xml::{Reader, Writer};
 use serde::Deserialize;
-use std::{fmt::Debug, io::Cursor};
+use std::fmt::Debug;
+use std::io::Cursor;
 
 mod intermediate;
 pub mod pss;

@@ -1,46 +1,41 @@
 use crate::cli::Cli;
 use crate::config::Config;
-use crate::parser::{pss::Pss, statemachine::StateMachine};
-use crate::remote::{RemoteComputer, Remotes, config::RemoteComputerConfig};
-use crate::web::event::Event;
-use crate::web::{
-    broadcast::Broadcast,
-    event::EventKind,
-    state::{State, StateInstance},
-};
+use crate::intercept::*;
+use crate::parser::pss::Pss;
+use crate::parser::statemachine::StateMachine;
+use crate::remote::{RemoteComputer, Remotes};
+use crate::web::broadcast::Broadcast;
+use crate::web::event::EventKind;
+use crate::web::state::{State, StateInstance};
 
 use actix_cors::Cors;
-use actix_web::{App, HttpServer, middleware, web::Data};
-use asteria_datapoint_information::datapoint::{DatapointHolder, NamedDatapointValue};
-use asteria_messages::Message;
-use asteria_messages::datapoints::{dp_flight_computer, dp_rfs_computer};
+use actix_web::web::Data;
+use actix_web::{App, HttpServer, middleware};
+use asteria_datapoint_information::datapoint::NamedDatapointValue;
 use chrono::Utc;
 use clap::Parser;
 use env_logger::Env;
-use futures::{StreamExt, stream::FuturesUnordered};
-use gix::ThreadSafeRepository as Repository;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 use tokio::fs::{self, File};
-use tokio::io::AsyncWriteExt;
-use tokio::sync::{RwLock, mpsc::UnboundedReceiver};
+use tokio::sync::RwLock;
 use utoipa::OpenApi;
-use utoipa_actix_web::{AppExt, service_config::ServiceConfig};
+use utoipa_actix_web::AppExt;
+use utoipa_actix_web::service_config::ServiceConfig;
 use utoipa_rapidoc::RapiDoc;
 
 mod cli;
 mod config;
+mod intercept;
 mod parser;
 mod remote;
 mod web;
 
 /// Global variable containing the path where the config file is located.
 pub static CONFIG_PATH: OnceLock<PathBuf> = OnceLock::new();
-
-pub static CONFIGS_REPOSITORY: OnceLock<Repository> = OnceLock::new();
 
 /// Tuple containing the rocket and the RFS PSS diagrams.
 pub type PssDiagrams = Arc<(Pss, Pss)>;
@@ -75,7 +70,6 @@ async fn main() {
     let config = match Config::parse(Path::new(&cli.config_path)) {
         Ok(config) => {
             log::debug!("Using config: {config:?}");
-            config.remotes.keys().for_each(|name| log::info!("Found remote '{name}'"));
             config
         }
         Err(err) => {
@@ -92,14 +86,14 @@ async fn main() {
         });
 
     if let Ok(path) = mavlink_logfile_path.canonicalize() {
-        log::info!("Using MavLink log file at '{}'", path.display());
+        log::info!("Logging MavLink messages to '{}'", path.display());
     }
 
     let pss_diagrams = match (Pss::new(&config.pss.rocket_diagram_path), Pss::new(&config.pss.rfs_diagram_path)) {
         (Ok(rocket), Ok(rfs)) => Arc::new((rocket, rfs)),
         (rocket_result, rfs_result) => {
             if let Err(err) = rocket_result {
-                log::error!("Unable to parse rocket PSS diagram: {err}");
+                log::error!("Unable to parse rocket PSS diagram: {err}")
             };
             if let Err(err) = rfs_result {
                 log::error!("Unable to parse RFS PSS diagram: {err}")
@@ -108,15 +102,10 @@ async fn main() {
         }
     };
 
-    match gix::open(&config.configs_repository_path) {
-        // We don't attempt to write to the OnceLock from anywhere else so we can be sure
-        // that the OnceLock hasn't been initialized yet.
-        Ok(repository) => CONFIGS_REPOSITORY.set(repository.into_sync()).unwrap(),
-        Err(err) => {
-            log::error!("Unable to open configs repository at {}: {err}", config.configs_repository_path.display());
-            exit(1)
-        }
-    };
+    let repository = gix::open(&config.configs_repository_path).unwrap_or_else(|err| {
+        log::error!("Unable to open configs repository at {}: {err}", config.configs_repository_path.display());
+        exit(1)
+    });
 
     let (msg_tx, msg_rx) = tokio::sync::mpsc::unbounded_channel();
     let broadcast = Broadcast::new();
@@ -132,7 +121,23 @@ async fn main() {
 
     let state = State::new(remotes.clone(), broadcast.clone());
 
-    start_mavlink_message_handler(msg_rx, config.clone(), broadcast.clone(), state.clone(), mavlink_logfile);
+    let interceptors = Interceptors::builder()
+        .with(SseInterceptor::new(broadcast.clone()))
+        .with(PssInterceptor::new(broadcast.clone()))
+        .with(LogInterceptor::new(mavlink_logfile))
+        .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone()))
+        .with(InfluxInterceptor::new(
+            &config.influx.address,
+            &config.influx.organization,
+            &cli.influx_token,
+            config.influx.bucket.clone(),
+            state.clone(),
+            config.clone(),
+        ))
+        .finish();
+
+    tokio::spawn(async move { interceptors.execute_with_receiver(msg_rx).await });
+
     start_heartbeat(state.clone());
 
     HttpServer::new(move || {
@@ -206,85 +211,6 @@ fn start_heartbeat(state: StateInstance) {
             tokio::time::sleep(HEARTBEAT_INTERVAL).await
         }
     });
-}
-
-/// Start the thread which handles the incoming MavLink messages.
-/// - Every message is proxied in JSON serialized form through SSE with the [`EventKind::MavlinkMessage`] event
-/// - If the message contains any PSS datapoints, the datapoint values are broadcast in JSON serialized form
-///   through SEE with the [`EventKind::PssData`] event.
-/// - If the message contains a new config hash, the state machine and PSS are updated according to the new config.
-fn start_mavlink_message_handler(
-    mut msg_rx: UnboundedReceiver<Message>,
-    config: Arc<Config>,
-    broadcast: Arc<Broadcast>,
-    state: StateInstance,
-    mut log_file: File,
-) {
-    tokio::spawn(async move {
-        while let Some(message) = msg_rx.recv().await {
-            // Log message to MavLink log file.
-            if let Ok(mut message_value) = serde_json::to_value(&message) {
-                // Insert a `timestamp` field which is the current UNIX timestamp. This would enable
-                // replaying the messages.
-                if let serde_json::Value::Object(ref mut map) = message_value {
-                    map.insert(String::from("timestamp"), serde_json::Value::from(Utc::now().timestamp_millis()));
-                }
-                if let Err(err) = log_file.write_all(format!("{message_value}\r\n").as_bytes()).await {
-                    log::warn!("Unable to write MavLink log: {err}");
-                }
-            }
-
-            if let Message::FlightComputer(dp_flight_computer::Message::ConfigHash(hash))
-            | Message::RfsComputer(dp_rfs_computer::Message::ConfigHash(hash)) = &message
-            {
-                handle_config_hash_message(hash.hash, &config.configs_repository_path, &state).await;
-            }
-
-            let datapoint_events = message.get_datapoint_values().into_iter().map(Event::PssData).collect::<Vec<_>>();
-
-            let mut events = vec![Event::MavlinkMessage(message)];
-            events.extend(datapoint_events);
-
-            if !events.is_empty() {
-                FuturesUnordered::from_iter(events.into_iter().map(|event| broadcast.broadcast(event)))
-                    .collect::<Vec<_>>()
-                    .await;
-            }
-        }
-    });
-}
-
-/// Look up the config file in the configs repository at `configs_repository_path` and update
-/// the state machine and PSS in the [`StateInstance`] according to how they are defined in
-/// the config file.
-async fn handle_config_hash_message(hash: [u8; 5], configs_repository_path: &Path, state: &StateInstance) {
-    let repository = CONFIGS_REPOSITORY.get().unwrap().to_thread_local();
-    log::debug!("Looking up config file with hash {}", String::from_utf8_lossy(&hash));
-
-    let bytes = {
-        let Ok(object_id) = repository.rev_parse_single(&hash) else {
-            return log::error!("Could not find object with hash {} in configs repository", String::from_utf8_lossy(&hash));
-        };
-
-        // We unwrap because we just got this object id from `rev_parse_single`
-        // so we know it exists.
-        let object = repository.find_object(object_id).unwrap();
-
-        let Ok(blob) = object.try_into_blob() else { return log::error!("Object belongig to config hash is not a blob") };
-
-        blob.data.clone()
-    };
-
-    let rc_config = match toml::from_slice::<RemoteComputerConfig>(&bytes) {
-        Ok(config) => config,
-        Err(err) => return log::error!("Remote computer config is not valid: {err}"),
-    };
-
-    let state_machine = StateMachine::new(&rc_config, configs_repository_path);
-    // TODO: Also parse PSS configurations here once they are ready.
-
-    let mut state_guard = state.write().await;
-    state_guard.set_state_machine(Some(state_machine)).await;
 }
 
 #[cfg(feature = "static-frontend")]

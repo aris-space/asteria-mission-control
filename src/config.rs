@@ -2,12 +2,10 @@ use crate::CONFIG_PATH;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{
-    collections::BTreeMap,
-    fs,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error)]
@@ -33,6 +31,8 @@ pub struct Config {
     pub remotes: BTreeMap<String, RemoteComputerConfig>,
     /// PSS diagram config.
     pub pss: PssConfig,
+    /// Influx database config.
+    pub influx: InfluxConfig,
 }
 
 impl Config {
@@ -104,6 +104,16 @@ pub struct PssConfig {
     ///                of the config file and will be joined onto the config file path.
     #[serde(deserialize_with = "deserialize_relative_path", alias = "rfs_diagram")]
     pub rfs_diagram_path: PathBuf,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct InfluxConfig {
+    /// The address where the influx database is hosted.
+    pub address: String,
+    /// The organization to use on the influx database.
+    pub organization: String,
+    /// Name of the bucket where the datapoints should be uploaded to.
+    pub bucket: String,
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

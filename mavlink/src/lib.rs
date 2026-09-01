@@ -1,12 +1,11 @@
 use crate::transport::AsyncTransportStream;
 
 use asteria_messages::Message;
-use mavio::{
-    AsyncReceiver, AsyncSender, Endpoint,
-    io::{TokioReader, TokioWriter},
-    prelude::V2,
-};
-use tokio::sync::{Mutex, RwLock, mpsc::UnboundedSender};
+use mavio::io::{TokioReader, TokioWriter};
+use mavio::prelude::V2;
+use mavio::{AsyncReceiver, AsyncSender, Endpoint};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{Mutex, RwLock};
 
 mod transport;
 
@@ -96,10 +95,9 @@ impl MavlinkReceiver {
     /// Returns [`Ok`] when the receiving end of the message channel closed.
     pub async fn forward(&self, msg_tx: &UnboundedSender<Message>) -> Result<(), MavlinkError> {
         let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
+        log::info!("Successfully connected to mavlink stream: {transport:?}");
         let reader = TokioReader::new(transport);
         let mut receiver = AsyncReceiver::versioned(reader, V2);
-
-        log::info!("Successfully connected to mavlink broadcast");
 
         loop {
             // A frame was received.
