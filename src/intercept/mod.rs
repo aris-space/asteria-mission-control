@@ -25,6 +25,7 @@ pub use sse::*;
 
 /// Trait which can be implemented by different MavLink message
 /// consumers.
+#[allow(clippy::double_must_use)] // inside of the async trait
 #[async_trait]
 pub trait Interceptor: Send + Sync {
     /// This method gets called for every incoming MavLink [`Message`].
