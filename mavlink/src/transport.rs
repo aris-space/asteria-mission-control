@@ -3,9 +3,18 @@ use crate::MavlinkAddress;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Duration;
+use socket2::{SockRef, TcpKeepalive};
 use tokio::io::{AsyncRead, AsyncWrite, Error as IoError, ReadBuf};
 use tokio::net::TcpStream;
 use tokio_serial::{SerialPortBuilderExt, SerialStream};
+
+/// Idle time before the first TCP keepalive probe is sent.
+const TCP_KEEPALIVE_TIME: Duration = Duration::from_secs(3);
+/// Interval between subsequent keepalive probes once probing has started.
+const TCP_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(3);
+/// Number of unacknowledged probes before the connection is considered dead.
+const TCP_KEEPALIVE_RETRIES: u32 = 3;
 
 /// Enum holding the different transport backends we'll use for MavLink communication.
 ///
@@ -27,6 +36,15 @@ impl AsyncTransportStream {
         match address {
             MavlinkAddress::Tcp { remote: address } => {
                 let stream = TcpStream::connect(address).await?;
+
+                // Backstop for a connection that goes silent with no FIN/RST and no
+                // application I/O to notice it by (see `MavlinkConnection` in lib.rs).
+                let keepalive = TcpKeepalive::new()
+                    .with_time(TCP_KEEPALIVE_TIME)
+                    .with_interval(TCP_KEEPALIVE_INTERVAL)
+                    .with_retries(TCP_KEEPALIVE_RETRIES);
+                SockRef::from(&stream).set_tcp_keepalive(&keepalive)?;
+
                 Ok(AsyncTransportStream::Tcp(stream))
             }
             MavlinkAddress::Serial { path, baud_rate } => {
