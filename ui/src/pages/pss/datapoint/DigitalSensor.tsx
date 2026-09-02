@@ -10,7 +10,7 @@ interface DigitalSensorProps {
   enabled: boolean;
   defaultEnabled: boolean;
   /** Label for [enabled, disabled] */
-  stateText: [string, string];
+  stateText?: [string, string];
 }
 
 export function DigitalSensor({

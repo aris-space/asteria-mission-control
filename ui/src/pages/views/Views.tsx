@@ -6,6 +6,7 @@ import {
   IconRocket,
   IconSitemap,
 } from "@tabler/icons-react";
+import React from "react";
 import { Link } from "react-router";
 
 interface ViewCard {

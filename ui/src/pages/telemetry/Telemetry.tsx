@@ -152,8 +152,8 @@ function Telemetry() {
   const velMsg = useMavlinkMessage("SensorCarrier", "VelocityData");
   const imuMsg = useMavlinkMessage("SensorCarrier", "ImuData");
   const envMsg = useMavlinkMessage("SensorCarrier", "EnvironmentalData");
-  const rail5vMsg = useMavlinkMessage("PowerBoard", "RailStatus5V");
-  const rail24vMsg = useMavlinkMessage("PowerBoard", "RailStatus24V");
+  const rail5vMsg = useMavlinkMessage("Backplane", "RailStatus5V");
+  const rail24vMsg = useMavlinkMessage("Backplane", "RailStatus24V");
   const steeringActualMsg = useMavlinkMessage(
     "RecoveryBoard",
     "SteeringActualPositions",

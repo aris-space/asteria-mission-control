@@ -86,5 +86,4 @@ export function DigitalActuator({
       </Box>
     </Paper>
   );
-  s;
 }

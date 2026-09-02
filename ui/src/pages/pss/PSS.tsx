@@ -46,7 +46,9 @@ interface PssProps {
 function PSS({ kind }: PssProps) {
   const { remoteComputer, remoteComputerBoard, stateMachine } =
     useRemoteComputer();
-  const { data: pssInfo } = kind == "rfs" ? useRfsPss() : useRocketPss();
+  const rfsPss = useRfsPss();
+  const rocketPss = useRocketPss();
+  const { data: pssInfo } = kind == "rfs" ? rfsPss : rocketPss;
   const { mutate: sendMessage, isPending: isSending } = useSendMessage();
   const { width, height } = useViewportSize();
   // By default the datapoint markers should not be visible.

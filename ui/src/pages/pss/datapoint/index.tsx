@@ -72,6 +72,7 @@ function Datapoint({ kind, name, allowed, onChange }: DatapointProps) {
           );
         }
       }
+      return <div />;
     }
     case "actuator": {
       switch (kind.kind) {

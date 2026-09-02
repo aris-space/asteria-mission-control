@@ -40,7 +40,7 @@ const DEFAULT_HEALTH_DATAPOINTS: Array<
   ["FuelControlBoard", "BoardStatus"],
   ["OxidizerControlBoard", "BoardStatus"],
   ["RecoveryBoard", "BoardStatus"],
-  ["PowerBoard", "BoardStatus"],
+  ["Backplane", "BoardStatus"],
   ["SensorCarrier", "BoardStatus"],
   ["FlightComputer", "Status"],
   ["RfsComputer", "Status"],
