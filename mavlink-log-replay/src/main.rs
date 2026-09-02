@@ -46,7 +46,10 @@ async fn main() {
 
     log::info!("Using log file at '{}'", path.display());
 
-    let (mavlink_sender, _mavlink_receiver) = mavlink_lib::tx_rx(MAVLINK_SYSTEM_ID, cli.mavlink_address.into());
+    let (mavlink_sender, mavlink_connection) = mavlink_lib::tx_rx(MAVLINK_SYSTEM_ID, cli.mavlink_address.into());
+    // We don't care about anything the endpoint sends back, just discard it.
+    let (discard_tx, _discard_rx) = tokio::sync::mpsc::unbounded_channel();
+    tokio::spawn(async move { mavlink_connection.run(&discard_tx).await });
 
     let reader = BufReader::new(file);
     let mut lines = reader.lines();
@@ -99,7 +102,7 @@ async fn replay(sender: &MavlinkSender, messages: &[LoggedMessage], speed: f32) 
         let scaled_timeout = Duration::from_secs_f32(timeout.as_secs_f32() / speed);
         tokio::time::sleep(scaled_timeout).await;
 
-        if let Err(err) = sender.send(&current.message).await {
+        if let Err(err) = sender.send(current.message.clone()) {
             log::warn!("Unable to send MavLink message: {err}");
         }
     }

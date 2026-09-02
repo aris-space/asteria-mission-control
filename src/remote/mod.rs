@@ -3,7 +3,7 @@ use crate::config::{Config, MavlinkAddress, RemoteComputerConfig};
 use asteria_messages::Message;
 use asteria_messages::datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType};
 use mavio::Dialect;
-use mavlink_lib::{MavlinkError, MavlinkSender};
+use mavlink_lib::{MavlinkSender, SendError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,10 +14,6 @@ use tokio_util::sync::CancellationToken;
 pub mod config;
 
 pub type Remotes = HashMap<String, Arc<RwLock<RemoteComputer>>>;
-
-/// Duration after which a restart of the MavLink
-/// message proxy should be attempted.
-pub const MAVLINK_PROXY_RESTART_TIMEOUT: Duration = Duration::from_millis(2500);
 
 /// Amount of times a MavLink message should be sent
 /// to the remote computer to "compensate" for unreliable
@@ -35,10 +31,8 @@ pub enum RemoteComputerError {
     AlreadyActive,
     #[error("The remote computer is not active")]
     NotActive,
-    #[error("The remote computer got deactivated")]
-    Deactivated,
     #[error(transparent)]
-    MavLink(MavlinkError),
+    MavLink(SendError),
 }
 
 pub struct RemoteComputer {
@@ -73,33 +67,18 @@ impl RemoteComputer {
         let token = CancellationToken::new();
         self.token = Some(token.clone());
 
-        let (mavlink_sender, mavlink_receiver) =
+        let (mavlink_sender, mavlink_connection) =
             mavlink_lib::tx_rx(self.mavlink_system_id, self.mavlink_address.clone().into());
         let mavlink_sender = Arc::new(mavlink_sender);
 
         let msg_tx = self.msg_tx.clone();
         let token_clone = token.clone();
-        // Start the thread which forwards the incoming MavLink messages until the remote computer gets deactivated.
+        // `run` reconnects on its own and never returns - this task's only job is to
+        // stop driving it once the remote computer gets deactivated.
         tokio::spawn(async move {
-            loop {
-                let err = tokio::select! {
-                    result = mavlink_receiver.forward(&msg_tx) => match result {
-                        // The receiving end of the message channel closed.
-                        Ok(_) => return,
-                        Err(err) => err,
-                    },
-                    // A stop signal was received because the remote computer got deactivated.
-                    _ = token_clone.cancelled() => return
-                };
-
-                log::error!("Error whilst running mavlink message forwarding: {err}");
-
-                tokio::select! {
-                    // Await restart timeout and then attempt restart in next iteration.
-                    _ = tokio::time::sleep(MAVLINK_PROXY_RESTART_TIMEOUT) => continue,
-                    // A stop signal was received because the remote computer got deactivated.
-                    _ = token_clone.cancelled() => return,
-                }
+            tokio::select! {
+                _ = mavlink_connection.run(&msg_tx) => {}
+                () = token_clone.cancelled() => {}
             }
         });
 
@@ -130,24 +109,28 @@ impl RemoteComputer {
         tokio::spawn(async move {
             let mut attempts = 0;
             while attempts < MAVLINK_RESEND_ATTEMPTS {
+                if token.is_cancelled() {
+                    break;
+                }
+
                 log::debug!("Transmitting mavlink message (attempt={attempts}): {message:?}");
                 attempts += 1;
-                let result = tokio::select! {
-                    result = mavlink_tx.send(&message) => result.map_err(RemoteComputerError::MavLink),
-                    // A stop signal was received because the remote computer got deactivated.
-                    _ = token.cancelled() => Err(RemoteComputerError::Deactivated)
-                };
 
-                if let Err(err) = result {
-                    log::error!("Unable to transmit MavLink message: {err}")
-                };
+                if let Err(err) = mavlink_tx.send(message.clone()).map_err(RemoteComputerError::MavLink) {
+                    log::error!("Unable to queue MavLink message for transmission: {err}");
+                    // The connection is gone for good - further attempts won't fare any better.
+                    break;
+                }
 
                 if !should_resend {
                     // Exit after first iteration if we shouldn't resend the message.
                     break;
                 }
 
-                tokio::time::sleep(MAVLINK_RESEND_TIMEOUT).await
+                tokio::select! {
+                    () = tokio::time::sleep(MAVLINK_RESEND_TIMEOUT) => {}
+                    () = token.cancelled() => break,
+                }
             }
         });
 
