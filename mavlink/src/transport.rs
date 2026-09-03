@@ -1,10 +1,10 @@
 use crate::MavlinkAddress;
 
+use socket2::{SockRef, TcpKeepalive};
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
-use socket2::{SockRef, TcpKeepalive};
 use tokio::io::{AsyncRead, AsyncWrite, Error as IoError, ReadBuf};
 use tokio::net::TcpStream;
 use tokio_serial::{SerialPortBuilderExt, SerialStream};
