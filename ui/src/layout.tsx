@@ -44,6 +44,7 @@ import {
   useRemoteComputer,
   useRemoteComputerErrors,
 } from "./hooks/RemoteComputerContext";
+import { Link } from "react-router";
 
 export function Layout(props: PropsWithChildren) {
   const [remoteComputerDialogVisible, setRemoteComputerDialogVisible] =
@@ -76,7 +77,14 @@ export function Layout(props: PropsWithChildren) {
         <AppShell.Header>
           <SimpleGrid py={"xs"} px={"sm"} cols={2}>
             <Flex align={"center"} justify={"start"} gap={"lg"}>
-              <Image src={"/logo.png"} h={"3rem"} mt={"-0.25rem"} w={"3rem"} />
+              <Link to={"/"}>
+                <Image
+                  src={"/logo.png"}
+                  h={"3rem"}
+                  mt={"-0.25rem"}
+                  w={"3rem"}
+                />
+              </Link>
               <ActiveRemoteComputer
                 onDialogOpen={() => setRemoteComputerDialogVisible(true)}
               />
