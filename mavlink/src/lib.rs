@@ -4,26 +4,24 @@ use asteria_messages::Message;
 use mavio::io::{TokioReader, TokioWriter};
 use mavio::prelude::V2;
 use mavio::{AsyncReceiver, AsyncSender, Endpoint};
+use std::convert::Infallible;
+use std::time::Duration;
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::{Mutex, RwLock};
 
 mod transport;
 
-/// Amount of receive-errors we tolerate before aborting the
-/// reception of messages.
-///
-/// When a fatal receive-error occurs, the error count raises
-/// quickly and thus it should be safe to not already exit
-/// on the I/O error.
+/// Amount of consecutive receive-errors tolerated on one connection before it's
+/// considered dead and gets reconnected.
 const MAX_RECV_ERROR_COUNT: u32 = 16;
 
+/// Delay before retrying a failed connection attempt, to avoid hot-looping against an
+/// endpoint that's genuinely unreachable.
+const RECONNECT_BACKOFF: Duration = Duration::from_millis(2500);
+
 #[derive(Debug, thiserror::Error)]
-pub enum MavlinkError {
-    #[error("Connection error: {0}")]
-    Connection(tokio::io::Error),
-    #[error("Mavio error: {0}")]
-    Mavio(mavio::Error),
-}
+#[error("the mavlink connection has shut down for good")]
+pub struct SendError;
 
 #[derive(Debug, Clone)]
 pub enum MavlinkAddress {
@@ -33,112 +31,135 @@ pub enum MavlinkAddress {
     Serial { path: String, baud_rate: u32 },
 }
 
-/// Get a new MavLink sender and receiver for a given MavLink address.
-pub fn tx_rx(system_id: u8, address: MavlinkAddress) -> (MavlinkSender, MavlinkReceiver) {
-    let sender = MavlinkSender {
-        address: address.clone(),
+/// Create a [`MavlinkSender`]/[`MavlinkConnection`] pair for `address`.
+///
+/// Nothing is dialed yet - [`MavlinkConnection::run`] must be spawned or awaited
+/// somewhere for messages to actually go out or come in.
+pub fn tx_rx(system_id: u8, address: MavlinkAddress) -> (MavlinkSender, MavlinkConnection) {
+    let (outbox_tx, outbox_rx) = mpsc::unbounded_channel();
+
+    let sender = MavlinkSender { outbox: outbox_tx };
+    let connection = MavlinkConnection {
+        address,
         endpoint: Endpoint::v2(mavio::MavLinkId { system: system_id, component: 0 }),
-        sender: RwLock::new(None),
+        outbox: outbox_rx,
     };
 
-    let receiver = MavlinkReceiver { address, errors: Mutex::new(0) };
-
-    (sender, receiver)
+    (sender, connection)
 }
 
+/// Queues mavlink messages for [`MavlinkConnection::run`] to send.
+///
+/// Queuing never fails except once the connection is gone for good (every
+/// [`MavlinkConnection`] handle dropped); actual delivery is best-effort, same as
+/// MAVLink over any transport always is.
 pub struct MavlinkSender {
-    address: MavlinkAddress,
-    endpoint: Endpoint<V2>,
-    sender: RwLock<Option<AsyncSender<tokio::io::Error, TokioWriter<AsyncTransportStream>, V2>>>,
+    outbox: mpsc::UnboundedSender<Message>,
 }
 
 impl MavlinkSender {
-    /// Send a mavlink message out.
-    ///
-    /// If no sender already exists, this lazily initializes a new sender.
-    pub async fn send(&self, message: &Message) -> Result<usize, MavlinkError> {
-        let frame = self.endpoint.next_frame(message).map_err(MavlinkError::Mavio)?;
-        let mut sender_guard = self.sender.write().await;
+    pub fn send(&self, message: Message) -> Result<(), SendError> {
+        self.outbox.send(message).map_err(|_| SendError)
+    }
+}
 
-        if let Some(sender) = sender_guard.as_mut() {
-            // There is an already initialized sender which we can use.
-            let bytes = match sender.send(&frame).await {
-                Ok(bytes) => bytes,
+/// Owns the mavlink connection to `address` and drives both directions of traffic.
+///
+/// A MAVLink transport (TCP to mavlink-router, or a serial link) is one physical
+/// connection, not independent send/receive sockets. One owner driving both directions
+/// from a single loop means a failure on either side is noticed and reconnected on
+/// immediately, instead of one side quietly writing into a socket the other side
+/// already knows is dead.
+pub struct MavlinkConnection {
+    address: MavlinkAddress,
+    /// Assigns outgoing sequence numbers. Encoding happens right before a message is
+    /// actually written out (not when it's queued), so sequence numbers stay in the
+    /// order messages are truly transmitted in, even under concurrent senders.
+    endpoint: Endpoint<V2>,
+    outbox: mpsc::UnboundedReceiver<Message>,
+}
+
+impl MavlinkConnection {
+    /// Run the connection until the caller cancels it (e.g. via `tokio::select!` or by
+    /// dropping the future). The `Infallible` return type is a promise: this loop never
+    /// stops on its own, so callers don't need to handle a "the connection died" case.
+    pub async fn run(mut self, msg_tx: &UnboundedSender<Message>) -> Infallible {
+        let mut outbox_closed = false;
+
+        loop {
+            let stream = match AsyncTransportStream::new(&self.address).await {
+                Ok(stream) => stream,
                 Err(err) => {
-                    // Remove the sender instance as it's most likely broken.
-                    *sender_guard = None;
-                    return Err(MavlinkError::Mavio(err));
+                    log::warn!("Unable to connect to mavlink endpoint: {err}");
+                    tokio::time::sleep(RECONNECT_BACKOFF).await;
+                    continue;
                 }
             };
-            Ok(bytes)
-        } else {
-            // We need to initialize a new sender and then store it for later reuse.
-            let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
-            let writer = TokioWriter::new(transport);
-            let mut sender = AsyncSender::versioned(writer, V2);
-            let bytes = sender.send(&frame).await.map_err(MavlinkError::Mavio)?;
-            *sender_guard = Some(sender);
+            log::info!("Successfully connected to mavlink stream: {stream:?}");
 
-            Ok(bytes)
+            let (read_half, write_half) = tokio::io::split(stream);
+            let mut receiver = AsyncReceiver::versioned(TokioReader::new(read_half), V2);
+            let mut sender = AsyncSender::versioned(TokioWriter::new(write_half), V2);
+            let mut recv_errors = 0u32;
+
+            let disconnect_reason = loop {
+                tokio::select! {
+                    frame = receiver.recv() => match frame {
+                        Ok(frame) => {
+                            recv_errors = 0;
+                            handle_incoming(&frame, msg_tx);
+                        }
+                        Err(mavio::Error::Io(io_error)) => {
+                            recv_errors += 1;
+                            log::warn!(
+                                "Unable to receive mavlink message due to I/O error ({recv_errors}/{MAX_RECV_ERROR_COUNT}): {}",
+                                mavio::Error::Io(io_error)
+                            );
+                            if recv_errors >= MAX_RECV_ERROR_COUNT {
+                                break "too many receive errors";
+                            }
+                        }
+                        Err(err) => log::warn!("Unable to receive mavlink message: {err}"),
+                    },
+                    message = self.outbox.recv(), if !outbox_closed => match message {
+                        Some(message) => match self.endpoint.next_frame(&message) {
+                            Ok(frame) => {
+                                if let Err(err) = sender.send(&frame).await {
+                                    log::warn!("Unable to send mavlink message: {err}");
+                                    break "send failed";
+                                }
+                            }
+                            Err(err) => log::warn!("Unable to encode mavlink message, dropping it: {err}"),
+                        },
+                        // Every `MavlinkSender` was dropped - nothing will ever be queued
+                        // again, but we can keep receiving for as long as the caller wants.
+                        None => outbox_closed = true,
+                    },
+                }
+            };
+
+            log::warn!("Mavlink connection lost ({disconnect_reason}), reconnecting...");
         }
     }
 }
 
-pub struct MavlinkReceiver {
-    address: MavlinkAddress,
-    errors: Mutex<u32>,
-}
+fn handle_incoming(frame: &mavio::Frame<V2>, msg_tx: &UnboundedSender<Message>) {
+    log::trace!("Received mavlink frame: {frame:?}");
 
-impl MavlinkReceiver {
-    /// Listen to incoming messages and forward them into the channel where `tx` is a sender.
-    ///
-    /// Returns [`Ok`] when the receiving end of the message channel closed.
-    pub async fn forward(&self, msg_tx: &UnboundedSender<Message>) -> Result<(), MavlinkError> {
-        let transport = AsyncTransportStream::new(&self.address).await.map_err(MavlinkError::Connection)?;
-        log::info!("Successfully connected to mavlink stream: {transport:?}");
-        let reader = TokioReader::new(transport);
-        let mut receiver = AsyncReceiver::versioned(reader, V2);
+    if let Err(err) = frame.validate_checksum::<Message>() {
+        log::warn!("Received mavlink message with invalid checksum: {err}");
+        return;
+    }
 
-        loop {
-            // A frame was received.
-            let frame = match receiver.recv().await {
-                Ok(frame) => frame,
-                Err(mavio::Error::Io(io_error)) => {
-                    // When we have IO errors we stop receiving as the connection
-                    // is most likely broken.
-                    let mut recv_error_count = self.errors.lock().await;
-                    if *recv_error_count == MAX_RECV_ERROR_COUNT {
-                        return Err(MavlinkError::Mavio(mavio::Error::Io(io_error)));
-                    }
-                    *recv_error_count += 1;
-                    log::warn!("Unable to receive mavlink message due to I/O error: {}", mavio::Error::Io(io_error));
-                    continue;
-                }
-                Err(err) => {
-                    log::warn!("Unable to receive mavlink message: {err}");
-                    continue;
-                }
-            };
-
-            log::trace!("Received mavlink frame: {frame:?}");
-
-            if let Err(err) = frame.validate_checksum::<Message>() {
-                log::warn!("Received mavlink message with invalid checksum: {err}");
-                continue;
-            }
-
-            let message = match frame.decode::<Message>() {
-                Ok(message) => message,
-                Err(err) => {
-                    log::warn!("Unable to decode mavlink message: {err}");
-                    continue;
-                }
-            };
-
-            if msg_tx.send(message).is_err() {
-                log::warn!("Message receiver is closed, shutting down message proxy!");
-                return Ok(());
-            }
+    let message = match frame.decode::<Message>() {
+        Ok(message) => message,
+        Err(err) => {
+            log::warn!("Unable to decode mavlink message: {err}");
+            return;
         }
+    };
+
+    if msg_tx.send(message).is_err() {
+        log::warn!("Message receiver is closed, dropping mavlink message");
     }
 }
