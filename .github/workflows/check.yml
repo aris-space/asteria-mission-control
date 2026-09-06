@@ -1,4 +1,4 @@
-name: check rust code
+name: check code
 on:
   push:
     branches: [main]
@@ -47,6 +47,29 @@ jobs:
           components: rustfmt
       - name: cargo fmt --check
         run: cargo fmt --check
+  frontend:
+    runs-on: [self-hosted, Linux]
+    timeout-minutes: 10
+    name: ⚙️ lint and build frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.ASTERIA_CI_TOKEN }}
+          submodules: recursive
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+      - name: Install dependencies
+        working-directory: ui
+        run: npm ci
+      - name: Lint
+        working-directory: ui
+        run: npm run lint
+      - name: Build
+        working-directory: ui
+        run: npm run build
   clippy:
     runs-on: [self-hosted, Linux]
     timeout-minutes: 10
