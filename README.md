@@ -66,6 +66,15 @@ There are some things which need to be followed whilst exporting the diagram as 
 
 ![Screenshot of SVG export on draw.io](./docs/svg-export.png)
 
+### Validating state machine configs
+
+To check that all state machine TOML configs in the `remote-computers` submodule match their referenced
+diagrams (states, actuators, etc.), run:
+
+```bash
+cargo test --package asteria-mission-control all_state_machine_configs_match_their_diagram -- --nocapture
+```
+
 ## Logging
 
 The mission control logs in 3 ways: warnings to stdout, mavlink messages to a **jsonl** file and additionally to a **InfluxDB**
