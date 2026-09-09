@@ -1,7 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PropsWithChildren,
@@ -14,6 +16,7 @@ import {
 import { useId } from "@mantine/hooks";
 import { useEvent } from "@asteria/hooks/EventContext";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
+import { deepEqual } from "fast-equals";
 
 interface PssDataContextDefinition {
   addNotifier: (
@@ -46,9 +49,12 @@ export function PssDataProvider(props: PropsWithChildren) {
   useEvent<string>(EventKind.PSS_DATA, (event) => {
     const datapointValue = JSON.parse(event.data) as NamedDatapointValue;
     datapointValues.current[datapointValue.name] = datapointValue.value;
-    Object.values(notifiers.current).forEach(([name, cb]) => {
+    // Use `for` loop instead of iterator to prevent allocating an array of notifiers
+    // for each incoming message.
+    for (const notifierId in notifiers.current) {
+      const [name, cb] = notifiers.current[notifierId];
       if (name == datapointValue.name) cb(datapointValue.value);
-    });
+    }
   });
 
   const { remoteComputer } = useRemoteComputer();
@@ -57,7 +63,9 @@ export function PssDataProvider(props: PropsWithChildren) {
     // The remote computer changed so all previous datapoint values get invalidated.
     datapointValues.current = {};
     // Call all notifiers such that all `usePssDatapointData` instances update to `null`.
-    Object.values(notifiers.current).forEach(([_, cb]) => cb(null as any));
+    for (const name in notifiers.current) {
+      notifiers.current[name][1](null as any);
+    }
   }, [remoteComputer?.name]);
 
   /**
@@ -67,32 +75,38 @@ export function PssDataProvider(props: PropsWithChildren) {
    * @param datapointName name of the datapoint we're interested in
    * @param cb the callback function which is called when a matching function is received
    */
-  const addNotifier = (
-    id: string,
-    datapointName: string,
-    cb: (value: DatapointValue) => void,
-  ) => {
-    notifiers.current[id] = [datapointName, cb];
-  };
+  const addNotifier = useCallback(
+    (id: string, datapointName: string, cb: (value: DatapointValue) => void) => {
+      notifiers.current[id] = [datapointName, cb];
+    },
+    [],
+  );
 
   /**
    * Remove a value callback function.
    * @param id identifier of the callback function
    */
-  const removeNotifier = (id: string) => delete notifiers.current[id];
+  const removeNotifier = useCallback((id: string) => {
+    delete notifiers.current[id];
+  }, []);
 
-  const getValue = (datapointName: string) => {
+  const getValue = useCallback((datapointName: string) => {
     return datapointValues.current[datapointName] || null;
-  };
+  }, []);
+
+  // Memoized such that consumers of the context don't re-render whenever this
+  // provider re-renders (e.g. when the active remote computer changes).
+  const value: PssDataContextDefinition = useMemo(
+    () => ({
+      addNotifier,
+      removeNotifier,
+      getValue,
+    }),
+    [addNotifier, removeNotifier, getValue],
+  );
 
   return (
-    <PssDataContext.Provider
-      value={{
-        addNotifier,
-        removeNotifier,
-        getValue,
-      }}
-    >
+    <PssDataContext.Provider value={value}>
       {props.children}
     </PssDataContext.Provider>
   );
@@ -115,9 +129,14 @@ export function usePssDatapointData(datapoint: string): DatapointValue | null {
   const [value, setValue] = useState<DatapointValue | null>(null);
 
   useEffect(() => {
-    setValue(context.getValue(datapoint));
+    const initialValue = context.getValue(datapoint);
+    currentValue.current = initialValue;
+    setValue(initialValue);
     const cb = (newValue: DatapointValue) => {
-      if (JSON.stringify(currentValue.current) != JSON.stringify(newValue)) {
+      // Keep the ref in sync here (instead of a separate effect) such that the
+      // comparison always sees the latest value.
+      if (!deepEqual(currentValue.current, newValue)) {
+        currentValue.current = newValue;
         setValue(newValue);
       }
     };
@@ -125,11 +144,7 @@ export function usePssDatapointData(datapoint: string): DatapointValue | null {
     return () => {
       context.removeNotifier(id);
     };
-  }, [datapoint]);
-
-  useEffect(() => {
-    currentValue.current = value;
-  }, [value]);
+  }, [datapoint, context]);
 
   return value;
 }
