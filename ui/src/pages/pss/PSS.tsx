@@ -9,7 +9,6 @@ import {
 } from "@asteria/mission-control-client";
 import React, {
   CSSProperties,
-  RefObject,
   useEffect,
   useMemo,
   useRef,
@@ -61,7 +60,7 @@ function PSS({ kind }: PssProps) {
   // is called from a callback function and otherwise it just copies the initial path index.
   const pathIndexRef = useRef<number>(0);
   const datapointNodes = useMap<string, SVGElement>();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
   const [[activeState, _transitionTimestamp], setActiveState] = useState<
     [string | null, number]
   >([null, Date.now()]);
@@ -78,41 +77,31 @@ function PSS({ kind }: PssProps) {
     resetZoom,
     zoomTransform,
     ready: svgReady,
-  } = useDiagramSvg(
-    pssInfo?.diagram as string,
-    containerRef as RefObject<HTMLDivElement>,
-    {
-      onZoom: (transform) => {
-        // We do this kinda sketchy style overriding here to prevent having a state update and thus a re-render
-        // per zoom event. This is much more performant as zoom events happen at a very high frequency!
-        Object.keys(pssInfo?.datapointInfo || {}).forEach((name) => {
-          const info = pssInfo?.datapointInfo[name];
-          if (!info) return;
-          const styles = computeDatapointStyle(transform, info);
-          if (!styles) return;
+  } = useDiagramSvg(pssInfo?.diagram as string, container as HTMLDivElement, {
+    onZoom: (transform) => {
+      // We do this kinda sketchy style overriding here to prevent having a state update and thus a re-render
+      // per zoom event. This is much more performant as zoom events happen at a very high frequency!
+      Object.keys(pssInfo?.datapointInfo || {}).forEach((name) => {
+        const info = pssInfo?.datapointInfo[name];
+        if (!info) return;
+        const styles = computeDatapointStyle(transform, info);
+        if (!styles) return;
 
-          const datapointContainer = document.querySelector(
-            `[data-datapoint-container-for="${name}"]`,
-          ) as HTMLDivElement | null;
-          if (!datapointContainer) return;
+        const datapointContainer = document.querySelector(
+          `[data-datapoint-container-for="${name}"]`,
+        ) as HTMLDivElement | null;
+        if (!datapointContainer) return;
 
-          datapointContainer.style.setProperty("top", styles[0].top as string);
-          datapointContainer.style.setProperty(
-            "left",
-            styles[0].left as string,
-          );
+        datapointContainer.style.setProperty("top", styles[0].top as string);
+        datapointContainer.style.setProperty("left", styles[0].left as string);
 
-          let datapoint =
-            datapointContainer.firstElementChild as HTMLDivElement | null;
-          if (!datapoint) return;
-          datapoint.style.setProperty(
-            "transform",
-            styles[1].transform as string,
-          );
-        });
-      },
+        let datapoint =
+          datapointContainer.firstElementChild as HTMLDivElement | null;
+        if (!datapoint) return;
+        datapoint.style.setProperty("transform", styles[1].transform as string);
+      });
     },
-  );
+  });
 
   useEffect(() => {
     if (!stateMachineStateMessage) return;
@@ -138,10 +127,10 @@ function PSS({ kind }: PssProps) {
   useEffect(() => {
     updateDatapointVisibility();
     setupNodes();
-  }, [pssInfo, containerRef, datapointVisibility]);
+  }, [pssInfo, container, datapointVisibility]);
 
   function setupNodes() {
-    if (!containerRef.current || !pssInfo) return;
+    if (!container || !pssInfo) return;
     datapointNodes.clear();
 
     Object.entries(pssInfo.datapointInfo).forEach(([name, { cell }]) => {
@@ -153,7 +142,7 @@ function PSS({ kind }: PssProps) {
   }
 
   function updateDatapointVisibility() {
-    if (!containerRef.current || !pssInfo) return;
+    if (!container || !pssInfo) return;
 
     if (pssInfo) {
       Object.entries(pssInfo.datapointInfo).forEach(([, { cell }]) => {
@@ -287,7 +276,7 @@ function PSS({ kind }: PssProps) {
             <section
               data-highlight-states={datapointVisibility}
               className={classes.container}
-              ref={containerRef}
+              ref={setContainer}
             />
           </Box>
         )}
