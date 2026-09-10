@@ -69,18 +69,13 @@ function Views() {
     >
       {views.map((view) => (
         <Link
+          key={view.path}
           to={view.path}
           style={{
             textDecoration: "none",
           }}
         >
-          <Card
-            key={view.path}
-            withBorder
-            radius="md"
-            p="lg"
-            style={{ cursor: "pointer" }}
-          >
+          <Card withBorder radius="md" p="lg" style={{ cursor: "pointer" }}>
             <Flex direction="column" gap="sm">
               {view.icon}
               <Text fw={600} size="lg">
