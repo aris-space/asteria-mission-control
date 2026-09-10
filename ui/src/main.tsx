@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import React, { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import "@mantine/core/styles.css";
@@ -20,14 +20,10 @@ import {
 import { RemoteComputerProvider } from "@asteria/hooks/RemoteComputerContext";
 import { MavlinkProvider } from "@asteria/hooks/MavlinkContext";
 
-import StateMachine from "./pages/statemachine/StateMachine";
-import PSS from "./pages/pss/PSS";
-import Health from "./pages/health/Health";
-import Telemetry from "./pages/telemetry/Telemetry";
-import Demo from "./pages/pss/Demo";
 import { PssDataProvider } from "./hooks/PssDataContext";
 import { Navigate } from "react-router";
 import Views from "./pages/views/Views";
+import { pages } from "./pages";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -77,16 +73,18 @@ createRoot(document.getElementById("root")!).render(
                     <Layout>
                       <Routes>
                         <Route index element={<Views />} />
-                        <Route path="statemachine" element={<StateMachine />} />
-                        <Route
-                          path="pss/rocket"
-                          element={<PSS kind="rocket" />}
-                        />
-                        <Route path="pss/rfs" element={<PSS kind="rfs" />} />
-                        <Route path="health" element={<Health />} />
-                        <Route path="telemetry" element={<Telemetry />} />
-                        <Route path="pss/demo" element={<Demo />} />
-
+                        {pages.map((page) => (
+                          <Route
+                            key={page.path}
+                            path={page.path}
+                            element={
+                              <PageWithTitle
+                                title={page.title}
+                                page={page.page}
+                              />
+                            }
+                          />
+                        ))}
                         <Route path="*" element={<Navigate to="/" replace />} />
                       </Routes>
                     </Layout>
@@ -100,3 +98,17 @@ createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+interface PageWithTitleProps {
+  title: string;
+  page: React.ReactNode;
+}
+
+function PageWithTitle({ title, page }: PageWithTitleProps) {
+  return (
+    <>
+      <title>{title}</title>
+      {page}
+    </>
+  );
+}
