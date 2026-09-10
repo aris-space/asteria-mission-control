@@ -75,7 +75,7 @@ function Views() {
             textDecoration: "none",
           }}
         >
-          <Card withBorder radius="md" p="lg" style={{ cursor: "pointer" }}>
+          <Card h="100%" withBorder radius="md" p="lg" style={{ cursor: "pointer" }}>
             <Flex direction="column" gap="sm">
               {view.icon}
               <Text fw={600} size="lg">
