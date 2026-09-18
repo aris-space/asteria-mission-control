@@ -1,57 +1,6 @@
 import { Box, Card, Flex, Text, useMantineTheme } from "@mantine/core";
-import {
-  IconChartLine,
-  IconGasStation,
-  IconHeartRateMonitor,
-  IconRocket,
-  IconSitemap,
-} from "@tabler/icons-react";
-import React from "react";
 import { Link } from "react-router";
-
-interface ViewCard {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  path: string;
-}
-
-const views: ViewCard[] = [
-  {
-    title: "State Machine",
-    description:
-      "Visualize and interact with the state machine of the active remote",
-    icon: <IconSitemap size="2rem" />,
-    path: "/statemachine",
-  },
-  {
-    title: "Telemetry",
-    description: "Real-time data: altitude, position, velocity etc.",
-    icon: <IconChartLine size="2rem" />,
-    path: "/telemetry",
-  },
-  {
-    title: "Health",
-    description:
-      "Visualize the last received message of different message kinds",
-    icon: <IconHeartRateMonitor size="2rem" />,
-    path: "/health",
-  },
-  {
-    title: "Rocket PSS",
-    description:
-      "Visualize and interact with the rocket PSS datapoints of the active remote",
-    icon: <IconRocket size="2rem" />,
-    path: "/pss/rocket",
-  },
-  {
-    title: "RFS PSS",
-    description:
-      "Visualize and interact with the RFS PSS datapoints of the active remote",
-    icon: <IconGasStation size="2rem" />,
-    path: "/pss/rfs",
-  },
-];
+import { pages } from "../../pages";
 
 function Views() {
   const theme = useMantineTheme();
@@ -67,27 +16,28 @@ function Views() {
         gap: theme.spacing.sm,
       }}
     >
-      {views.map((view) => (
+      {pages.map((page) => (
         <Link
-          to={view.path}
+          key={page.path}
+          to={page.path}
           style={{
             textDecoration: "none",
           }}
         >
           <Card
-            key={view.path}
+            h="100%"
             withBorder
             radius="md"
             p="lg"
             style={{ cursor: "pointer" }}
           >
             <Flex direction="column" gap="sm">
-              {view.icon}
+              {page.icon}
               <Text fw={600} size="lg">
-                {view.title}
+                {page.title}
               </Text>
               <Text c="dimmed" size="sm">
-                {view.description}
+                {page.description}
               </Text>
             </Flex>
           </Card>
