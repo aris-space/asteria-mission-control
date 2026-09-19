@@ -1,10 +1,24 @@
-import { MapContainer, Polyline, TileLayer } from "react-leaflet";
+import { Circle, MapContainer, Polyline, TileLayer } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import { Card, useMantineTheme } from "@mantine/core";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 import { useEffect, useReducer, useRef } from "react";
 import { LatLngTuple } from "leaflet";
 import { PositionData } from "packages/api-client/src";
+
+// Maximum amount of stored data points to keep.
+// When a new data point beyond this length is received,
+// is replaces the oldest data point.
+const MAX_HISTORY_LENGTH = 10000;
+
+// Delay in milliseconds after which position updates
+// are drawn on the map.
+const UPDATE_DELAY = 50;
+
+// Amount of segments into which the history should be split.
+// Every segment has a distinct opacity to create the trace
+// of the rocket on the map.
+const SEGMENTS = 25;
 
 type Position = Pick<
   PositionData,
@@ -15,6 +29,7 @@ function Map() {
   const theme = useMantineTheme();
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
 
+  const lastRender = useRef(0);
   const history = useRef<Position[]>([]);
   const [, forceRender] = useReducer((x) => x + 1, 0);
 
@@ -44,6 +59,15 @@ function Map() {
       locationLongitude,
     });
 
+    if (history.current.length > MAX_HISTORY_LENGTH) {
+      history.current.splice(0, history.current.length - MAX_HISTORY_LENGTH);
+    }
+
+    const now = new Date().getTime();
+    if (now - lastRender.current < UPDATE_DELAY) return;
+
+    lastRender.current = now;
+
     // Trigger a re-render.
     forceRender();
   }, [positionMessage]);
@@ -52,6 +76,18 @@ function Map() {
     entry.locationLatitude,
     entry.locationLongitude,
   ]);
+
+  const polylines = Array.from({ length: SEGMENTS }, (_, i) => {
+    const start = Math.floor((i / SEGMENTS) * positions.length);
+    const end = Math.floor(((i + 1) / SEGMENTS) * positions.length);
+
+    return {
+      positions: positions.slice(start, end + 1),
+      opacity: 0.05 + (i / (SEGMENTS - 1)) * 0.95,
+    };
+  });
+
+  const latest = positions.at(-1);
 
   return (
     <Card
@@ -68,7 +104,24 @@ function Map() {
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Polyline color={theme.colors.red[9]} positions={positions} />
+        {polylines.map(({ positions, opacity }, idx) => (
+          <Polyline
+            key={idx}
+            opacity={opacity}
+            color={theme.colors.red[9]}
+            positions={positions}
+          />
+        ))}
+        {latest && (
+          <Circle
+            center={latest}
+            radius={5}
+            fill
+            fillOpacity={1}
+            fillColor={theme.colors.red[9]}
+            color={theme.colors.red[9]}
+          />
+        )}
       </MapContainer>
     </Card>
   );
