@@ -10,6 +10,7 @@ import "leaflet/dist/leaflet.css";
 import {
   ActionIcon,
   Affix,
+  Alert,
   Card,
   Flex,
   Tooltip,
@@ -18,13 +19,18 @@ import {
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { LatLngTuple } from "leaflet";
-import { PositionData } from "packages/api-client/src";
-import { IconMapPinUp, IconMapPinX } from "@tabler/icons-react";
+import { PositionData } from "@asteria/mission-control-client";
+import {
+  IconAlertTriangle,
+  IconMapPinUp,
+  IconMapPinX,
+} from "@tabler/icons-react";
+import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
 // is replaces the oldest data point.
-const MAX_HISTORY_LENGTH = 10000;
+const MAX_HISTORY_LENGTH = 1000;
 
 // Delay in milliseconds after which position updates
 // are drawn on the map.
@@ -42,6 +48,7 @@ type Position = Pick<
 
 function Map() {
   const theme = useMantineTheme();
+  const { remoteComputer } = useRemoteComputer();
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
 
   const lastRender = useRef(0);
@@ -49,6 +56,12 @@ function Map() {
   const [, forceRender] = useReducer((x) => x + 1, 0);
 
   const [following, setFollowing] = useState<boolean>(true);
+
+  useEffect(() => {
+    history.current = [];
+    lastRender.current = 0;
+    forceRender();
+  }, [remoteComputer?.name]);
 
   useEffect(() => {
     const content = positionMessage?.message.content;
@@ -122,6 +135,17 @@ function Map() {
           </Tooltip>
         </Flex>
       </Affix>
+      {history.current.length == 0 && (
+        <Affix zIndex={1000} position={{ bottom: "lg", left: "lg" }}>
+          <Alert
+            w="100%"
+            title="No position data received"
+            color="yellow"
+            variant="filled"
+            icon={<IconAlertTriangle />}
+          />
+        </Affix>
+      )}
       <MapContainer
         zoomControl={false}
         attributionControl={false}
