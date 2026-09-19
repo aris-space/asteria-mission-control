@@ -1,10 +1,25 @@
-import { Circle, MapContainer, Polyline, TileLayer } from "react-leaflet";
+import {
+  Circle,
+  MapContainer,
+  Polyline,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { Card, useMantineTheme } from "@mantine/core";
+import {
+  ActionIcon,
+  Affix,
+  Card,
+  Flex,
+  Tooltip,
+  useMantineTheme,
+} from "@mantine/core";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
-import { useEffect, useReducer, useRef } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { LatLngTuple } from "leaflet";
 import { PositionData } from "packages/api-client/src";
+import { IconMapPinUp, IconMapPinX } from "@tabler/icons-react";
 
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
@@ -32,6 +47,8 @@ function Map() {
   const lastRender = useRef(0);
   const history = useRef<Position[]>([]);
   const [, forceRender] = useReducer((x) => x + 1, 0);
+
+  const [following, setFollowing] = useState<boolean>(true);
 
   useEffect(() => {
     const content = positionMessage?.message.content;
@@ -96,11 +113,20 @@ function Map() {
       p={0}
       radius={0}
     >
+      <Affix zIndex={1000} position={{ top: "5rem", right: "lg" }}>
+        <Flex gap={"xs"}>
+          <Tooltip label={"Toggle rocket following"}>
+            <ActionIcon onClick={() => setFollowing(!following)}>
+              {following ? <IconMapPinX /> : <IconMapPinUp />}
+            </ActionIcon>
+          </Tooltip>
+        </Flex>
+      </Affix>
       <MapContainer
         zoomControl={false}
         attributionControl={false}
-        center={[0, 0]}
-        zoom={13}
+        center={[47.399555, 8.630641]}
+        zoom={15}
         style={{ width: "100%", height: "100%" }}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -122,9 +148,38 @@ function Map() {
             color={theme.colors.red[9]}
           />
         )}
+        <Follower
+          position={latest}
+          active={following}
+          onActiveChange={setFollowing}
+        />
       </MapContainer>
     </Card>
   );
+}
+
+interface FollowerProps {
+  position?: LatLngTuple;
+  active: boolean;
+  onActiveChange: (active: boolean) => void;
+}
+
+function Follower({ position, active, onActiveChange }: FollowerProps) {
+  const map = useMap();
+
+  useMapEvents({
+    // When the user starts dragging, we disable the tracker
+    // since the user now wants to control the map itself.
+    drag: () => onActiveChange(false),
+  });
+
+  useEffect(() => {
+    if (active && position) {
+      map.panTo(position, { animate: false });
+      map.setView(position);
+    }
+  }, [active, position]);
+  return <></>;
 }
 
 export default Map;
