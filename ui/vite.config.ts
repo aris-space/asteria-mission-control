@@ -14,4 +14,7 @@ export default defineConfig({
       "@asteria/hooks": path.resolve(__dirname, "./src/hooks"),
     },
   },
+  optimizeDeps: {
+    exclude: ["maplibre-gl-worker", "maplibre-gl"]
+  },
 });

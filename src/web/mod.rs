@@ -1,5 +1,7 @@
+use std::collections::BTreeMap;
+
 use crate::PssDiagrams;
-use crate::config::{Config, RemoteComputerKind};
+use crate::config::{Config, RemoteComputerKind, TilesConfig};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::web::datatypes::*;
@@ -231,4 +233,19 @@ pub async fn abort(state: Data<StateInstance>, config: Data<Config>) -> actix_we
             error::ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
         })
         .map(|_| abort_state_name.clone())
+}
+
+/// Get the configured tile servers for the mission control.
+#[utoipa::path(responses((status = OK, body = BTreeMap<String, TileServer>)))]
+#[get("/tile-servers")]
+pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeMap<String, TileServer>>> {
+    let servers = config
+        .tiles
+        .iter()
+        .map(|(name, TilesConfig { description, url, pmtiles })| {
+            (name.clone(), TileServer { description: description.clone(), url: url.clone(), pmtiles: *pmtiles })
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    Ok(Json(servers))
 }

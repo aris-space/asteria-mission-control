@@ -19,6 +19,16 @@ pub struct RemoteComputerInfo {
     pub kind: RemoteComputerKind,
 }
 
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct TileServer {
+    /// Description about the tile server.
+    pub description: String,
+    /// Tiles URL for the tile server.
+    pub url: String,
+    /// Whether the tiles URL is a pmtiles URL.
+    pub pmtiles: bool,
+}
+
 #[derive(Serialize, Clone, utoipa::ToSchema, Default, PartialEq)]
 #[serde(tag = "kind", content = "value", rename_all = "camelCase")]
 pub enum OptionalResult<T: Clone + Serialize + utoipa::ToSchema> {

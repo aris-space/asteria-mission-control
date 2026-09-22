@@ -33,6 +33,8 @@ pub struct Config {
     pub pss: PssConfig,
     /// Influx database config.
     pub influx: InfluxConfig,
+    /// Available tile servers for the mission control.
+    pub tiles: BTreeMap<String, TilesConfig>,
 }
 
 impl Config {
@@ -114,6 +116,17 @@ pub struct InfluxConfig {
     pub organization: String,
     /// Name of the bucket where the datapoints should be uploaded to.
     pub bucket: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct TilesConfig {
+    /// Description about the tile server.
+    pub description: String,
+    /// Tiles URL for the tile server.
+    pub url: String,
+    /// Whether the URL is a pmtiles URL.
+    #[serde(default)]
+    pub pmtiles: bool,
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

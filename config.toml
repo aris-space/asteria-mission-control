@@ -42,3 +42,13 @@ rfs_diagram_path = "./rfs-pss.svg"
 address = "http://localhost:8086"
 organization = "ARIS"
 bucket = "ASTERIA"
+
+[tiles.osm]
+description = "OpenStreetMap (Online)"
+url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+
+[tiles.duebendorf]
+description = "Dübendorf (Docker)"
+url = "http://localhost:8877/duebendorf.pmtiles"
+# url = "http://localhost:8080/duebendorf/{z}/{x}/{y}.mvt"
+pmtiles = true

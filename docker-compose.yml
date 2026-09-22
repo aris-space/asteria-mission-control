@@ -18,6 +18,15 @@ services:
     # Use host networking because the `config.toml` references localhost addresses
     network_mode: host
 
+  tiles:
+    profiles: ["tiles", "full"]
+    build:
+      context: .
+      dockerfile: ./tiles.Dockerfile
+    ports:
+      # Tile server.
+      - "8877:80"
+
   flight-computer:
     profiles: ["flight-computer", "remote-computers", "full"]
     build:

@@ -1,31 +1,31 @@
-import {
-  Circle,
-  MapContainer,
-  Polyline,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
+import { Protocol } from "pmtiles";
+import * as maplibregl from "maplibre-gl";
+import MapContainer, { Layer, MapRef, Source } from "react-map-gl/maplibre";
 import {
   ActionIcon,
   Affix,
   Alert,
   Card,
   Flex,
+  Select,
   Tooltip,
   useMantineTheme,
 } from "@mantine/core";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
-import { useEffect, useReducer, useRef, useState } from "react";
-import { LatLngTuple } from "leaflet";
-import { PositionData } from "@asteria/mission-control-client";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  PositionData,
+  TileServer,
+  useTileServers,
+} from "@asteria/mission-control-client";
 import {
   IconAlertTriangle,
   IconMapPinUp,
   IconMapPinX,
 } from "@tabler/icons-react";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { Feature, FeatureCollection, LineString, Point } from "geojson";
 
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
@@ -41,15 +41,29 @@ const UPDATE_DELAY = 50;
 // of the rocket on the map.
 const SEGMENTS = 25;
 
+// Name of the default tile server to use.
+const DEFAULT_TILE_SERVER_NAME = "osm";
+
+// Key to store the name of the active tile server in the local storage.
+const TILE_SERVER_NAME_STORAGE_KEY = "TILE_SERVER";
+
 type Position = Pick<
   PositionData,
   "locationLatitude" | "locationLongitude" | "locationHamsl"
 >;
 
+type NamedTileServer = TileServer & { name: string };
+
+const protocol = new Protocol();
+maplibregl.addProtocol("pmtiles", protocol.tile);
+
 function Map() {
   const theme = useMantineTheme();
   const { remoteComputer } = useRemoteComputer();
+  const { tileServer, tileServers, setTileServer } = useActiveTileServer();
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
+
+  const mapRef = useRef<MapRef>(null);
 
   const lastRender = useRef(0);
   const history = useRef<Position[]>([]);
@@ -102,22 +116,81 @@ function Map() {
     forceRender();
   }, [positionMessage]);
 
-  const positions: LatLngTuple[] = history.current.map((entry) => [
-    entry.locationLatitude,
+  const positions = history.current.map((entry) => [
     entry.locationLongitude,
+    entry.locationLatitude,
   ]);
 
-  const polylines = Array.from({ length: SEGMENTS }, (_, i) => {
-    const start = Math.floor((i / SEGMENTS) * positions.length);
-    const end = Math.floor(((i + 1) / SEGMENTS) * positions.length);
-
-    return {
-      positions: positions.slice(start, end + 1),
-      opacity: 0.05 + (i / (SEGMENTS - 1)) * 0.95,
-    };
-  });
-
   const latest = positions.at(-1);
+
+  // Auto-follow logic.
+  useEffect(() => {
+    if (following && latest) {
+      mapRef.current?.panTo([latest[0], latest[1]], { duration: 0 });
+    }
+  }, [following, latest]);
+
+  // GeoJSON features for building the fading trace where the rocket travelled.
+  const traceFeatures = useMemo<
+    Feature<LineString, { opacity: number }>[]
+  >(() => {
+    if (positions.length < 2) return [];
+
+    return Array.from({ length: SEGMENTS }, (_, i) => {
+      const start = Math.floor((i / SEGMENTS) * positions.length);
+      const end = Math.floor(((i + 1) / SEGMENTS) * positions.length);
+
+      const segmentCoords = positions.slice(start, end + 1);
+      if (segmentCoords.length < 2) return null as any;
+
+      return {
+        type: "Feature",
+        properties: { opacity: 0.05 + (i / (SEGMENTS - 1)) * 0.95 },
+        geometry: { type: "LineString", coordinates: segmentCoords },
+      };
+    }).filter(Boolean);
+  }, [positions]);
+
+  // Determine map style based on the selected tile server.
+  const mapStyle = useMemo<maplibregl.StyleSpecification>(() => {
+    if (!tileServer) return { version: 8, sources: {}, layers: [] } as any;
+
+    if (tileServer.pmtiles) {
+      return {
+        version: 8,
+        sources: {
+          "pmtiles-source": {
+            type: "vector",
+            url: `pmtiles://${tileServer.url}`,
+          },
+        },
+        layers: [
+          // If using protomaps-themes-base, insert layers here.
+          // See here <https://github.com/protomaps/basemaps>.
+        ],
+      };
+    } else {
+      return {
+        version: 8,
+        sources: {
+          "raster-source": {
+            type: "raster",
+            tiles: [tileServer.url],
+            tileSize: 256,
+          },
+        },
+        layers: [
+          {
+            id: "raster-layer",
+            type: "raster",
+            source: "raster-source",
+            minzoom: 0,
+            maxzoom: 22,
+          },
+        ],
+      };
+    }
+  }, [tileServer]);
 
   return (
     <Card
@@ -135,6 +208,21 @@ function Map() {
           </Tooltip>
         </Flex>
       </Affix>
+      <Affix zIndex={1000} position={{ top: "5rem", left: "lg" }}>
+        <Select
+          value={tileServer?.name}
+          onChange={(name) => {
+            if (!name) return setTileServer(null);
+            const ts = tileServers[name];
+            if (ts) setTileServer({ ...ts, name });
+            else setTileServer(null);
+          }}
+          data={Object.entries(tileServers).map(([name, ts]) => ({
+            label: ts.description,
+            value: name,
+          }))}
+        />
+      </Affix>
       {history.current.length == 0 && (
         <Affix zIndex={1000} position={{ bottom: "lg", left: "lg" }}>
           <Alert
@@ -147,63 +235,99 @@ function Map() {
         </Affix>
       )}
       <MapContainer
-        zoomControl={false}
+        ref={mapRef}
+        mapStyle={mapStyle}
+        initialViewState={{
+          longitude: 8.631848,
+          latitude: 47.405831,
+          zoom: 15,
+        }}
+        onDragStart={() => setFollowing(false)}
         attributionControl={false}
-        center={[47.399555, 8.630641]}
-        zoom={15}
         style={{ width: "100%", height: "100%" }}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {polylines.map(({ positions, opacity }, idx) => (
-          <Polyline
-            key={idx}
-            opacity={opacity}
-            color={theme.colors.red[9]}
-            positions={positions}
+        <Source
+          id="trace"
+          type="geojson"
+          data={
+            {
+              type: "FeatureCollection",
+              features: traceFeatures,
+            } as FeatureCollection<LineString, { opacity: number }>
+          }
+        >
+          <Layer
+            id="trace-layer"
+            type="line"
+            source="trace"
+            paint={{
+              "line-color": theme.colors.red[9],
+              "line-width": 4,
+              "line-opacity": ["get", "opacity"],
+            }}
           />
-        ))}
+        </Source>
         {latest && (
-          <Circle
-            center={latest}
-            radius={5}
-            fill
-            fillOpacity={1}
-            fillColor={theme.colors.red[9]}
-            color={theme.colors.red[9]}
-          />
+          <Source
+            id="latest-point"
+            type="geojson"
+            data={
+              {
+                type: "Feature",
+                geometry: { type: "Point", coordinates: latest },
+              } as Feature<Point>
+            }
+          >
+            <Layer
+              id="latest-layer"
+              type="circle"
+              source="latest-point"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": theme.colors.red[9],
+              }}
+            />
+          </Source>
         )}
-        <Follower
-          position={latest}
-          active={following}
-          onActiveChange={setFollowing}
-        />
       </MapContainer>
     </Card>
   );
 }
 
-interface FollowerProps {
-  position?: LatLngTuple;
-  active: boolean;
-  onActiveChange: (active: boolean) => void;
-}
-
-function Follower({ position, active, onActiveChange }: FollowerProps) {
-  const map = useMap();
-
-  useMapEvents({
-    // When the user starts dragging, we disable the tracker
-    // since the user now wants to control the map itself.
-    drag: () => onActiveChange(false),
-  });
+function useActiveTileServer() {
+  const { data: tileServers = {} } = useTileServers();
+  const [tileServer, setTileServer] = useState<NamedTileServer | null>(null);
 
   useEffect(() => {
-    if (active && position) {
-      map.panTo(position, { animate: false });
-      map.setView(position);
+    if (tileServer && tileServers[tileServer.name]) return;
+    if (Object.keys(tileServers).length === 0) return setTileServer(null);
+
+    const storedTileServer =
+      localStorage.getItem(TILE_SERVER_NAME_STORAGE_KEY) ||
+      DEFAULT_TILE_SERVER_NAME;
+
+    if (tileServers[storedTileServer]) {
+      setTileServer({
+        ...tileServers[storedTileServer],
+        name: storedTileServer,
+      });
+    } else {
+      setTileServer(null);
     }
-  }, [active, position]);
-  return <></>;
+  }, [tileServers]);
+
+  useEffect(() => {
+    if (!tileServer) {
+      localStorage.setItem(
+        TILE_SERVER_NAME_STORAGE_KEY,
+        DEFAULT_TILE_SERVER_NAME,
+      );
+    } else {
+      localStorage.setItem(TILE_SERVER_NAME_STORAGE_KEY, tileServer.name);
+    }
+  }, [tileServer]);
+
+  return { tileServers, tileServer, setTileServer };
 }
 
 export default Map;

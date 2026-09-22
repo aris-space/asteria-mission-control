@@ -2859,3 +2859,14 @@ export interface StateMachine {
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
 }
+
+export interface TileServer {
+  /** Description about the tile server. */
+  description: string;
+  /** Whether the tiles URL is a pmtiles URL. */
+  pmtiles: boolean;
+  /** Tiles URL for the tile server. */
+  url: string;
+}
+
+export type TileServers200 = { [key: string]: TileServer };
