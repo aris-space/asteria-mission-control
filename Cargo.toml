@@ -98,6 +98,8 @@ influxdb2 = { version = "0.5.2", default-features = false, features = ["rustls",
 lazy_static = "1.5.0"
 facet.workspace = true
 facet-reflect = "0.46.5"
+maud = "0.27.0"
+datastar = "0.4.0"
 
 [features]
 default = []

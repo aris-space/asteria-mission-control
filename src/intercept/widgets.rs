@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-
 use crate::intercept::Interceptor;
+use crate::web::broadcast::Broadcast;
 use actix_web_lab::sse::Event;
-use asteria_datapoint_information::datapoint::{DatapointValue, IntoDatapointValue};
 use asteria_datatypes::actuator::NormallyClosedValve;
 use async_trait::async_trait;
 use facet::Facet as _;
 use facet_reflect::Peek;
+use maud::html;
+use std::{collections::HashMap, sync::Arc};
 
 type WidgetCastFn = for<'m, 'f> fn(facet_reflect::Peek<'m, 'f>) -> Option<&'m dyn Widget>;
 lazy_static::lazy_static! {
@@ -19,11 +19,18 @@ lazy_static::lazy_static! {
 }
 
 trait Widget {
-    fn foo(&self) -> u32;
+    fn make_update(&self, name: DatapointName) -> Event;
 }
 impl Widget for NormallyClosedValve {
-    fn foo(&self) -> u32 {
-        42
+    fn make_update(&self, name: DatapointName) -> Event {
+        let html = html!(
+            p id=(name) {
+                (format!("{self:?}"))
+            }
+        );
+        let evt = datastar::patch_elements::PatchElements::new(html).into_datastar_event();
+        // Sadly, the constants of datastar are private...
+        Event::Data(actix_web_lab::sse::Data::new(evt.data.join("\n")).event("datastar-patch-elements"))
     }
 }
 
@@ -33,8 +40,17 @@ struct DatapointName {
     id: Option<&'static str>,
 }
 
+impl std::fmt::Display for DatapointName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.id {
+            Some(id) => write!(f, "{id}"),
+            None => write!(f, "{}::{}", self.owner, self.datapoint),
+        }
+    }
+}
+
 pub struct WidgetInterceptor {
-    pub broadcast: tokio::sync::broadcast::Sender<Event>,
+    pub broadcast: Arc<Broadcast>,
 }
 
 impl WidgetInterceptor {
@@ -63,7 +79,13 @@ impl WidgetInterceptor {
 
 #[async_trait]
 impl Interceptor for WidgetInterceptor {
-    async fn on_message(&self, message: &asteria_messages::Message) {}
+    async fn on_message(&self, message: &asteria_messages::Message) {
+        let Some((name, widget)) = Self::extract(message) else {
+            return;
+        };
+        let event = widget.make_update(name);
+        self.broadcast.broadcast(event).await;
+    }
 }
 
 #[test]
@@ -76,5 +98,5 @@ fn check_extraction() {
 
     assert_eq!(name.owner, "RfsComputer");
     assert_eq!(name.datapoint, "GoxPurgeValveState");
-    assert_eq!(widget.foo(), 42);
+    eprint!("{:?}", widget.make_update(name));
 }
