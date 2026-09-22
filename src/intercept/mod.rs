@@ -25,6 +25,7 @@ pub use log::*;
 pub use pss::*;
 pub use sse::*;
 pub use state_machine_state::*;
+pub use widgets::*;
 
 /// Trait which can be implemented by different MavLink message
 /// consumers.

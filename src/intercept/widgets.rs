@@ -98,5 +98,6 @@ fn check_extraction() {
 
     assert_eq!(name.owner, "RfsComputer");
     assert_eq!(name.datapoint, "GoxPurgeValveState");
+    assert_eq!(name.to_string(), "RfsComputer::GoxPurgeValveState");
     eprint!("{:?}", widget.make_update(name));
 }
