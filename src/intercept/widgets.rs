@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::intercept::Interceptor;
+use actix_web_lab::sse::Event;
 use asteria_datapoint_information::datapoint::{DatapointValue, IntoDatapointValue};
 use asteria_datatypes::actuator::NormallyClosedValve;
 use async_trait::async_trait;
@@ -18,23 +19,29 @@ lazy_static::lazy_static! {
 }
 
 trait Widget {
-    fn foo(&self);
+    fn foo(&self) -> u32;
 }
 impl Widget for NormallyClosedValve {
-    fn foo(&self) {
-        println!("Hello {self:?} NC Valve");
+    fn foo(&self) -> u32 {
+        42
     }
 }
 
+struct DatapointName {
+    owner: &'static str,
+    datapoint: &'static str,
+    id: Option<&'static str>,
+}
+
 pub struct WidgetInterceptor {
-    pub broadcast: (),
+    pub broadcast: tokio::sync::broadcast::Sender<Event>,
 }
 
 impl WidgetInterceptor {
-    fn extract(message: &asteria_messages::Message) {
+    fn extract(message: &asteria_messages::Message) -> Option<(DatapointName, &dyn Widget)> {
         let peek = Peek::new(message);
         let peek = peek.into_enum().expect("we know `Message` is a enum");
-        // let outer_var = peek.active_variant().expect("shouldn't be able to fail");
+        let outer_var = peek.active_variant().expect("shouldn't be able to fail");
         let board_peek =
             peek.field(0).expect("shouldn't be able to fail").expect("we know `Message` is a newtype-only enum");
         let board_peek = board_peek.into_enum().expect("we know all newtypes of `Message` are themselves enums");
@@ -46,10 +53,11 @@ impl WidgetInterceptor {
 
         let Some(dyn_cast) = WIDGETS.get(inner_shape) else {
             eprintln!("not a widget");
-            return;
+            return None;
         };
         let widget = dyn_cast(data_peek).expect("messed up reflection: type/peek mismatch");
-        widget.foo();
+        let name = DatapointName { owner: outer_var.effective_name(), datapoint: inner_var.name, id: inner_var.rename };
+        Some((name, widget))
     }
 }
 
@@ -61,7 +69,12 @@ impl Interceptor for WidgetInterceptor {
 #[test]
 fn check_extraction() {
     use asteria_messages::datapoints::dp_rfs_computer::Message as RFSMessage;
-    WidgetInterceptor::extract(&asteria_messages::Message::RfsComputer(RFSMessage::GoxPurgeValveState(
-        NormallyClosedValve::Open,
-    )));
+    let (name, widget) = WidgetInterceptor::extract(&asteria_messages::Message::RfsComputer(
+        RFSMessage::GoxPurgeValveState(NormallyClosedValve::Open),
+    ))
+    .expect("NC is a registered widget");
+
+    assert_eq!(name.owner, "RfsComputer");
+    assert_eq!(name.datapoint, "GoxPurgeValveState");
+    assert_eq!(widget.foo(), 42);
 }
