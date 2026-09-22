@@ -17,6 +17,7 @@ mod log;
 mod pss;
 mod sse;
 mod state_machine_state;
+mod widgets;
 
 pub use config::*;
 pub use influx::*;
