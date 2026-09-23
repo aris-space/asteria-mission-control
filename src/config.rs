@@ -33,8 +33,8 @@ pub struct Config {
     pub pss: PssConfig,
     /// Influx database config.
     pub influx: InfluxConfig,
-    /// Available tile servers for the mission control.
-    pub tiles: BTreeMap<String, TilesConfig>,
+    /// Configuration related to the map displayed on the frontend.
+    pub map: MapConfig,
 }
 
 impl Config {
@@ -119,6 +119,14 @@ pub struct InfluxConfig {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct MapConfig {
+    /// Available tile servers for the mission control.
+    pub tiles: BTreeMap<String, TilesConfig>,
+    /// GNC polygon which is shown on the map.
+    pub polygon: Polygon,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct TilesConfig {
     /// Description about the tile server.
     pub description: String,
@@ -142,6 +150,16 @@ pub enum TileKind {
         /// Absolute URL to the location where the sprites for the vector layers are served (e.g., http://localhost:8888/sprites)
         sprites: String,
     },
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema, ToSchema, Clone)]
+pub struct Polygon {
+    /// Latitude-longitude pair of the origin of the bounding polygon.
+    origin: [f64; 2],
+    /// Points which span the polygon.
+    /// Every point is a tuple of distances in meters to the north- and east
+    /// of the origin.
+    points: Vec<[f64; 2]>,
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

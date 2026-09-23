@@ -17,17 +17,25 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   PositionData,
   TileServer,
+  usePolygon,
   useTileServers,
 } from "@asteria/mission-control-client";
 import {
   IconAlertTriangle,
   IconMapPinUp,
   IconMapPinX,
+  IconPolygon,
 } from "@tabler/icons-react";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Feature, FeatureCollection, LineString, Point } from "geojson";
-import { distance, point } from "@turf/turf";
+import {
+  Feature,
+  FeatureCollection,
+  LineString,
+  Point,
+  Polygon,
+} from "geojson";
+import { bbox, destination, distance, point, polygon } from "@turf/turf";
 
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
@@ -63,6 +71,7 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 function Map() {
   const theme = useMantineTheme();
   const { remoteComputer } = useRemoteComputer();
+  const { data: polygonData } = usePolygon();
   const { tileServer, tileServers, setTileServer } = useActiveTileServer();
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
 
@@ -156,6 +165,34 @@ function Map() {
     }).filter(Boolean);
   }, [positions]);
 
+  // GeoJSON features for the GNC polygon.
+  const polygonFeatures = useMemo<Feature<Polygon> | null>(() => {
+    if (!polygonData) return null;
+    const origin = point([polygonData.origin[1], polygonData.origin[0]]);
+    const coordinates = polygonData.points.map(([north, east]) => {
+      // Hypothenuse distance in meters.
+      const dist = Math.sqrt(north ** 2 + east ** 2);
+      // Clockwise angle from the north axis.
+      const bearing = Math.atan2(east, north) * (180 / Math.PI);
+      // Projection from the origin point
+      const dest = destination(origin, dist, bearing, { units: "meters" });
+      return dest.geometry.coordinates;
+    });
+
+    // GeoJSON requires a "LinearRing", meaning the first and last points
+    // must be exactly identical to close the shape.
+    if (coordinates.length > 0) {
+      const first = coordinates[0];
+      const last = coordinates[coordinates.length - 1];
+
+      if (first[0] !== last[0] || first[1] !== last[1]) {
+        coordinates.push([...first]);
+      }
+    }
+
+    return polygon([coordinates]);
+  }, [polygonData]);
+
   // Determine map style based on the selected tile server.
   const mapStyle = useMemo<maplibregl.StyleSpecification>(() => {
     if (!tileServer) return { version: 8, sources: {}, layers: [] } as any;
@@ -210,10 +247,30 @@ function Map() {
               {following ? <IconMapPinX /> : <IconMapPinUp />}
             </ActionIcon>
           </Tooltip>
+          <Tooltip label={"Fit view to GNC polygon"}>
+            <ActionIcon
+              disabled={!polygonFeatures}
+              onClick={() => {
+                if (!polygonFeatures) return;
+                setFollowing(false);
+                const [minLng, minLat, maxLng, maxLat] = bbox(polygonFeatures);
+                mapRef.current?.fitBounds(
+                  [
+                    [minLng, minLat],
+                    [maxLng, maxLat],
+                  ],
+                  { padding: 50, duration: 500 },
+                );
+              }}
+            >
+              {<IconPolygon />}
+            </ActionIcon>
+          </Tooltip>
         </Flex>
       </Affix>
       <Affix zIndex={1000} position={{ top: "5rem", left: "lg" }}>
         <Select
+          disabled={!tileServers || Object.keys(tileServers).length == 0}
           value={tileServer?.name}
           onChange={(name) => {
             if (!name) return setTileServer(null);
@@ -271,6 +328,28 @@ function Map() {
             }}
           />
         </Source>
+        {polygonFeatures && (
+          <Source id="gnc-polygon" type="geojson" data={polygonFeatures}>
+            <Layer
+              id="gnc-polygon-layer"
+              type="fill"
+              source="gnc-polygon"
+              paint={{
+                "fill-color": theme.colors.blue[9],
+                "fill-opacity": 0.1,
+              }}
+            />
+            <Layer
+              id="gnc-polygon-outline-layer"
+              type="line"
+              source="gnc-polygon"
+              paint={{
+                "line-color": theme.colors.blue[9],
+                "line-width": 2,
+              }}
+            />
+          </Source>
+        )}
         {latest && (
           <Source
             id="latest-point"

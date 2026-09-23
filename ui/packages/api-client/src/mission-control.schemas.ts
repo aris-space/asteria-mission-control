@@ -2785,6 +2785,15 @@ export type OptionalResultStateMachine =
       kind: "none";
     };
 
+export interface Polygon {
+  /** Latitude-longitude pair of the origin of the bounding polygon. */
+  origin: number[];
+  /** Points which span the polygon.
+  Every point is a tuple of distances in meters to the north- and east
+  of the origin. */
+  points: number[][];
+}
+
 /**
  * Map of all datapoints defined in the diagram together with information
 collected at compile time and from the diagram about the datapoint.

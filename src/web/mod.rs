@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::PssDiagrams;
-use crate::config::{Config, RemoteComputerKind, TilesConfig};
+use crate::config::{Config, Polygon, RemoteComputerKind, TilesConfig};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::web::datatypes::*;
@@ -235,11 +235,12 @@ pub async fn abort(state: Data<StateInstance>, config: Data<Config>) -> actix_we
         .map(|_| abort_state_name.clone())
 }
 
-/// Get the configured tile servers for the mission control.
+/// Get the configured tile servers for the map on the mission control.
 #[utoipa::path(responses((status = OK, body = BTreeMap<String, TileServer>)))]
-#[get("/tile-servers")]
+#[get("/map/tile-servers")]
 pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeMap<String, TileServer>>> {
     let servers = config
+        .map
         .tiles
         .iter()
         .map(|(name, TilesConfig { description, tile_kind })| {
@@ -248,4 +249,11 @@ pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeM
         .collect::<BTreeMap<_, _>>();
 
     Ok(Json(servers))
+}
+
+/// Get the configured polygon for the map on the mission control.
+#[utoipa::path(responses((status = OK, body = Polygon)))]
+#[get("/map/polygon")]
+pub async fn polygon(config: Data<Config>) -> actix_web::Result<Json<Polygon>> {
+    Ok(Json(config.map.polygon.clone()))
 }
