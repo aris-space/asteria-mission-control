@@ -1,7 +1,6 @@
 //! Frontend code for sensors
 
-use crate::intercept::widgets::DatapointName;
-use crate::intercept::widgets::Widget;
+use crate::intercept::widgets::{DatapointName, Widget};
 use crate::web::widgets::make_event;
 use actix_web_lab::sse::Event;
 use asteria_datatypes::units::ValueWithUnit as _;
