@@ -64,8 +64,13 @@ pub async fn widgets_demo() -> impl Responder {
             }
             body data-init="@get('/api/events')" {
                 h1 { "Datastar Widgets Demo" }
-                p { "Progressive React → Datastar migration playground: this element is patched live by the backend, no client-side JS state." }
-                p id="RfsComputer::GoxPurgeValveState" { "waiting for update…" }
+                p { "Progressive React → Datastar migration playground: this element is patched live by the backend." }
+                dl {
+                    dt { "OXD Main valve"}
+                    dd { p id="EngineControlBoard::OxidizerMainValveState" { "..." } }
+                    dt { "PRZ Vent valve"}
+                    dd { p id="FuelControlBoard::PressurizationVentValveState" { "..." } }
+                }
             }
         }
     };
