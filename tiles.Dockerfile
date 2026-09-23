@@ -23,7 +23,7 @@ FROM nginx:alpine
 
 # The fonts are served under `/fonts/`, the sprites under `/sprites/`
 # and all downloaded bounding boxes are served under `/` (e.g., a bounding
-# box named `portugal.pmtiles` will be served under `/portugal.pmtiles`.
+# box named `portugal.pmtiles` will be served under `/portugal.pmtiles`).
 COPY --from=extractor /tiles/ /usr/share/nginx/html/
 COPY ./tiles/fonts/ /usr/share/nginx/html/fonts/
 COPY ./tiles/sprites/ /usr/share/nginx/html/sprites/
