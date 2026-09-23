@@ -27,6 +27,7 @@ import {
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Feature, FeatureCollection, LineString, Point } from "geojson";
+import { distance, point } from "@turf/turf";
 
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
@@ -42,16 +43,17 @@ const UPDATE_DELAY = 50;
 // of the rocket on the map.
 const SEGMENTS = 25;
 
+// The distance in meters between two positions such that the
+// second position is added to the rocket's history.
+const MIN_DISTANCE_STEP = 5;
+
 // Name of the default tile server to use.
 const DEFAULT_TILE_SERVER_NAME = "osm";
 
 // Key to store the name of the active tile server in the local storage.
 const TILE_SERVER_NAME_STORAGE_KEY = "TILE_SERVER";
 
-type Position = Pick<
-  PositionData,
-  "locationLatitude" | "locationLongitude" | "locationHamsl"
->;
+type Position = Pick<PositionData, "locationLatitude" | "locationLongitude">;
 
 type NamedTileServer = TileServer & { name: string };
 
@@ -82,24 +84,26 @@ function Map() {
     const content = positionMessage?.message.content;
     if (!content) return;
 
-    const { locationHamsl, locationLatitude, locationLongitude } = content;
+    const { locationLatitude, locationLongitude } = content;
     // Zero-coordinates are nonsense values.
-    if (!locationLatitude && !locationLongitude && !locationHamsl) return;
+    if (!locationLatitude && !locationLongitude) return;
 
     const last = history.current.at(-1);
     if (
       last &&
-      last.locationHamsl == locationHamsl &&
-      last.locationLatitude == locationLatitude &&
-      last.locationLongitude == locationLongitude
+      distance(
+        point([last.locationLongitude, last.locationLatitude]),
+        point([locationLongitude, locationLatitude]),
+        { units: "meters" },
+      ) <= MIN_DISTANCE_STEP
     ) {
-      // The last entry in the history is already the exact same position.
+      // The minimum distance between the new and the last point is smaller
+      // than our `MIN_DISTANCE_STEP` threshold.
       // We thus don't need to update the history.
       return;
     }
 
     history.current.push({
-      locationHamsl,
       locationLatitude,
       locationLongitude,
     });
@@ -127,7 +131,7 @@ function Map() {
   // Auto-follow logic.
   useEffect(() => {
     if (following && latest) {
-      mapRef.current?.panTo([latest[0], latest[1]], { duration: 0 });
+      mapRef.current?.panTo([latest[0], latest[1]], { duration: 50 });
     }
   }, [following, latest]);
 
