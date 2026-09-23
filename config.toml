@@ -45,10 +45,12 @@ bucket = "ASTERIA"
 
 [tiles.osm]
 description = "OpenStreetMap (Online)"
+type = "raster"
 url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
 [tiles.duebendorf]
 description = "Dübendorf (Docker)"
+type = "vector"
 url = "http://localhost:8877/duebendorf.pmtiles"
-# url = "http://localhost:8080/duebendorf/{z}/{x}/{y}.mvt"
-pmtiles = true
+fonts = "http://localhost:8877/fonts"
+sprites = "http://localhost:8877/sprites"

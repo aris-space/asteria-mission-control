@@ -64,7 +64,9 @@ There are some things which need to be followed whilst exporting the diagram as 
 > [!IMPORTANT]
 > The draw.io plugins are not stored inside the diagram file. They need to be enabled on every editor with which you want to edit the diagram!
 
-![Screenshot of SVG export on draw.io](./docs/svg-export.png)
+<p align="center">
+  <img src="./docs/svg-export.png" height="550">
+</p>
 
 ### Validating state machine configs
 
@@ -102,6 +104,51 @@ Start the logging with `docker compose --profile logging up`, and shut down agai
 - the local Grafana instance can be reached [here](http://localhost:3001)
   - Username: Admin
   - Password: defined in your `.env` file (same as for local InfluxDB)
+
+### Offline tile server
+
+Since the Mission Control is also expected to work in environment without internet, there is the ability to download offline maps and use a local
+tile server instead of the hosted OpenStreetMaps tiles.
+
+First, the `tiles.Dockerfile` is used to create a new tile server. When you want to add a new region to this tile server, look up the bounding box
+of your region on [https://bboxfinder.com](https://bboxfinder.com) and use this bounding box to add a section like this in the `extractor` phase of the build:
+
+```bash
+# Get coordinates from <https://bboxfinder.com>.
+ENV BBOX_DUEBENDORF="8.617401,47.389285,8.677826,47.409619"
+
+# Download the tiles for this region into `duebendorf.pmtiles` which will then
+# be served under `/duebendorf.pmtiles`.
+RUN --mount=type=bind,from=pmtiles,source=/go-pmtiles,target=/usr/local/bin/pmtiles \
+    pmtiles extract \
+      https://build.protomaps.com/20250324.pmtiles \
+      duebendorf.pmtiles \
+      --bbox="$BBOX_DUEBENDORF"
+```
+
+Once added to the tile server, the new region needs to be added as a tile server to the config.
+Because the downloaded tiles are vector tiles, you'll also need to specify a fonts and sprites URL.
+The tile server container created using `tiles.Dockerfile` serves the fonts and sprites from the `tiles` directory
+from the project root, so you'll want to use those:
+
+```toml
+# Unique name of your tile server.
+[tiles.duebendorf]
+# Description of the tile server which is shown on the frontend.
+description = "Dübendorf (Docker)"
+# The downloaded tiles are vector tiles.
+type = "vector"
+# The url to the vector tiles.
+url = "http://localhost:8877/duebendorf.pmtiles"
+# The url to the fonts.
+fonts = "http://localhost:8877/fonts"
+# The url to the sprites.
+sprites = "http://localhost:8877/sprites"
+```
+
+The `docker-compose.yml` in the project root contains a fully configured tile server which is exposed under [http://localhost:8888/](http://localhost:8888/).
+By running `docker compose --profile tiles up -d`, the tile server will be started.
+Alternatively, `--profile full` will also start the tile server in addition to everything else.
 
 ## Development Utilities
 

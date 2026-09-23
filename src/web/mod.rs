@@ -242,8 +242,8 @@ pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeM
     let servers = config
         .tiles
         .iter()
-        .map(|(name, TilesConfig { description, url, pmtiles })| {
-            (name.clone(), TileServer { description: description.clone(), url: url.clone(), pmtiles: *pmtiles })
+        .map(|(name, TilesConfig { description, tile_kind })| {
+            (name.clone(), TileServer { description: description.clone(), tile_kind: tile_kind.clone() })
         })
         .collect::<BTreeMap<_, _>>();
 

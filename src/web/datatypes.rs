@@ -1,4 +1,4 @@
-use crate::config::RemoteComputerKind;
+use crate::config::{RemoteComputerKind, TileKind};
 
 use serde::Serialize;
 
@@ -23,10 +23,9 @@ pub struct RemoteComputerInfo {
 pub struct TileServer {
     /// Description about the tile server.
     pub description: String,
-    /// Tiles URL for the tile server.
-    pub url: String,
-    /// Whether the tiles URL is a pmtiles URL.
-    pub pmtiles: bool,
+    /// The kind of tiles the server provides.
+    #[serde(flatten)]
+    pub tile_kind: TileKind,
 }
 
 #[derive(Serialize, Clone, utoipa::ToSchema, Default, PartialEq)]

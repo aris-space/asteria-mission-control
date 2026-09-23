@@ -2860,13 +2860,25 @@ export interface StateMachine {
   stateNodes: StateMachineStateNodes;
 }
 
-export interface TileServer {
+export type TileKind =
+  | {
+      type: "raster";
+      /** Template URL for fetching a raster tile (e.g., https://tile.openstreetmap.org/{z}/{x}/{y}.png). */
+      url: string;
+    }
+  | {
+      /** Absolute URL to the location where the fonts for the vector layers are served (e.g., http://localhost:8888/fonts) */
+      fonts: string;
+      /** Absolute URL to the location where the sprites for the vector layers are served (e.g., http://localhost:8888/sprites) */
+      sprites: string;
+      type: "vector";
+      /** Absolute URL to the location where the vector tiles are served (e.g., http://localhost:8888/data/test.pmtiles) */
+      url: string;
+    };
+
+export type TileServer = TileKind & {
   /** Description about the tile server. */
   description: string;
-  /** Whether the tiles URL is a pmtiles URL. */
-  pmtiles: boolean;
-  /** Tiles URL for the tile server. */
-  url: string;
-}
+};
 
 export type TileServers200 = { [key: string]: TileServer };

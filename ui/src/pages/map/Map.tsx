@@ -1,5 +1,6 @@
 import { Protocol } from "pmtiles";
 import * as maplibregl from "maplibre-gl";
+import { layers, namedFlavor } from "@protomaps/basemaps";
 import MapContainer, { Layer, MapRef, Source } from "react-map-gl/maplibre";
 import {
   ActionIcon,
@@ -155,19 +156,18 @@ function Map() {
   const mapStyle = useMemo<maplibregl.StyleSpecification>(() => {
     if (!tileServer) return { version: 8, sources: {}, layers: [] } as any;
 
-    if (tileServer.pmtiles) {
+    if (tileServer.type == "vector") {
       return {
         version: 8,
+        glyphs: `${tileServer.fonts}/{fontstack}/{range}.pbf`,
+        sprite: `${tileServer.sprites}/v4/light`,
         sources: {
           "pmtiles-source": {
             type: "vector",
             url: `pmtiles://${tileServer.url}`,
           },
         },
-        layers: [
-          // If using protomaps-themes-base, insert layers here.
-          // See here <https://github.com/protomaps/basemaps>.
-        ],
+        layers: layers("pmtiles-source", namedFlavor("light"), { lang: "en" }),
       };
     } else {
       return {
@@ -316,7 +316,7 @@ function useActiveTileServer() {
     }
   }, [tileServers]);
 
-  useEffect(() => {
+  const updateTileServer = (tileServer: NamedTileServer | null) => {
     if (!tileServer) {
       localStorage.setItem(
         TILE_SERVER_NAME_STORAGE_KEY,
@@ -325,9 +325,10 @@ function useActiveTileServer() {
     } else {
       localStorage.setItem(TILE_SERVER_NAME_STORAGE_KEY, tileServer.name);
     }
-  }, [tileServer]);
+    setTileServer(tileServer);
+  };
 
-  return { tileServers, tileServer, setTileServer };
+  return { tileServers, tileServer, setTileServer: updateTileServer };
 }
 
 export default Map;
