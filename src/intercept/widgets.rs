@@ -2,70 +2,29 @@
 
 use crate::intercept::Interceptor;
 use crate::web::broadcast::Broadcast;
+use crate::web::widgets::register_widgets;
 use actix_web_lab::sse::Event;
-use asteria_datatypes::actuator::{NormallyClosedValve, NormallyOpenValve};
 use async_trait::async_trait;
-use facet::Facet as _;
 use facet_reflect::Peek;
-use maud::{Markup, html};
 use std::collections::HashMap;
 use std::sync::Arc;
 
+/// A type that carries contents for a widget.
+pub trait Widget {
+    /// Create a datastar SSE event that updates the widget content for the datapoint `name` with content `self`.
+    fn make_update(&self, name: DatapointName) -> Event;
+}
+
 // Machinery to perform a dynamic cast to a trait object:
-type WidgetCastFn = for<'m, 'f> fn(facet_reflect::Peek<'m, 'f>) -> Option<&'m dyn Widget>;
+pub type WidgetCastFn = for<'m, 'f> fn(facet_reflect::Peek<'m, 'f>) -> Option<&'m dyn Widget>;
 lazy_static::lazy_static! {
     /// All types which implement Widget, manually registered
     static ref WIDGETS: HashMap<&'static facet::Shape, WidgetCastFn> = register_widgets();
 }
 
-/// Collects all supported types to display via datastar
-fn register_widgets() -> HashMap<&'static facet::Shape, WidgetCastFn> {
-    macro_rules! widget_list {
-        ($($t:ty,)+) => {[$(
-            (<$t>::SHAPE, { let cast: WidgetCastFn = |p| p.get::<$t>().ok().map(|v| v as &dyn Widget); cast })
-        ),+]}
-    }
-    HashMap::from(widget_list![NormallyClosedValve, NormallyOpenValve,])
-}
-
-/// A type that carries contents for a widget.
-trait Widget {
-    /// Create a datastar SSE event that updates the widget content for the datapoint `name` with content `self`.
-    fn make_update(&self, name: DatapointName) -> Event;
-}
-
-impl Widget for NormallyClosedValve {
-    fn make_update(&self, name: DatapointName) -> Event {
-        let html = html!(
-            p id=(name) {
-                (format!("{self:?}"))
-            }
-        );
-        make_event(html)
-    }
-}
-
-impl Widget for NormallyOpenValve {
-    fn make_update(&self, name: DatapointName) -> Event {
-        let html = html!(
-            p id=(name) {
-                (format!("{self:?}"))
-            }
-        );
-        make_event(html)
-    }
-}
-
-/// Helper to wrap html into a datastar Patch Elements SSE event
-fn make_event(html: Markup) -> Event {
-    let evt = datastar::patch_elements::PatchElements::new(html).into_datastar_event();
-    // Sadly, the constants of datastar are private...
-    Event::Data(actix_web_lab::sse::Data::new(evt.data.join("\n")).event("datastar-patch-elements"))
-}
-
 /// The name/identification of a datapoint.
 /// It is either `Board::Message` or `renamed_id`, if `#[facet::rename]` is given on the inner message.
-struct DatapointName {
+pub struct DatapointName {
     owner: &'static str,
     datapoint: &'static str,
     id: Option<&'static str>,
@@ -124,7 +83,9 @@ impl Interceptor for WidgetInterceptor {
 
 #[test]
 fn check_extraction() {
+    use asteria_datatypes::actuator::NormallyClosedValve;
     use asteria_messages::datapoints::dp_rfs_computer::Message as RFSMessage;
+
     let (name, widget) = WidgetInterceptor::extract(&asteria_messages::Message::RfsComputer(
         RFSMessage::GoxPurgeValveState(NormallyClosedValve::Open),
     ))

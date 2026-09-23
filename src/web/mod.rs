@@ -19,6 +19,7 @@ pub mod broadcast;
 pub mod datatypes;
 pub mod event;
 pub mod state;
+pub mod widgets;
 
 /// Get general information about the running API server.
 #[utoipa::path(responses((status = OK, body = ServerInfo)))]
@@ -48,9 +49,8 @@ pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<i
 /// Hacky demo page showcasing progressive migration from React to Datastar.
 ///
 /// Loads Datastar from a CDN, hooks it up to the existing `/api/events` SSE
-/// stream via `data-init`, and renders a placeholder element for
-/// `RfsComputer::GoxPurgeValveState` which gets live-patched by
-/// [`crate::intercept::WidgetInterceptor`] whenever that datapoint changes.
+/// stream via `data-init`, and renders placeholder elements which gets live-patched by
+/// [`crate::intercept::WidgetInterceptor`] whenever the datapoint changes.
 #[utoipa::path(responses((status = OK, content_type = "text/html")))]
 #[get("/demo/widgets")]
 pub async fn widgets_demo() -> impl Responder {
@@ -70,6 +70,10 @@ pub async fn widgets_demo() -> impl Responder {
                     dd { p id="EngineControlBoard::OxidizerMainValveState" { "..." } }
                     dt { "PRZ Vent valve"}
                     dd { p id="FuelControlBoard::PressurizationVentValveState" { "..." } }
+                    dt { "FUE Tank P1"}
+                    dd { p id="FuelControlBoard::FuelTankPressureSensor2" { "..." } }
+                    dt { "FUE Inj Temp"}
+                    dd { p id="EngineControlBoard::InjectorFuelTemperature" { "..." } }
                 }
             }
         }
