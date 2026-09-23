@@ -8,14 +8,14 @@ import {
   Alert,
   Card,
   Flex,
+  rgba,
   Select,
   Tooltip,
   useMantineTheme,
 } from "@mantine/core";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  PositionData,
   TileServer,
   usePolygon,
   useTileServers,
@@ -28,28 +28,17 @@ import {
 } from "@tabler/icons-react";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 import "maplibre-gl/dist/maplibre-gl.css";
-import {
-  Feature,
-  FeatureCollection,
-  LineString,
-  Point,
-  Polygon,
-} from "geojson";
+import { Feature, Polygon } from "geojson";
 import { bbox, destination, distance, point, polygon } from "@turf/turf";
 
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
 // is replaces the oldest data point.
-const MAX_HISTORY_LENGTH = 1000;
+const MAX_HISTORY_LENGTH = 10000;
 
 // Delay in milliseconds after which position updates
 // are drawn on the map.
 const UPDATE_DELAY = 50;
-
-// Amount of segments into which the history should be split.
-// Every segment has a distinct opacity to create the trace
-// of the rocket on the map.
-const SEGMENTS = 25;
 
 // The distance in meters between two positions such that the
 // second position is added to the rocket's history.
@@ -60,8 +49,6 @@ const DEFAULT_TILE_SERVER_NAME = "osm";
 
 // Key to store the name of the active tile server in the local storage.
 const TILE_SERVER_NAME_STORAGE_KEY = "TILE_SERVER";
-
-type Position = Pick<PositionData, "locationLatitude" | "locationLongitude">;
 
 type NamedTileServer = TileServer & { name: string };
 
@@ -78,92 +65,99 @@ function Map() {
   const mapRef = useRef<MapRef>(null);
 
   const lastRender = useRef(0);
-  const history = useRef<Position[]>([]);
-  const [, forceRender] = useReducer((x) => x + 1, 0);
+  // History of rocket positions stored as longitude-latitude tuples.
+  const history = useRef<[number, number][]>([]);
 
   const [following, setFollowing] = useState<boolean>(true);
 
   useEffect(() => {
     history.current = [];
     lastRender.current = 0;
-    forceRender();
+    if (mapRef.current) {
+      const traceSource = mapRef.current.getSource("trace");
+      if (traceSource instanceof maplibregl.GeoJSONSource) {
+        traceSource.setData({ type: "FeatureCollection", features: [] });
+      }
+
+      const latestPointSource = mapRef.current.getSource("latest-point");
+      if (latestPointSource instanceof maplibregl.GeoJSONSource) {
+        latestPointSource.setData({ type: "Point", coordinates: [] });
+      }
+    }
   }, [remoteComputer?.name]);
 
   useEffect(() => {
     const content = positionMessage?.message.content;
     if (!content) return;
 
-    const { locationLatitude, locationLongitude } = content;
+    const { locationLatitude: lat, locationLongitude: lng } = content;
     // Zero-coordinates are nonsense values.
-    if (!locationLatitude && !locationLongitude) return;
+    if (!lat && !lng) return;
 
     const last = history.current.at(-1);
-    if (
-      last &&
-      distance(
-        point([last.locationLongitude, last.locationLatitude]),
-        point([locationLongitude, locationLatitude]),
-        { units: "meters" },
-      ) <= MIN_DISTANCE_STEP
-    ) {
-      // The minimum distance between the new and the last point is smaller
-      // than our `MIN_DISTANCE_STEP` threshold.
-      // We thus don't need to update the history.
-      return;
+
+    if (last) {
+      const dist = distance(point(last), point([lng, lat]), {
+        units: "meters",
+      });
+      if (dist <= MIN_DISTANCE_STEP) {
+        // The minimum distance between the new and the last point is smaller
+        // than our `MIN_DISTANCE_STEP` threshold.
+        // We thus don't need to update the history.
+        return;
+      }
     }
 
-    history.current.push({
-      locationLatitude,
-      locationLongitude,
-    });
+    history.current.push([lng, lat]);
 
     if (history.current.length > MAX_HISTORY_LENGTH) {
       history.current.splice(0, history.current.length - MAX_HISTORY_LENGTH);
     }
+
+    updateLatest();
 
     const now = new Date().getTime();
     if (now - lastRender.current < UPDATE_DELAY) return;
 
     lastRender.current = now;
 
-    // Trigger a re-render.
-    forceRender();
+    updateTrace();
   }, [positionMessage]);
 
-  const positions = history.current.map((entry) => [
-    entry.locationLongitude,
-    entry.locationLatitude,
-  ]);
+  /// Update the trace on the map without re-rendering the entire React component.
+  const updateTrace = () => {
+    const source = mapRef.current?.getSource("trace");
 
-  const latest = positions.at(-1);
+    if (!(source instanceof maplibregl.GeoJSONSource)) return;
 
-  // Auto-follow logic.
-  useEffect(() => {
-    if (following && latest) {
-      mapRef.current?.panTo([latest[0], latest[1]], { duration: 50 });
-    }
-  }, [following, latest]);
+    source.setData({
+      type: "FeatureCollection",
+      features:
+        history.current.length >= 2
+          ? [
+              {
+                type: "Feature",
+                properties: {},
+                geometry: { type: "LineString", coordinates: history.current },
+              },
+            ]
+          : [],
+    });
+  };
 
-  // GeoJSON features for building the fading trace where the rocket travelled.
-  const traceFeatures = useMemo<
-    Feature<LineString, { opacity: number }>[]
-  >(() => {
-    if (positions.length < 2) return [];
+  // Update the point of the "head" of the rocket without re-rendering the entire React component.
+  // If `following` is `true`, this also pans to the new "head" point`
+  const updateLatest = () => {
+    const source = mapRef.current?.getSource("latest-point");
+    const latest = history.current.at(-1);
 
-    return Array.from({ length: SEGMENTS }, (_, i) => {
-      const start = Math.floor((i / SEGMENTS) * positions.length);
-      const end = Math.floor(((i + 1) / SEGMENTS) * positions.length);
+    if (!(source instanceof maplibregl.GeoJSONSource) || !latest) return;
 
-      const segmentCoords = positions.slice(start, end + 1);
-      if (segmentCoords.length < 2) return null as any;
+    source.setData(point(latest));
 
-      return {
-        type: "Feature",
-        properties: { opacity: 0.05 + (i / (SEGMENTS - 1)) * 0.95 },
-        geometry: { type: "LineString", coordinates: segmentCoords },
-      };
-    }).filter(Boolean);
-  }, [positions]);
+    // Auto-follow logic.
+    if (following) mapRef.current?.panTo(latest, { duration: 50 });
+  };
 
   // GeoJSON features for the GNC polygon.
   const polygonFeatures = useMemo<Feature<Polygon> | null>(() => {
@@ -310,13 +304,27 @@ function Map() {
         <Source
           id="trace"
           type="geojson"
-          data={
-            {
-              type: "FeatureCollection",
-              features: traceFeatures,
-            } as FeatureCollection<LineString, { opacity: number }>
-          }
+          data={{ type: "FeatureCollection", features: [] }}
+          lineMetrics
         >
+          <Layer
+            id="trace-layer"
+            type="line"
+            source="trace"
+            paint={{
+              "line-width": 4,
+              // Progress is determined from oldest (first element) to latest (last element).
+              "line-gradient": [
+                "interpolate",
+                ["linear"],
+                ["line-progress"],
+                0,
+                rgba(theme.colors.red[9], 0),
+                1,
+                rgba(theme.colors.red[9], 1),
+              ],
+            }}
+          />
           <Layer
             id="trace-layer"
             type="line"
@@ -350,28 +358,22 @@ function Map() {
             />
           </Source>
         )}
-        {latest && (
-          <Source
-            id="latest-point"
-            type="geojson"
-            data={
-              {
-                type: "Feature",
-                geometry: { type: "Point", coordinates: latest },
-              } as Feature<Point>
-            }
-          >
-            <Layer
-              id="latest-layer"
-              type="circle"
-              source="latest-point"
-              paint={{
-                "circle-radius": 5,
-                "circle-color": theme.colors.red[9],
-              }}
-            />
-          </Source>
-        )}
+
+        <Source
+          id="latest-point"
+          type="geojson"
+          data={{ type: "Point", coordinates: [] }}
+        >
+          <Layer
+            id="latest-layer"
+            type="circle"
+            source="latest-point"
+            paint={{
+              "circle-radius": 5,
+              "circle-color": theme.colors.red[9],
+            }}
+          />
+        </Source>
       </MapContainer>
     </Card>
   );
