@@ -29,34 +29,34 @@ export const pages: Page[] = [
     page: <StateMachine />,
   },
   {
+    path: "/telemetry",
     title: "Telemetry",
     description: "Real-time data: altitude, position, velocity etc.",
     icon: <IconChartLine size="2rem" />,
-    path: "/telemetry",
     page: <Telemetry />,
   },
   {
+    path: "/health",
     title: "Health",
     description:
       "Visualize the last received message of different message kinds",
     icon: <IconHeartRateMonitor size="2rem" />,
-    path: "/health",
     page: <Health />,
   },
   {
+    path: "/pss/rocket",
     title: "Rocket PSS",
     description:
       "Visualize and interact with the rocket PSS datapoints of the active remote",
     icon: <IconRocket size="2rem" />,
-    path: "/pss/rocket",
     page: <PSS kind="rocket" />,
   },
   {
+    path: "/pss/rfs",
     title: "RFS PSS",
     description:
       "Visualize and interact with the RFS PSS datapoints of the active remote",
     icon: <IconGasStation size="2rem" />,
-    path: "/pss/rfs",
     page: <PSS kind="rfs" />,
   },
 ];
