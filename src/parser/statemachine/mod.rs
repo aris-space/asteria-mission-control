@@ -239,6 +239,10 @@ mod validate_configs {
             if path.is_dir() {
                 collect_toml_files(&path, out);
             } else if path.extension().is_some_and(|ext| ext == "toml") {
+                if path.components().any(|c| c.as_os_str() == "manual_actions") {
+                    // skip manual actions
+                    continue;
+                }
                 out.push(path);
             }
         }
@@ -253,19 +257,19 @@ mod validate_configs {
     #[test]
     fn all_state_machine_configs_match_their_diagram() {
         let configs_repository_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("remote-computers");
+
         let mut toml_files = Vec::new();
-        collect_toml_files(&configs_repository_path, &mut toml_files);
+        for remote_computer in ["rfs-computer", "flight-computer"] {
+            collect_toml_files(&configs_repository_path.join(remote_computer).join("configs"), &mut toml_files);
+        }
+        println!("checking {} files", toml_files.len());
 
         let mut failures = Vec::new();
         for path in toml_files {
             let contents = fs::read_to_string(&path).expect("failed to read config file");
-            // Skip files which aren't full remote computer configs, e.g. manual action
-            // snippets which declare states but no diagram to validate them against.
-            if !contents.contains("[state_machine]") || !contents.contains("diagram_path") {
-                continue;
-            }
+            let value: toml::Value = toml::from_str(&contents).expect("failed to parse config file as TOML");
 
-            let rc_config: RemoteComputerConfig = match toml::from_str(&contents) {
+            let rc_config: RemoteComputerConfig = match value.try_into() {
                 Ok(config) => config,
                 Err(err) => {
                     failures.push(format!("{}: failed to parse as RemoteComputerConfig: {err}", path.display()));
