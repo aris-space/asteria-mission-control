@@ -1,7 +1,9 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PropsWithChildren,
@@ -13,6 +15,7 @@ import {
 import { useId } from "@mantine/hooks";
 import { useEvent } from "@asteria/hooks/EventContext";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
+import { deepEqual } from "fast-equals";
 
 interface MavlinkContextDefinition {
   addNotifier: (
@@ -51,9 +54,12 @@ export function MavlinkProvider(props: PropsWithChildren) {
     const mavlinkMessage = JSON.parse(event.data) as MavlinkMessage;
     const messageId = `${mavlinkMessage.board}-${mavlinkMessage.message.type}`;
     mavlinkMessages.current[messageId] = mavlinkMessage;
-    Object.values(notifiers.current).forEach(([cbMessageId, cb]) => {
+    // Use `for` loop instead of iterator to prevent allocating an array of notifiers
+    // for each incoming message.
+    for (const name in notifiers.current) {
+      const [cbMessageId, cb] = notifiers.current[name];
       if (cbMessageId == messageId) cb(mavlinkMessage);
-    });
+    }
   });
 
   const { remoteComputer } = useRemoteComputer();
@@ -62,7 +68,9 @@ export function MavlinkProvider(props: PropsWithChildren) {
     // The remote computer changed so all previous MavLink messages get invalidated.
     mavlinkMessages.current = {};
     // Call all notifiers such that all `useMavlinkMessage` instances update to `null`.
-    Object.values(notifiers.current).forEach(([_, cb]) => cb(null as any));
+    for (const name in notifiers.current) {
+      notifiers.current[name][1](null as any);
+    }
   }, [remoteComputer?.name]);
 
   /**
@@ -73,20 +81,25 @@ export function MavlinkProvider(props: PropsWithChildren) {
    * @param messageType the type of message we're interested
    * @param cb the callback function which is called when a matching function is received
    */
-  const addNotifier = (
-    name: string,
-    board: string,
-    messageType: string,
-    cb: (message: MavlinkMessage) => void,
-  ) => {
-    notifiers.current[name] = [`${board}-${messageType}`, cb];
-  };
+  const addNotifier = useCallback(
+    (
+      name: string,
+      board: string,
+      messageType: string,
+      cb: (message: MavlinkMessage) => void,
+    ) => {
+      notifiers.current[name] = [`${board}-${messageType}`, cb];
+    },
+    [],
+  );
 
   /**
    * Remove a message callback function.
    * @param name identifier of the callback function
    */
-  const removeNotifier = (name: string) => delete notifiers.current[name];
+  const removeNotifier = useCallback((name: string) => {
+    delete notifiers.current[name];
+  }, []);
 
   /**
    * Get the last received message for a board and a message type.
@@ -94,23 +107,32 @@ export function MavlinkProvider(props: PropsWithChildren) {
    * @param messageType the type of message to return
    * @returns the last message of this type for this board if one was received. Otherwise `undefined` is returned.
    */
-  const getMessage = (
-    board: string,
-    messageType: string,
-  ): MavlinkMessage | undefined => {
-    const messageId = `${board}-${messageType}`;
-    return mavlinkMessages.current[messageId];
-  };
+  const getMessage = useCallback(
+    (board: string, messageType: string): MavlinkMessage | undefined => {
+      return mavlinkMessages.current[`${board}-${messageType}`];
+    },
+    [],
+  );
+
+  const getLastMessageTimestamp = useCallback(
+    () => lastMessageTimestamp.current,
+    [],
+  );
+
+  // Memoized such that consumers of the context don't re-render whenever this
+  // provider re-renders (e.g. when the active remote computer changes).
+  const value: MavlinkContextDefinition = useMemo(
+    () => ({
+      addNotifier,
+      removeNotifier,
+      getMessage,
+      getLastMessageTimestamp,
+    }),
+    [addNotifier, removeNotifier, getMessage, getLastMessageTimestamp],
+  );
 
   return (
-    <MavlinkContext.Provider
-      value={{
-        addNotifier,
-        removeNotifier,
-        getMessage,
-        getLastMessageTimestamp: () => lastMessageTimestamp.current,
-      }}
-    >
+    <MavlinkContext.Provider value={value}>
       {props.children}
     </MavlinkContext.Provider>
   );
@@ -160,11 +182,14 @@ export function useMavlinkMessage<
   const [message, setMessage] = useState<MavlinkMessage>();
 
   useEffect(() => {
-    setMessage(context.getMessage(board, type));
+    const initialMessage = context.getMessage(board, type);
+    currentMessage.current = initialMessage;
+    setMessage(initialMessage);
     const cb = (newMessage: MavlinkMessage) => {
-      if (
-        JSON.stringify(currentMessage.current) != JSON.stringify(newMessage)
-      ) {
+      // Keep the ref in sync here (instead of a separate effect) such that the
+      // comparison always sees the latest message.
+      if (!deepEqual(currentMessage.current, newMessage)) {
+        currentMessage.current = newMessage;
         setMessage(newMessage);
       }
     };
@@ -172,11 +197,7 @@ export function useMavlinkMessage<
     return () => {
       context.removeNotifier(id);
     };
-  }, [board, type]);
-
-  useEffect(() => {
-    currentMessage.current = message;
-  }, [message]);
+  }, [board, type, context]);
 
   return (
     (message as MavlinkMessage & {

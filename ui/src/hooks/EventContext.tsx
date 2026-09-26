@@ -2,8 +2,10 @@ import { useId } from "@mantine/hooks";
 import { EventKind } from "@asteria/mission-control-client";
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type PropsWithChildren,
@@ -19,22 +21,31 @@ const EVENTS_RECONNECT_TIMEOUT = 2000;
 
 type EventCallback<T = any> = (message: MessageEvent<T>) => void;
 
-interface EventContextDefinition {
-  latency: number;
+interface EventActionsContextDefinition {
   addListener: (id: string, eventType: string, cb: EventCallback) => void;
   removeListener: (id: string) => void;
 }
 
-const defaultValue: EventContextDefinition = {
-  latency: Infinity,
+// The listener API is stable for the lifetime of the provider. It is kept in its own context
+// such that components which only subscribe to events via `useEvent` don't re-render when the
+// latency is updated on every ping.
+const defaultActionsValue: EventActionsContextDefinition = {
   addListener: () => {},
   removeListener: () => {},
 };
 
-const EventContext = createContext<EventContextDefinition>(defaultValue);
+const EventActionsContext =
+  createContext<EventActionsContextDefinition>(defaultActionsValue);
+
+// The latency changes on every ping, so it is kept in a separate context such that only
+// components using `useBackendLatency` re-render when it updates.
+const EventLatencyContext = createContext<number>(Infinity);
 
 export function EventProvider(props: PropsWithChildren) {
   const [source, setSource] = useState<EventSource | null>(null);
+  // Kept in sync with the `source` state such that the (stable) listener functions below always
+  // operate on the currently active event source, also right after a reconnect.
+  const sourceRef = useRef<EventSource | null>(null);
   // Every `useEvent` instance has an unique id from `useId` which is used as key in this record.
   // The value for each key is the event type the `useEvent` instance is interested in and the
   // callback function which should called when such an event is received.
@@ -47,11 +58,13 @@ export function EventProvider(props: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    sourceRef.current = source;
     if (source) {
       // We got a new source, so we should re-add all registered listeners.
-      Object.values(listeners.current).forEach(([eventType, cb]) =>
-        source.addEventListener(eventType, cb),
-      );
+      for (const id in listeners.current) {
+        const [eventType, cb] = listeners.current[id];
+        source.addEventListener(eventType, cb);
+      }
     }
 
     return () => {
@@ -75,13 +88,10 @@ export function EventProvider(props: PropsWithChildren) {
     });
 
     eventSource.addEventListener(EventKind.PING, (data) => {
-      const timestamp = new Date(parseInt(data.data));
-      const now = new Date();
-      setLatency(now.getTime() - timestamp.getTime());
+      const pingLatency = Date.now() - Number(data.data);
+      setLatency(pingLatency);
 
-      console.debug(
-        `Received ping with ${now.getTime() - timestamp.getTime()}ms latency`,
-      );
+      console.debug(`Received ping with ${pingLatency}ms latency`);
     });
 
     eventSource.addEventListener("error", (data) => {
@@ -115,37 +125,40 @@ export function EventProvider(props: PropsWithChildren) {
    * @param eventType the type of event the listener is interested in
    * @param cb the callback function to call when an event occurs
    */
-  const addListener = (id: string, eventType: string, cb: EventCallback) => {
-    if (source) {
-      // We need to add the listener to the existing source.
-      source.addEventListener(eventType, cb);
-    }
-    listeners.current[id] = [eventType, cb];
-  };
+  const addListener = useCallback(
+    (id: string, eventType: string, cb: EventCallback) => {
+      sourceRef.current?.addEventListener(eventType, cb);
+      listeners.current[id] = [eventType, cb];
+    },
+    [],
+  );
 
   /**
    * Remove a listener from the event source.
    * @param id unique id of the listener
    */
-  const removeListener = (id: string) => {
+  const removeListener = useCallback((id: string) => {
     const listener = listeners.current[id];
-    if (listener && source) {
-      // We need to remove the listener from the existing source.
-      source.removeEventListener(listener[0], listener[1]);
+    if (listener) {
+      sourceRef.current?.removeEventListener(listener[0], listener[1]);
+      delete listeners.current[id];
     }
-    delete listeners.current[id];
-  };
+  }, []);
+
+  const actions: EventActionsContextDefinition = useMemo(
+    () => ({
+      addListener,
+      removeListener,
+    }),
+    [addListener, removeListener],
+  );
 
   return (
-    <EventContext.Provider
-      value={{
-        latency,
-        addListener,
-        removeListener,
-      }}
-    >
-      {props.children}
-    </EventContext.Provider>
+    <EventActionsContext.Provider value={actions}>
+      <EventLatencyContext.Provider value={latency}>
+        {props.children}
+      </EventLatencyContext.Provider>
+    </EventActionsContext.Provider>
   );
 }
 
@@ -155,14 +168,7 @@ export function EventProvider(props: PropsWithChildren) {
  * @returns latency to the backend in milliseconds
  */
 export function useBackendLatency(): number {
-  const context = useContext(EventContext);
-  if (!context) {
-    throw new Error(
-      "useBackendLatency must only be used within an EventProvider",
-    );
-  }
-
-  return context.latency;
+  return useContext(EventLatencyContext);
 }
 
 /**
@@ -172,19 +178,25 @@ export function useBackendLatency(): number {
  */
 export function useEvent<T = any>(eventType: string, cb: EventCallback<T>) {
   const id = useId();
-  const context = useContext(EventContext);
+  const context = useContext(EventActionsContext);
 
   if (!context) {
     throw new Error("useEvent must only be used within an EventProvider");
   }
 
+  // The latest callback is kept in a ref such that the stable listener registered with the
+  // event source always invokes the current callback without re-subscribing on every render.
+  const cbRef = useRef(cb);
+  cbRef.current = cb;
+
   useEffect(() => {
     if (!eventType) return;
 
-    context.addListener(id, eventType, cb);
+    const stableCb = (message: MessageEvent<T>) => cbRef.current(message);
+    context.addListener(id, eventType, stableCb);
 
     return () => {
       context.removeListener(id);
     };
-  }, [eventType]);
+  }, [context, eventType, id]);
 }

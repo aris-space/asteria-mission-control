@@ -4,7 +4,7 @@ import {
   useAbort,
   useSendMessage,
 } from "@asteria/mission-control-client";
-import { RefObject, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   ActionIcon,
@@ -43,7 +43,7 @@ const ABORT_TRANSITION_ATTR: string = "data-abort-transition";
 function StateMachine() {
   const { remoteComputer, remoteComputerBoard, stateMachine } =
     useRemoteComputer();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [container, setContainer] = useState<HTMLElement | null>(null);
   const [pathIndex, setPathIndex] = useState<number>(0);
   // We need to also store the path index in a ref because the `handleManualStateTransition` method
   // is called from a callback function and otherwise it just copies the initial path index.
@@ -75,7 +75,7 @@ function StateMachine() {
     ref: svgRef,
   } = useDiagramSvg(
     stateMachine?.diagram as string,
-    containerRef as RefObject<HTMLDivElement>,
+    container as HTMLDivElement,
   );
 
   useEffect(() => {
@@ -293,7 +293,7 @@ function StateMachine() {
   }
 
   function highlightAvailableStates() {
-    if (!containerRef.current) return;
+    if (!container) return;
     // remove all currently highlighted cells
     d3.select(svgRef.current)
       .selectAll(`[${CELL_STATE_ATTR}`)
@@ -354,7 +354,7 @@ function StateMachine() {
           <section
             data-highlight-states={highlightStates}
             className={classes.container}
-            ref={containerRef}
+            ref={setContainer}
           />
         </Box>
       ) : remoteComputer ? (

@@ -23,7 +23,7 @@ interface DiagramSvg {
 
 function useDiagramSvg(
   diagram: string,
-  containerRef: RefObject<HTMLDivElement>,
+  container: HTMLDivElement | null,
   options: Partial<DiagramSvgOptions> = {},
 ): DiagramSvg {
   const ref = useRef<SVGSVGElement>(null);
@@ -34,25 +34,27 @@ function useDiagramSvg(
   const [ready, setReady] = useState<boolean>(false);
 
   useEffect(() => {
-    if (diagram && containerRef.current) {
+    if (diagram && container) {
       createSvg();
       if (!disableZoom) createZoom();
-    } else if (containerRef.current) {
+    } else if (container) {
       // Reset the SVG.
-      containerRef.current.innerHTML = "";
+      container.innerHTML = "";
       ref.current = null;
       zoomRef.current = null;
       setZoomDirty(false);
     }
-  }, [diagram, containerRef.current]);
+  }, [diagram, container]);
 
   /**
    * Create a new SVG element for the diagram. The SVG element
    * is placed as the only child of `containerRef`.
    */
   const createSvg = () => {
-    containerRef.current.innerHTML = diagram;
-    const svg = containerRef.current.querySelector("svg");
+    if (!container) return;
+
+    container.innerHTML = diagram;
+    const svg = container.querySelector("svg");
     if (!svg) {
       console.error("Provided invalid SVG diagram to useDiagramSvg hook!");
       return;
