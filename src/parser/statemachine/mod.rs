@@ -223,3 +223,65 @@ fn child_text(children: &[html_parser::Node]) -> Option<String> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod validate_configs {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// Recursively collects every `*.toml` file under `dir`.
+    fn collect_toml_files(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(entries) = fs::read_dir(dir) else {
+            return;
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                collect_toml_files(&path, out);
+            } else if path.extension().is_some_and(|ext| ext == "toml") {
+                if path.components().any(|c| c.as_os_str() == "manual_actions") {
+                    // skip manual actions
+                    continue;
+                }
+                out.push(path);
+            }
+        }
+    }
+
+    /// Validates every remote computer config in the `remote-computers` submodule which
+    /// declares a `[state_machine]` section against the diagram it references, using the
+    /// same [`StateMachine::new`] check that runs against live telemetry in
+    /// `ConfigInterceptor::lookup_state_machine_config`.
+    ///
+    /// See the "Validating state machine configs" section of the README for context.
+    #[test]
+    fn all_state_machine_configs_match_their_diagram() {
+        let configs_repository_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("remote-computers");
+
+        let mut toml_files = Vec::new();
+        for remote_computer in ["rfs-computer", "flight-computer"] {
+            collect_toml_files(&configs_repository_path.join(remote_computer).join("configs"), &mut toml_files);
+        }
+        println!("checking {} files", toml_files.len());
+
+        let mut failures = Vec::new();
+        for path in toml_files {
+            let contents = fs::read_to_string(&path).expect("failed to read config file");
+            let value: toml::Value = toml::from_str(&contents).expect("failed to parse config file as TOML");
+
+            let rc_config: RemoteComputerConfig = match value.try_into() {
+                Ok(config) => config,
+                Err(err) => {
+                    failures.push(format!("{}: failed to parse as RemoteComputerConfig: {err}", path.display()));
+                    continue;
+                }
+            };
+
+            if let Err(err) = StateMachine::new(&rc_config, &configs_repository_path) {
+                failures.push(format!("{}: {err}", path.display()));
+            }
+        }
+
+        assert!(failures.is_empty(), "state machine validation failed:\n{}", failures.join("\n"));
+    }
+}
