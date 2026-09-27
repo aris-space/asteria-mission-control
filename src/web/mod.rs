@@ -7,17 +7,19 @@ use crate::web::event::Event;
 use crate::web::state::StateInstance;
 
 use actix_web::web::{Data, Json};
-use actix_web::{Responder, delete, error, get, put, web};
+use actix_web::{HttpResponse, Responder, delete, error, get, put, web};
 use asteria_datatypes::status::ManualStateTransition;
 use asteria_messages::Message;
 use asteria_messages::datapoints::dp_flight_computer::Message as FcMessage;
 use asteria_messages::datapoints::dp_rfs_computer::Message as RfscMessage;
 use broadcast::Broadcast;
+use maud::{DOCTYPE, html};
 
 pub mod broadcast;
 pub mod datatypes;
 pub mod event;
 pub mod state;
+pub mod widgets;
 
 /// Get general information about the running API server.
 #[utoipa::path(responses((status = OK, body = ServerInfo)))]
@@ -42,6 +44,41 @@ pub async fn config_schema() -> actix_web::Result<Json<serde_json::Value>> {
 #[get("/events")]
 pub async fn subscribe_events(broadcast: Data<Broadcast>) -> actix_web::Result<impl Responder> {
     broadcast.subscribe().await
+}
+
+/// Hacky demo page showcasing progressive migration from React to Datastar.
+///
+/// Loads Datastar from a CDN, hooks it up to the existing `/api/events` SSE
+/// stream via `data-init`, and renders placeholder elements which gets live-patched by
+/// [`crate::intercept::WidgetInterceptor`] whenever the datapoint changes.
+#[utoipa::path(responses((status = OK, content_type = "text/html")))]
+#[get("/demo/widgets")]
+pub async fn widgets_demo() -> impl Responder {
+    let markup = html! {
+        (DOCTYPE)
+        html {
+            head {
+                meta charset="utf-8";
+                title { "Datastar Widgets Demo" }
+                script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js" {}
+            }
+            body data-init="@get('/api/events')" {
+                h1 { "Datastar Widgets Demo" }
+                p { "Progressive React → Datastar migration playground: this element is patched live by the backend." }
+                dl {
+                    dt { "OXD Main valve"}
+                    dd { p id="EngineControlBoard::OxidizerMainValveState" { "..." } }
+                    dt { "PRZ Vent valve"}
+                    dd { p id="FuelControlBoard::PressurizationVentValveState" { "..." } }
+                    dt { "FUE Tank P1"}
+                    dd { p id="FuelControlBoard::FuelTankPressureSensor2" { "..." } }
+                    dt { "FUE Inj Temp"}
+                    dd { p id="EngineControlBoard::InjectorFuelTemperature" { "..." } }
+                }
+            }
+        }
+    };
+    HttpResponse::Ok().content_type("text/html; charset=utf-8").body(markup.into_string())
 }
 
 /// Get all available remote computers.

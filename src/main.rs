@@ -135,6 +135,7 @@ async fn main() {
             state.clone(),
             config.clone(),
         ))
+        .with(WidgetInterceptor { broadcast: broadcast.clone() })
         .finish();
 
     tokio::spawn(async move { interceptors.execute_with_receiver(msg_rx).await });
@@ -181,6 +182,7 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
     cfg.service(web::info)
         .service(web::config_schema)
         .service(web::subscribe_events)
+        .service(web::widgets_demo)
         .service(web::remotes)
         .service(web::active_remote)
         .service(web::deactivate_active_remote)

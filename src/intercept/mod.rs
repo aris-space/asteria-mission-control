@@ -17,6 +17,7 @@ mod log;
 mod pss;
 mod sse;
 mod state_machine_state;
+pub mod widgets;
 
 pub use config::*;
 pub use influx::*;
@@ -24,6 +25,7 @@ pub use log::*;
 pub use pss::*;
 pub use sse::*;
 pub use state_machine_state::*;
+pub use widgets::WidgetInterceptor;
 
 /// Trait which can be implemented by different MavLink message
 /// consumers.
