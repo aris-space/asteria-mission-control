@@ -8,7 +8,6 @@ import {
   Alert,
   Card,
   Flex,
-  rgba,
   Select,
   Tooltip,
   useMantineTheme,
@@ -34,11 +33,18 @@ import { bbox, destination, distance, point, polygon } from "@turf/turf";
 // Maximum amount of stored data points to keep.
 // When a new data point beyond this length is received,
 // is replaces the oldest data point.
-const MAX_HISTORY_LENGTH = 10000;
+const MAX_HISTORY_LENGTH = 5000;
+
+// Amount to shorten the history from the beginning once it
+// starts "overflowing", meaning once `MAX_HISTORY_LENGTH`
+// is reached.
+// This should prevent that we need to iterate over the entire list
+// for every new position after reaching `MAX_HISTORY_LENGTH`.
+const HISTORY_SHORTEN_AMOUNT = 1000;
 
 // Delay in milliseconds after which position updates
 // are drawn on the map.
-const UPDATE_DELAY = 50;
+const UPDATE_DELAY = 75;
 
 // The distance in meters between two positions such that the
 // second position is added to the rocket's history.
@@ -111,17 +117,20 @@ function Map() {
     history.current.push([lng, lat]);
 
     if (history.current.length > MAX_HISTORY_LENGTH) {
-      history.current.splice(0, history.current.length - MAX_HISTORY_LENGTH);
+      console.warn(
+        `Maximum history length of ${MAX_HISTORY_LENGTH} has been reached; removing ${HISTORY_SHORTEN_AMOUNT} elements`,
+      );
+      history.current.splice(0, HISTORY_SHORTEN_AMOUNT);
     }
 
-    updateLatest();
+    requestAnimationFrame((now) => {
+      updateLatest();
+      if (now - lastRender.current < UPDATE_DELAY) return;
 
-    const now = new Date().getTime();
-    if (now - lastRender.current < UPDATE_DELAY) return;
+      lastRender.current = now;
 
-    lastRender.current = now;
-
-    updateTrace();
+      updateTrace();
+    });
   }, [positionMessage]);
 
   /// Update the trace on the map without re-rendering the entire React component.
@@ -305,7 +314,6 @@ function Map() {
           id="trace"
           type="geojson"
           data={{ type: "FeatureCollection", features: [] }}
-          lineMetrics
         >
           <Layer
             id="trace-layer"
@@ -313,26 +321,7 @@ function Map() {
             source="trace"
             paint={{
               "line-width": 4,
-              // Progress is determined from oldest (first element) to latest (last element).
-              "line-gradient": [
-                "interpolate",
-                ["linear"],
-                ["line-progress"],
-                0,
-                rgba(theme.colors.red[9], 0),
-                1,
-                rgba(theme.colors.red[9], 1),
-              ],
-            }}
-          />
-          <Layer
-            id="trace-layer"
-            type="line"
-            source="trace"
-            paint={{
               "line-color": theme.colors.red[9],
-              "line-width": 4,
-              "line-opacity": ["get", "opacity"],
             }}
           />
         </Source>
