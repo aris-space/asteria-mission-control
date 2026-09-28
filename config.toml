@@ -64,9 +64,9 @@ description = "OpenStreetMap (Online)"
 type = "raster"
 url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
 
-[map.tiles.duebendorf]
-description = "Dübendorf (Docker)"
+[map.tiles.local]
+description = "Local (Docker)"
 type = "vector"
-url = "http://localhost:8877/duebendorf.pmtiles"
+url = "http://localhost:8877/tiles.pmtiles"
 fonts = "http://localhost:8877/fonts"
 sprites = "http://localhost:8877/sprites"

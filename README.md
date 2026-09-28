@@ -111,40 +111,34 @@ Since the Mission Control is also expected to work in environment without intern
 tile server instead of the hosted OpenStreetMaps tiles.
 
 First, the `tiles.Dockerfile` is used to create a new tile server. When you want to add a new region to this tile server, look up the bounding box
-of your region on [https://bboxfinder.com](https://bboxfinder.com) and use this bounding box to add a section like this in the `extractor` phase of the build:
+of your region on [https://bboxfinder.com](https://bboxfinder.com) and use this bounding box to add an environment variable starting with `BBOX_` to the `extractor` phase of the build:
 
 ```bash
 # Get coordinates from <https://bboxfinder.com>.
 ENV BBOX_DUEBENDORF="8.617401,47.389285,8.677826,47.409619"
-
-# Download the tiles for this region into `duebendorf.pmtiles` which will then
-# be served under `/duebendorf.pmtiles`.
-RUN --mount=type=bind,from=pmtiles,source=/go-pmtiles,target=/usr/local/bin/pmtiles \
-    pmtiles extract \
-      https://build.protomaps.com/20250324.pmtiles \
-      duebendorf.pmtiles \
-      --bbox="$BBOX_DUEBENDORF"
 ```
 
-Once added to the tile server, the new region needs to be added as a tile server to the config.
-Because the downloaded tiles are vector tiles, you'll also need to specify a fonts and sprites URL.
-The tile server container created using `tiles.Dockerfile` serves the fonts and sprites from the `tiles` directory
-from the project root, so you'll want to use those:
+A script inside the Dockerfile will automatically add the tiles of this bounding box to the region of tiles it downloads.
+
+The docker tile server is added to the config, however, if you want to add a new (vector) tile server, you'll need to add 
+a config entry which looks something like this:
 
 ```toml
 # Unique name of your tile server.
-[tiles.duebendorf]
+[map.tiles.duebendorf]
 # Description of the tile server which is shown on the frontend.
 description = "Dübendorf (Docker)"
 # The downloaded tiles are vector tiles.
 type = "vector"
 # The url to the vector tiles.
-url = "http://localhost:8877/duebendorf.pmtiles"
+url = "<url/to/your/pmtiles>"
 # The url to the fonts.
-fonts = "http://localhost:8877/fonts"
+fonts = "<url/to/your/fonts>"
 # The url to the sprites.
-sprites = "http://localhost:8877/sprites"
+sprites = "<url/to/your/sprites>"
 ```
+
+The `fonts` and `sprites` parts are only relevant if you have `type = "vector"`. For `type = "raster"` the `url` parameter is enough.
 
 The `docker-compose.yml` in the project root contains a fully configured tile server which is exposed under [http://localhost:8888/](http://localhost:8888/).
 By running `docker compose --profile tiles up -d`, the tile server will be started.
