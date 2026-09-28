@@ -99,6 +99,7 @@ export function Layout(props: PropsWithChildren) {
               <Flex gap={"md"}>
                 <MavlinkTelemetryHealth />
                 <BackendLatency />
+                <ConfigHash />
                 <BackendVersion />
               </Flex>
             </Flex>
@@ -308,7 +309,9 @@ function BackendVersion() {
       }
     >
       <Badge color={hasVersion ? "blue" : "red"} size={"md"}>
-        {info?.version ?? "v?.?.?"}
+        <code>
+          <b>{info?.version ?? "v?.?.?"}</b>
+        </code>
       </Badge>
     </Tooltip>
   );
@@ -333,7 +336,9 @@ function BackendLatency() {
           ) : (
             <IconPlugX size={"1rem"} />
           )}
-          {hasLatency && latency + "ms"}
+          <code>
+            <b>{hasLatency && latency + "ms"}</b>
+          </code>
         </Flex>
       </Badge>
     </Tooltip>
@@ -383,8 +388,11 @@ function MavlinkTelemetryHealth() {
           ) : (
             <IconRocketOff size="1rem" />
           )}
-          {isTelemetryActive &&
-            timeSinceLastMessage.toString().padStart(3, "0") + "ms"}
+          {isTelemetryActive && (
+            <code>
+              <b>{timeSinceLastMessage.toString().padStart(3, "0") + "ms"}</b>
+            </code>
+          )}
         </Flex>
       </Badge>
     </Tooltip>
@@ -493,5 +501,40 @@ function DownlinkStats() {
         />
       )}
     </Flex>
+  );
+}
+
+function ConfigHash() {
+  const [configHash, setConfigHash] = useState<string | null>(null);
+  const { remoteComputer, remoteComputerBoard } = useRemoteComputer();
+  const configHashMessage = useMavlinkMessage(
+    remoteComputerBoard as any,
+    "ConfigHash",
+  );
+
+  useEffect(() => {
+    if (!remoteComputer || !configHashMessage?.message.content)
+      return setConfigHash(null);
+
+    const decoder = new TextDecoder();
+    const bytes = new Uint8Array(configHashMessage.message.content.hash);
+    const hash = decoder.decode(bytes);
+    setConfigHash(hash);
+  }, [remoteComputer, configHashMessage]);
+
+  return (
+    <Badge color={"pink"} size="md">
+      <Tooltip
+        label={
+          configHash
+            ? "The config hash of the active remote"
+            : "No config hash message received for current remote"
+        }
+      >
+        <code>
+          <b>{configHash ?? "N/A"}</b>
+        </code>
+      </Tooltip>
+    </Badge>
   );
 }
