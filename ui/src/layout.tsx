@@ -523,7 +523,7 @@ function ConfigHash() {
   }, [remoteComputer, configHashMessage]);
 
   return (
-    <Badge color={"pink"} size="md">
+    <Badge color={configHash ? "pink" : "red"} size="md">
       <Tooltip
         label={
           configHash
@@ -532,7 +532,7 @@ function ConfigHash() {
         }
       >
         <code>
-          <b>{configHash ?? "N/A"}</b>
+          <b>{configHash ? `H+${configHash}` : "N/A"}</b>
         </code>
       </Tooltip>
     </Badge>
