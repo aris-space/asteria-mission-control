@@ -76,28 +76,32 @@ export function Layout(props: PropsWithChildren) {
       >
         <AppShell.Header>
           <SimpleGrid py={"xs"} px={"sm"} cols={2}>
-            <Flex align={"center"} justify={"start"} gap={"lg"}>
-              <Link to={"/"}>
-                <Image
-                  src={"/logo.png"}
-                  h={"3rem"}
-                  mt={"-0.25rem"}
-                  w={"3rem"}
+            <Flex justify={"space-between"}>
+              <Flex gap={"md"} align={"center"} justify={"start"}>
+                <Link to={"/"}>
+                  <Image
+                    src={"/logo.png"}
+                    h={"3rem"}
+                    mt={"-0.25rem"}
+                    w={"3rem"}
+                  />
+                </Link>
+                <ActiveRemoteComputer
+                  onDialogOpen={() => setRemoteComputerDialogVisible(true)}
                 />
-              </Link>
-              <ActiveRemoteComputer
-                onDialogOpen={() => setRemoteComputerDialogVisible(true)}
-              />
-              {errors.length > 0 && (
-                <Errors
-                  errors={errors}
-                  onDialogOpen={() => setErrorsVisible(true)}
-                />
-              )}
+                <ConfigHash />
+                <RailStatus24V />
+                <MavlinkTelemetryHealth />
+                {errors.length > 0 && (
+                  <Errors
+                    errors={errors}
+                    onDialogOpen={() => setErrorsVisible(true)}
+                  />
+                )}
+              </Flex>
             </Flex>
             <Flex align={"center"} justify={"end"}>
               <Flex gap={"md"}>
-                <MavlinkTelemetryHealth />
                 <BackendLatency />
                 <BackendVersion />
               </Flex>
@@ -308,7 +312,9 @@ function BackendVersion() {
       }
     >
       <Badge color={hasVersion ? "blue" : "red"} size={"md"}>
-        {info?.version ?? "v?.?.?"}
+        <code>
+          <b>{info?.version ?? "v?.?.?"}</b>
+        </code>
       </Badge>
     </Tooltip>
   );
@@ -333,7 +339,9 @@ function BackendLatency() {
           ) : (
             <IconPlugX size={"1rem"} />
           )}
-          {hasLatency && latency + "ms"}
+          <code>
+            <b>{hasLatency && latency + "ms"}</b>
+          </code>
         </Flex>
       </Badge>
     </Tooltip>
@@ -383,8 +391,11 @@ function MavlinkTelemetryHealth() {
           ) : (
             <IconRocketOff size="1rem" />
           )}
-          {isTelemetryActive &&
-            timeSinceLastMessage.toString().padStart(3, "0") + "ms"}
+          {isTelemetryActive && (
+            <code>
+              <b>{timeSinceLastMessage.toString().padStart(3, "0") + "ms"}</b>
+            </code>
+          )}
         </Flex>
       </Badge>
     </Tooltip>
@@ -493,5 +504,73 @@ function DownlinkStats() {
         />
       )}
     </Flex>
+  );
+}
+
+function ConfigHash() {
+  const [configHash, setConfigHash] = useState<string | null>(null);
+  const { remoteComputer, remoteComputerBoard } = useRemoteComputer();
+  const configHashMessage = useMavlinkMessage(
+    remoteComputerBoard as any,
+    "ConfigHash",
+  );
+
+  useEffect(() => {
+    if (!remoteComputer || !configHashMessage?.message.content)
+      return setConfigHash(null);
+
+    const decoder = new TextDecoder();
+    const bytes = new Uint8Array(configHashMessage.message.content.hash);
+    const hash = decoder.decode(bytes);
+    setConfigHash(hash);
+  }, [remoteComputer, configHashMessage]);
+
+  return (
+    <Badge color={configHash ? "pink" : "red"} size="md">
+      <Tooltip
+        label={
+          configHash
+            ? "The config hash of the active remote"
+            : "No config hash message received for current remote"
+        }
+      >
+        <code>
+          <b>{configHash ? `H+${configHash}` : "N/A"}</b>
+        </code>
+      </Tooltip>
+    </Badge>
+  );
+}
+
+function RailStatus24V() {
+  const { remoteComputer } = useRemoteComputer();
+  const railStatusMessage = useMavlinkMessage("Backplane", "RailStatus24V");
+
+  const voltage = remoteComputer
+    ? railStatusMessage?.message.content.voltage
+    : undefined;
+
+  const color = voltage
+    ? voltage > 25.1
+      ? "green"
+      : voltage > 21
+        ? "orange"
+        : "red"
+    : "red";
+
+  return (
+    <Badge color={color} size="md">
+      <Tooltip
+        label={
+          voltage != undefined
+            ? "The voltage on the 24V rail"
+            : "No 24V rail status message received for current remote"
+        }
+      >
+        <code>
+          <b>{voltage != undefined ? `${voltage}V` : "N/A"}</b>
+        </code>
+      </Tooltip>
+    </Badge>
   );
 }
