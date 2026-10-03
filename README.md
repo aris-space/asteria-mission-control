@@ -140,7 +140,7 @@ sprites = "<url/to/your/sprites>"
 
 The `fonts` and `sprites` parts are only relevant if you have `type = "vector"`. For `type = "raster"` the `url` parameter is enough.
 
-The `docker-compose.yml` in the project root contains a fully configured tile server which is exposed under [http://localhost:8888/](http://localhost:8888/).
+The `docker-compose.yml` in the project root contains a fully configured tile server which is exposed under [http://localhost:8877/](http://localhost:8877/).
 By running `docker compose --profile tiles up -d`, the tile server will be started.
 Alternatively, `--profile full` will also start the tile server in addition to everything else.
 

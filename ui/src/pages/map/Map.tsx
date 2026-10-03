@@ -48,7 +48,7 @@ const UPDATE_DELAY = 75;
 
 // The distance in meters between two positions such that the
 // second position is added to the rocket's history.
-const MIN_DISTANCE_STEP = 5;
+const MIN_DISTANCE_STEP = 3;
 
 // Name of the default tile server to use.
 const DEFAULT_TILE_SERVER_NAME = "osm";
