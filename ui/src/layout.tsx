@@ -19,13 +19,13 @@ import {
   Image,
   Modal,
   ModalProps,
-  SimpleGrid,
   Stack,
   Text,
   Tooltip,
   useMantineTheme,
 } from "@mantine/core";
 import {
+  RemoteComputerKind,
   useChangeActiveRemote,
   useDeactivateActiveRemote,
   useInfo,
@@ -75,30 +75,28 @@ export function Layout(props: PropsWithChildren) {
         style={{ minHeight: "100vh" }}
       >
         <AppShell.Header>
-          <SimpleGrid py={"xs"} px={"sm"} cols={2}>
-            <Flex justify={"space-between"}>
-              <Flex gap={"md"} align={"center"} justify={"start"}>
-                <Link to={"/"}>
-                  <Image
-                    src={"/logo.png"}
-                    h={"3rem"}
-                    mt={"-0.25rem"}
-                    w={"3rem"}
-                  />
-                </Link>
-                <ActiveRemoteComputer
-                  onDialogOpen={() => setRemoteComputerDialogVisible(true)}
+          <Flex gap={"1rem"} py={"xs"} px={"sm"} justify={"space-between"}>
+            <Flex gap={"md"} align={"center"} justify={"start"}>
+              <Link to={"/"}>
+                <Image
+                  src={"/logo.png"}
+                  h={"3rem"}
+                  mt={"-0.25rem"}
+                  w={"3rem"}
                 />
-                <ConfigHash />
-                <RailStatus24V />
-                <MavlinkTelemetryHealth />
-                {errors.length > 0 && (
-                  <Errors
-                    errors={errors}
-                    onDialogOpen={() => setErrorsVisible(true)}
-                  />
-                )}
-              </Flex>
+              </Link>
+              <ActiveRemoteComputer
+                onDialogOpen={() => setRemoteComputerDialogVisible(true)}
+              />
+              <ConfigHash />
+              <RailStatus24V />
+              <MavlinkTelemetryHealth />
+              {errors.length > 0 && (
+                <Errors
+                  errors={errors}
+                  onDialogOpen={() => setErrorsVisible(true)}
+                />
+              )}
             </Flex>
             <Flex align={"center"} justify={"end"}>
               <Flex gap={"md"}>
@@ -106,7 +104,7 @@ export function Layout(props: PropsWithChildren) {
                 <BackendVersion />
               </Flex>
             </Flex>
-          </SimpleGrid>
+          </Flex>
         </AppShell.Header>
         <AppShell.Main style={{ display: "flex" }} w={"100%"} h={"100%"}>
           {props.children}
@@ -526,7 +524,7 @@ function ConfigHash() {
   }, [remoteComputer, configHashMessage]);
 
   return (
-    <Badge color={configHash ? "pink" : "red"} size="md">
+    <Badge color={configHash ? "blue" : "red"} size="md">
       <Tooltip
         label={
           configHash
@@ -545,6 +543,9 @@ function ConfigHash() {
 function RailStatus24V() {
   const { remoteComputer } = useRemoteComputer();
   const railStatusMessage = useMavlinkMessage("Backplane", "RailStatus24V");
+
+  // We don't show the voltage on the RFS MC since it doesn't have a battery.
+  if (remoteComputer?.kind == RemoteComputerKind.rfs_computer) return <></>;
 
   const voltage = remoteComputer
     ? railStatusMessage?.message.content.voltage
