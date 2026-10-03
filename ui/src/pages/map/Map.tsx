@@ -14,11 +14,7 @@ import {
 } from "@mantine/core";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  TileServer,
-  usePolygon,
-  useTileServers,
-} from "@asteria/mission-control-client";
+import { TileServer, useTileServers } from "@asteria/mission-control-client";
 import {
   IconAlertTriangle,
   IconMapPinUp,
@@ -63,8 +59,8 @@ maplibregl.addProtocol("pmtiles", protocol.tile);
 
 function Map() {
   const theme = useMantineTheme();
-  const { remoteComputer } = useRemoteComputer();
-  const { data: polygonData } = usePolygon();
+  const { remoteComputer, gncPolygon, isGncPolygonLoading } =
+    useRemoteComputer();
   const { tileServer, tileServers, setTileServer } = useActiveTileServer();
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
 
@@ -170,9 +166,9 @@ function Map() {
 
   // GeoJSON features for the GNC polygon.
   const polygonFeatures = useMemo<Feature<Polygon> | null>(() => {
-    if (!polygonData) return null;
-    const origin = point([polygonData.origin[1], polygonData.origin[0]]);
-    const coordinates = polygonData.points.map(([north, east]) => {
+    if (!gncPolygon) return null;
+    const origin = point([gncPolygon.origin[1], gncPolygon.origin[0]]);
+    const coordinates = gncPolygon.points.map(([north, east]) => {
       // Hypothenuse distance in meters.
       const dist = Math.sqrt(north ** 2 + east ** 2);
       // Clockwise angle from the north axis.
@@ -194,7 +190,7 @@ function Map() {
     }
 
     return polygon([coordinates]);
-  }, [polygonData]);
+  }, [gncPolygon]);
 
   // Determine map style based on the selected tile server.
   const mapStyle = useMemo<maplibregl.StyleSpecification>(() => {
@@ -252,6 +248,7 @@ function Map() {
           </Tooltip>
           <Tooltip label={"Fit view to GNC polygon"}>
             <ActionIcon
+              loading={isGncPolygonLoading}
               disabled={!polygonFeatures}
               onClick={() => {
                 if (!polygonFeatures) return;

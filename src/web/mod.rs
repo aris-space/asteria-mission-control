@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 
 use crate::PssDiagrams;
-use crate::config::{Config, Polygon, RemoteComputerKind, TilesConfig};
+use crate::config::{Config, RemoteComputerKind, TilesConfig};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
+use crate::remote::config::GncPolygon;
 use crate::web::datatypes::*;
 use crate::web::event::Event;
 use crate::web::state::StateInstance;
@@ -251,9 +252,10 @@ pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeM
     Ok(Json(servers))
 }
 
-/// Get the configured polygon for the map on the mission control.
-#[utoipa::path(responses((status = OK, body = Polygon)))]
-#[get("/map/polygon")]
-pub async fn polygon(config: Data<Config>) -> actix_web::Result<Json<Polygon>> {
-    Ok(Json(config.map.polygon.clone()))
+/// Get the GNC polygon for the active remote computer.
+#[utoipa::path(responses((status = OK, body = Option<GncPolygon>)))]
+#[get("/gnc-polygon")]
+pub async fn polygon(state: Data<StateInstance>) -> actix_web::Result<Json<Option<GncPolygon>>> {
+    let polygon = state.read().await.get_gnc_polygon().clone();
+    Ok(Json(polygon))
 }

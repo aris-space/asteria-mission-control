@@ -38,7 +38,7 @@ impl ConfigInterceptor {
         Self { state, repository: repository.into_sync(), configs_repository_path, broadcast }
     }
 
-    fn lookup_state_machine_config(&self, hash: &[u8; 5]) -> Result<StateMachine, String> {
+    fn lookup_remote_computer_config(&self, hash: &[u8; 5]) -> Result<RemoteComputerConfig, String> {
         let hash_str = String::from_utf8_lossy(hash);
         let repository = self.repository.to_thread_local();
 
@@ -60,14 +60,7 @@ impl ConfigInterceptor {
             blob.data.clone()
         };
 
-        let rc_config = match toml::from_slice::<RemoteComputerConfig>(&bytes) {
-            Ok(config) => config,
-            Err(err) => return Err(format!("Remote computer config is not valid: {err}")),
-        };
-
-        let state_machine = StateMachine::new(&rc_config, &self.configs_repository_path);
-
-        state_machine.map_err(|err| format!("Remote computer state machine is not valid: {err}"))
+        toml::from_slice::<RemoteComputerConfig>(&bytes).map_err(|err| format!("Remote computer config is not valid: {err}"))
     }
 }
 
@@ -81,15 +74,27 @@ impl Interceptor for ConfigInterceptor {
             _ => return,
         };
 
-        let state_machine = OptionalResult::from(Some(self.lookup_state_machine_config(hash)));
-        // If the lookup failed we also log an error on the backend.
-        if let OptionalResult::Error(ref err) = state_machine {
-            log::error!("State machine config lookup failed: {err}")
-        }
+        let (state_machine, gnc_polygon) = match self.lookup_remote_computer_config(hash) {
+            Ok(config) => {
+                let state_machine = StateMachine::new(&config, &self.configs_repository_path)
+                    .map_err(|err| format!("Remote computer state machine is not valid: {err}"));
+                if config.gnc_polygon.is_none() {
+                    log::debug!("Remote computer config does not specify a GNC polygon")
+                }
+                (OptionalResult::from(Some(state_machine)), config.gnc_polygon)
+            }
+            Err(err) => {
+                // If the lookup failed we also log an error on the backend.
+                log::error!("Remote computer config lookup failed: {err}");
+                (OptionalResult::Error(err), None)
+            }
+        };
 
         let mut guard = self.state.write().await;
         if guard.set_state_machine(state_machine.clone()).await {
             self.broadcast.broadcast(Event::StateMachine(state_machine)).await;
         };
+        guard.set_gnc_polygon(gnc_polygon.clone());
+        self.broadcast.broadcast(Event::Polygon(gnc_polygon)).await;
     }
 }

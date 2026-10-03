@@ -122,8 +122,6 @@ pub struct InfluxConfig {
 pub struct MapConfig {
     /// Available tile servers for the mission control.
     pub tiles: BTreeMap<String, TilesConfig>,
-    /// GNC polygon which is shown on the map.
-    pub polygon: Polygon,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -150,16 +148,6 @@ pub enum TileKind {
         /// Absolute URL to the location where the sprites for the vector layers are served (e.g., http://localhost:8888/sprites)
         sprites: String,
     },
-}
-
-#[derive(Debug, Deserialize, Serialize, JsonSchema, ToSchema, Clone)]
-pub struct Polygon {
-    /// Latitude-longitude pair of the origin of the bounding polygon.
-    origin: [f64; 2],
-    /// Points which span the polygon.
-    /// Every point is a tuple of distances in meters to the north- and east
-    /// of the origin.
-    points: Vec<[f64; 2]>,
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

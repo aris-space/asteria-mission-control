@@ -3,7 +3,7 @@
 //! The full remote computer config specification can be found here:
 //! <https://github.com/aris-space/asteria-remote-computers/>
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -12,6 +12,17 @@ pub struct RemoteComputerConfig {
     pub state_machine: StateMachineConfig,
     #[serde(default)]
     pub telemetry: TelemetryConfig,
+    pub gnc_polygon: Option<GncPolygon>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, utoipa::ToSchema)]
+pub struct GncPolygon {
+    /// Latitude-longitude pair of the origin of the bounding polygon.
+    origin: [f64; 2],
+    /// Points which span the polygon.
+    /// Every point is a tuple of distances in meters to the north- and east
+    /// of the origin.
+    points: Vec<[f64; 2]>,
 }
 
 #[derive(Deserialize, Default)]

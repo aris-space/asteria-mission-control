@@ -698,6 +698,7 @@ export const EventKind = {
   PSS_DATA: "PSS_DATA",
   PING: "PING",
   MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
+  POLYGON: "POLYGON",
 } as const;
 
 export type ExtendedDatapointInformation = DatapointInformation & {
@@ -1229,6 +1230,15 @@ export type FueldControlBoardMessage =
       content: number;
       type: "FuelDprMaxOpeningTime";
     };
+
+export interface GncPolygon {
+  /** Latitude-longitude pair of the origin of the bounding polygon. */
+  origin: number[];
+  /** Points which span the polygon.
+  Every point is a tuple of distances in meters to the north- and east
+  of the origin. */
+  points: number[][];
+}
 
 /**
  * MAVLink enum `MAV_AUTOPILOT` for `minimal` dialect.
@@ -2784,15 +2794,6 @@ export type OptionalResultStateMachine =
   | {
       kind: "none";
     };
-
-export interface Polygon {
-  /** Latitude-longitude pair of the origin of the bounding polygon. */
-  origin: number[];
-  /** Points which span the polygon.
-  Every point is a tuple of distances in meters to the north- and east
-  of the origin. */
-  points: number[][];
-}
 
 /**
  * Map of all datapoints defined in the diagram together with information

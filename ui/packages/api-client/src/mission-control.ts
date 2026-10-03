@@ -15,9 +15,9 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  GncPolygon,
   Message,
   OptionalResultStateMachine,
-  Polygon,
   Pss,
   RemoteComputerInfo,
   ServerInfo,
@@ -524,20 +524,20 @@ export function useSubscribeEvents<
 }
 
 /**
- * @summary Get the configured polygon for the map on the mission control.
+ * @summary Get the GNC polygon for the active remote computer.
  */
 export const polygon = (
   options?: SecondParameter<typeof customAxiosInstance>,
   signal?: AbortSignal,
 ) => {
-  return customAxiosInstance<Polygon>(
-    { url: `/api/map/polygon`, method: "GET", signal },
+  return customAxiosInstance<null | GncPolygon>(
+    { url: `/api/gnc-polygon`, method: "GET", signal },
     options,
   );
 };
 
 export const getPolygonQueryKey = () => {
-  return [`/api/map/polygon`] as const;
+  return [`/api/gnc-polygon`] as const;
 };
 
 export const getPolygonQueryOptions = <
@@ -628,7 +628,7 @@ export function usePolygon<
   queryKey: DataTag<QueryKey, TData, TError>;
 };
 /**
- * @summary Get the configured polygon for the map on the mission control.
+ * @summary Get the GNC polygon for the active remote computer.
  */
 
 export function usePolygon<
