@@ -5,9 +5,9 @@ use async_trait::async_trait;
 use chrono::Utc;
 use influxdb2::Client;
 use influxdb2::models::DataPoint;
+use mavlink_lib::MavlinkMessage;
 use tokio::signal::ctrl_c;
 use tokio::sync::Mutex;
-use mavlink_lib::MavlinkMessage;
 
 use crate::config::{Config, RemoteComputerKind};
 use crate::intercept::Interceptor;
