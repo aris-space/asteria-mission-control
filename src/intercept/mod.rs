@@ -33,7 +33,10 @@ pub use telemetry::*;
 #[async_trait]
 pub trait Interceptor: Send + Sync {
     /// This method gets called for every incoming MavLink [`Message`].
-    async fn on_message(&self, message: &MavlinkMessage);
+    async fn on_incoming_message(&self, _message: &MavlinkMessage) {}
+
+    /// This method gets called for every outgoing MavLink [`Message`].
+    async fn on_outgoing_message(&self, _message: &MavlinkMessage) {}
 }
 
 pub struct Interceptors {
@@ -50,11 +53,18 @@ impl Interceptors {
     /// Read all incoming [`Message`]s from `msg_rx` and provide it to all registered
     /// [`Interceptor`]s.
     /// The order in which the interceptors are completed is not deterministic.
-    pub async fn execute_with_receiver(self, mut msg_rx: UnboundedReceiver<MavlinkMessage>) {
-        while let Some(message) = msg_rx.recv().await {
-            FuturesUnordered::from_iter(self.interceptors.iter().map(|interceptor| interceptor.on_message(&message)))
-                .collect::<Vec<_>>()
-                .await;
+    pub async fn execute_with_receiver(
+        self,
+        mut incoming_msg_rx: UnboundedReceiver<MavlinkMessage>,
+        mut outgoing_msg_rx: UnboundedReceiver<MavlinkMessage>,
+    ) {
+        loop {
+            tokio::select! {
+                Some(message) = incoming_msg_rx.recv() =>
+                    FuturesUnordered::from_iter(self.interceptors.iter().map(|i| i.on_incoming_message(&message))).collect::<Vec<_>>().await,
+                Some(message) = outgoing_msg_rx.recv() =>
+                    FuturesUnordered::from_iter(self.interceptors.iter().map(|i| i.on_outgoing_message(&message))).collect::<Vec<_>>().await,
+            };
         }
     }
 }

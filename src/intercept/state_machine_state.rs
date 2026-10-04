@@ -21,7 +21,7 @@ impl StateMachineStateInterceptor {
 
 #[async_trait]
 impl Interceptor for StateMachineStateInterceptor {
-    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let state_machine_state = match message {
             Message::FlightComputer(FcMessage::StateMachineState(state)) => state,
             Message::RfsComputer(RfscMessage::StateMachineState(state)) => state,

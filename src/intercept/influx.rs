@@ -63,7 +63,7 @@ impl InfluxInterceptor {
 
 #[async_trait]
 impl Interceptor for InfluxInterceptor {
-    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let datapoint = match influx::to_datapoint(message) {
             Ok(datapoint) => datapoint,
             Err(err) => {

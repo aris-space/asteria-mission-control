@@ -67,7 +67,7 @@ impl ConfigInterceptor {
 
 #[async_trait]
 impl Interceptor for ConfigInterceptor {
-    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let hash = match message {
             Message::FlightComputer(FcMessage::ConfigHash(ConfigHash { hash })) => hash,
             Message::RfsComputer(RfscMessage::ConfigHash(ConfigHash { hash })) => hash,
