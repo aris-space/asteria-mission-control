@@ -127,6 +127,7 @@ async fn main() {
         .with(LogInterceptor::new(mavlink_logfile))
         .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone(), broadcast.clone()))
         .with(StateMachineStateInterceptor::new(state.clone()))
+        .with(TelemetryInterceptor::new())
         .with(InfluxInterceptor::new(
             &config.influx.address,
             &config.influx.organization,

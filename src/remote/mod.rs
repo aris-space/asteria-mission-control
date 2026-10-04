@@ -3,7 +3,7 @@ use crate::config::{Config, MavlinkAddress, RemoteComputerConfig};
 use asteria_messages::Message;
 use asteria_messages::datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType};
 use mavio::Dialect;
-use mavlink_lib::{MavlinkSender, SendError};
+use mavlink_lib::{MavlinkMessage, MavlinkSender, SendError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,11 +40,11 @@ pub struct RemoteComputer {
     mavlink_system_id: u8,
     mavlink_sender: Option<Arc<MavlinkSender>>,
     token: Option<CancellationToken>,
-    msg_tx: UnboundedSender<Message>,
+    msg_tx: UnboundedSender<MavlinkMessage>,
 }
 
 impl RemoteComputer {
-    pub fn new(rc_config: RemoteComputerConfig, config: Arc<Config>, msg_tx: UnboundedSender<Message>) -> Self {
+    pub fn new(rc_config: RemoteComputerConfig, config: Arc<Config>, msg_tx: UnboundedSender<MavlinkMessage>) -> Self {
         Self {
             mavlink_address: rc_config.mavlink_address,
             mavlink_system_id: config.mavlink.system_id,

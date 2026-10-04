@@ -5,9 +5,9 @@
 //! calls [`Interceptor::on_message`] on every registered [`Interceptor`] for
 //! every incoming [`Message`].
 
-use asteria_messages::Message;
 use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
+use mavlink_lib::MavlinkMessage;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio_stream::StreamExt;
 
@@ -17,6 +17,7 @@ mod log;
 mod pss;
 mod sse;
 mod state_machine_state;
+mod telemetry;
 
 pub use config::*;
 pub use influx::*;
@@ -24,6 +25,7 @@ pub use log::*;
 pub use pss::*;
 pub use sse::*;
 pub use state_machine_state::*;
+pub use telemetry::*;
 
 /// Trait which can be implemented by different MavLink message
 /// consumers.
@@ -31,7 +33,7 @@ pub use state_machine_state::*;
 #[async_trait]
 pub trait Interceptor: Send + Sync {
     /// This method gets called for every incoming MavLink [`Message`].
-    async fn on_message(&self, message: &Message);
+    async fn on_message(&self, message: &MavlinkMessage);
 }
 
 pub struct Interceptors {
@@ -48,7 +50,7 @@ impl Interceptors {
     /// Read all incoming [`Message`]s from `msg_rx` and provide it to all registered
     /// [`Interceptor`]s.
     /// The order in which the interceptors are completed is not deterministic.
-    pub async fn execute_with_receiver(self, mut msg_rx: UnboundedReceiver<Message>) {
+    pub async fn execute_with_receiver(self, mut msg_rx: UnboundedReceiver<MavlinkMessage>) {
         while let Some(message) = msg_rx.recv().await {
             FuturesUnordered::from_iter(self.interceptors.iter().map(|interceptor| interceptor.on_message(&message)))
                 .collect::<Vec<_>>()

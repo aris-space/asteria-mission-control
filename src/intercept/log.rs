@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use chrono::Utc;
+use mavlink_lib::MavlinkMessage;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
@@ -20,7 +21,7 @@ impl LogInterceptor {
 
 #[async_trait]
 impl Interceptor for LogInterceptor {
-    async fn on_message(&self, message: &asteria_messages::Message) {
+    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let mut message_value =
             serde_json::to_value(message).expect("Every message should be convertible to a serde_json Value");
 

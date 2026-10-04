@@ -7,6 +7,7 @@ use influxdb2::Client;
 use influxdb2::models::DataPoint;
 use tokio::signal::ctrl_c;
 use tokio::sync::Mutex;
+use mavlink_lib::MavlinkMessage;
 
 use crate::config::{Config, RemoteComputerKind};
 use crate::intercept::Interceptor;
@@ -62,7 +63,7 @@ impl InfluxInterceptor {
 
 #[async_trait]
 impl Interceptor for InfluxInterceptor {
-    async fn on_message(&self, message: &asteria_messages::Message) {
+    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let datapoint = match influx::to_datapoint(message) {
             Ok(datapoint) => datapoint,
             Err(err) => {
