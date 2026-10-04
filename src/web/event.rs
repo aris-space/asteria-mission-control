@@ -1,4 +1,4 @@
-use crate::parser::statemachine::StateMachine;
+use crate::{parser::statemachine::StateMachine, web::datatypes::TelemetryStats};
 use crate::web::datatypes::OptionalResult;
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
@@ -15,6 +15,7 @@ pub enum EventKind {
     PssData,
     Ping,
     MavlinkMessage,
+    TelemetryStats,
 }
 
 impl Display for EventKind {
@@ -30,6 +31,7 @@ pub enum Event {
     StateMachine(OptionalResult<StateMachine>),
     PssData(NamedDatapointValue),
     MavlinkMessage(Message),
+    TelemetryStats(TelemetryStats),
 }
 
 impl From<Event> for SseEvent {
@@ -44,6 +46,9 @@ impl From<Event> for SseEvent {
             Event::PssData(value) => Self::Data(SseData::new_json(value).unwrap().event(EventKind::PssData.to_string())),
             Event::MavlinkMessage(message) => {
                 Self::Data(SseData::new_json(message).unwrap().event(EventKind::MavlinkMessage.to_string()))
+            }
+            Event::TelemetryStats(telemetry) => {
+                Self::Data(SseData::new_json(telemetry).unwrap().event(EventKind::TelemetryStats.to_string()))
             }
         }
     }
