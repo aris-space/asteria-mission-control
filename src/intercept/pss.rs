@@ -3,6 +3,7 @@ use std::sync::Arc;
 use asteria_datapoint_information::datapoint::DatapointHolder;
 use async_trait::async_trait;
 use futures::stream::FuturesUnordered;
+use mavlink_lib::MavlinkMessage;
 use tokio_stream::StreamExt;
 
 use crate::intercept::Interceptor;
@@ -24,7 +25,7 @@ impl PssInterceptor {
 
 #[async_trait]
 impl Interceptor for PssInterceptor {
-    async fn on_message(&self, message: &asteria_messages::Message) {
+    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let datapoint_events = message.get_datapoint_values().into_iter().map(Event::PssData).collect::<Vec<_>>();
         FuturesUnordered::from_iter(datapoint_events.into_iter().map(|event| self.broadcast.broadcast(event)))
             .collect::<Vec<_>>()

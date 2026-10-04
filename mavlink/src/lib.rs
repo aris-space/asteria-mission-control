@@ -23,6 +23,13 @@ const RECONNECT_BACKOFF: Duration = Duration::from_millis(2500);
 #[error("the mavlink connection has shut down for good")]
 pub struct SendError;
 
+pub struct MavlinkMessage {
+    /// The size of the serialized MavLink message in bytes.
+    pub size: usize,
+    /// The deserialized [`Message`].
+    pub message: Message
+}
+
 #[derive(Debug, Clone)]
 pub enum MavlinkAddress {
     /// IP address and port used for TCP communication
@@ -83,7 +90,7 @@ impl MavlinkConnection {
     /// Run the connection until the caller cancels it (e.g. via `tokio::select!` or by
     /// dropping the future). The `Infallible` return type is a promise: this loop never
     /// stops on its own, so callers don't need to handle a "the connection died" case.
-    pub async fn run(mut self, msg_tx: &UnboundedSender<Message>) -> Infallible {
+    pub async fn run(mut self, msg_tx: &UnboundedSender<MavlinkMessage>) -> Infallible {
         let mut outbox_closed = false;
 
         loop {
@@ -143,7 +150,7 @@ impl MavlinkConnection {
     }
 }
 
-fn handle_incoming(frame: &mavio::Frame<V2>, msg_tx: &UnboundedSender<Message>) {
+fn handle_incoming(frame: &mavio::Frame<V2>, msg_tx: &UnboundedSender<MavlinkMessage>) {
     log::trace!("Received mavlink frame: {frame:?}");
 
     if let Err(err) = frame.validate_checksum::<Message>() {
@@ -159,7 +166,7 @@ fn handle_incoming(frame: &mavio::Frame<V2>, msg_tx: &UnboundedSender<Message>) 
         }
     };
 
-    if msg_tx.send(message).is_err() {
+    if msg_tx.send(MavlinkMessage { size: frame.size(), message }).is_err() {
         log::warn!("Message receiver is closed, dropping mavlink message");
     }
 }
