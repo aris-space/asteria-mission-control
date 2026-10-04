@@ -5,6 +5,7 @@ use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::remote::{RemoteComputer, Remotes};
 use crate::web::broadcast::Broadcast;
+use crate::web::datatypes::TelemetryStats;
 use crate::web::event::EventKind;
 use crate::web::state::{State, StateInstance};
 
@@ -53,7 +54,7 @@ const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(1);
     components(
         // Manually add those types to the OpenAPI schema because they not directly
         // exposed through endpoints.
-        schemas(EventKind, NamedDatapointValue, StateMachine, Pss)
+        schemas(EventKind, NamedDatapointValue, StateMachine, Pss, TelemetryStats)
     )
 )]
 struct ApiDoc;
@@ -134,7 +135,7 @@ async fn main() {
         .with(LogInterceptor::new(mavlink_logfile))
         .with(ConfigInterceptor::new(repository, config.configs_repository_path.clone(), state.clone(), broadcast.clone()))
         .with(StateMachineStateInterceptor::new(state.clone()))
-        .with(TelemetryInterceptor::new())
+        .with(TelemetryInterceptor::new(broadcast.clone()))
         .with(InfluxInterceptor::new(
             &config.influx.address,
             &config.influx.organization,
