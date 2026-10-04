@@ -25,7 +25,7 @@ impl PssInterceptor {
 
 #[async_trait]
 impl Interceptor for PssInterceptor {
-    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let datapoint_events = message.get_datapoint_values().into_iter().map(Event::PssData).collect::<Vec<_>>();
         FuturesUnordered::from_iter(datapoint_events.into_iter().map(|event| self.broadcast.broadcast(event)))
             .collect::<Vec<_>>()

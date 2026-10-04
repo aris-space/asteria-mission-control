@@ -84,7 +84,7 @@ impl TelemetryInterceptor {
 
 #[async_trait]
 impl Interceptor for TelemetryInterceptor {
-    async fn on_message(&self, message: &MavlinkMessage) {
+    async fn on_incoming_message(&self, message: &MavlinkMessage) {
         if let Message::SystemManagement(SysMessage::Heartbeat(_)) = &message.message {
             // Heartbeat messages aren't included in telemetry.
             return;

@@ -22,7 +22,7 @@ impl SseInterceptor {
 
 #[async_trait]
 impl Interceptor for SseInterceptor {
-    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         self.broadcast.broadcast(Event::MavlinkMessage(message.clone())).await
     }
 }

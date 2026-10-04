@@ -27,7 +27,7 @@ pub struct MavlinkMessage {
     /// The size of the serialized MavLink message in bytes.
     pub size: usize,
     /// The deserialized [`Message`].
-    pub message: Message
+    pub message: Message,
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +90,11 @@ impl MavlinkConnection {
     /// Run the connection until the caller cancels it (e.g. via `tokio::select!` or by
     /// dropping the future). The `Infallible` return type is a promise: this loop never
     /// stops on its own, so callers don't need to handle a "the connection died" case.
-    pub async fn run(mut self, msg_tx: &UnboundedSender<MavlinkMessage>) -> Infallible {
+    pub async fn run(
+        mut self,
+        incoming_msg_tx: &UnboundedSender<MavlinkMessage>,
+        outgoing_msg_tx: &UnboundedSender<MavlinkMessage>,
+    ) -> Infallible {
         let mut outbox_closed = false;
 
         loop {
@@ -114,7 +118,7 @@ impl MavlinkConnection {
                     frame = receiver.recv() => match frame {
                         Ok(frame) => {
                             recv_errors = 0;
-                            handle_incoming(&frame, msg_tx);
+                            handle_incoming(&frame, incoming_msg_tx);
                         }
                         Err(mavio::Error::Io(io_error)) => {
                             recv_errors += 1;
@@ -131,6 +135,17 @@ impl MavlinkConnection {
                     message = self.outbox.recv(), if !outbox_closed => match message {
                         Some(message) => match self.endpoint.next_frame(&message) {
                             Ok(frame) => {
+                                match sender.send(&frame).await {
+                                    Ok(bytes) => {
+                                        if outgoing_msg_tx.send(MavlinkMessage { size: bytes, message }).is_err() {
+                                            log::warn!("Outgoing message receiver is closed");
+                                        }
+                                    },
+                                    Err(err) => {
+                                        log::warn!("Unable to send mavlink message: {err}");
+                                        break "send failed";
+                                    }
+                                }
                                 if let Err(err) = sender.send(&frame).await {
                                     log::warn!("Unable to send mavlink message: {err}");
                                     break "send failed";
@@ -150,7 +165,7 @@ impl MavlinkConnection {
     }
 }
 
-fn handle_incoming(frame: &mavio::Frame<V2>, msg_tx: &UnboundedSender<MavlinkMessage>) {
+fn handle_incoming(frame: &mavio::Frame<V2>, incoming_msg_tx: &UnboundedSender<MavlinkMessage>) {
     log::trace!("Received mavlink frame: {frame:?}");
 
     if let Err(err) = frame.validate_checksum::<Message>() {
@@ -166,7 +181,7 @@ fn handle_incoming(frame: &mavio::Frame<V2>, msg_tx: &UnboundedSender<MavlinkMes
         }
     };
 
-    if msg_tx.send(MavlinkMessage { size: frame.size(), message }).is_err() {
-        log::warn!("Message receiver is closed, dropping mavlink message");
+    if incoming_msg_tx.send(MavlinkMessage { size: frame.size(), message }).is_err() {
+        log::warn!("Incoming message receiver is closed, dropping mavlink message");
     }
 }

@@ -21,7 +21,7 @@ impl LogInterceptor {
 
 #[async_trait]
 impl Interceptor for LogInterceptor {
-    async fn on_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let mut message_value =
             serde_json::to_value(message).expect("Every message should be convertible to a serde_json Value");
 

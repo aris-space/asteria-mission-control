@@ -107,13 +107,20 @@ async fn main() {
         exit(1)
     });
 
-    let (msg_tx, msg_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (incoming_msg_tx, incoming_msg_rx) = tokio::sync::mpsc::unbounded_channel();
+    let (outgoing_msg_tx, outgoing_msg_rx) = tokio::sync::mpsc::unbounded_channel();
 
     let remotes = config
         .remotes
         .iter()
         .map(|(key, rc_config)| {
-            (key.clone(), Arc::new(RwLock::new(RemoteComputer::new(rc_config.clone(), config.clone(), msg_tx.clone()))))
+            let rc = Arc::new(RwLock::new(RemoteComputer::new(
+                rc_config.clone(),
+                config.clone(),
+                incoming_msg_tx.clone(),
+                outgoing_msg_tx.clone(),
+            )));
+            (key.clone(), rc)
         })
         .collect::<Remotes>();
     let remotes = Arc::new(remotes);
@@ -138,7 +145,7 @@ async fn main() {
         ))
         .finish();
 
-    tokio::spawn(async move { interceptors.execute_with_receiver(msg_rx).await });
+    tokio::spawn(async move { interceptors.execute_with_receiver(incoming_msg_rx, outgoing_msg_rx).await });
 
     start_heartbeat(state.clone());
 
