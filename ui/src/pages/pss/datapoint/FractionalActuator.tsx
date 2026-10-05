@@ -45,7 +45,9 @@ export function FractionalActuator({
     ? "Open"
     : isOpen
       ? `${Math.round(fraction * 100)}%`
-      : "Closed";
+      : isNaN(fraction)
+        ? "Disconnected"
+        : "Closed";
 
   const handleGearClick = () => {
     if (!allowed) return;
