@@ -34,10 +34,12 @@ function accelMagnitude(
 
 function SteeringBar({
   label,
+  side,
   actual,
   target,
 }: {
   label: string;
+  side: "left" | "right";
   actual?: number;
   target?: number;
 }) {
@@ -45,15 +47,20 @@ function SteeringBar({
   // 
   // The formula (for the right motor just replace each occurence of 'left' with 'right'):
   // ((left_motor_steps / 4096) - revolution_interval_mapping_left.0) / (revolution_interval_mapping_left.1 - revolution_interval_mapping.0)
-  const toFrac = (steps: number, lbl: string) => 
-    lbl === "Steer L"
+  //
+  // side indicates if it's the left or right motor
+  const toFrac = (steps: number, side: "left" | "right") => 
+    side === "left"
         ? Math.max(0, Math.min(1, ((steps / 4096) + 3.36) / 4.95 ))
         : Math.max(0, Math.min(1, ((steps / 4096) + 2.273) / 4.95 ));
 
-  const actualFrac = actual != null ? toFrac(actual, label) : 0.5;
-  const targetFrac = target != null ? toFrac(target, label) : null;
+  const actualFrac = actual != null ? toFrac(actual, side) : 0.5;
+  const targetFrac = target != null ? toFrac(target, side) : null;
 
   const indicatorH = 12; // percent
+  // Map frac in [0, 1] to a top offset that keeps the whole indicator inside the bar:
+  // frac = 1 -> top edge flush with the top, frac = 0 -> bottom edge flush with the bottom.
+  const indicatorTop = (frac: number) => `${(1 - frac) * (100 - indicatorH)}%`;
 
   return (
     <Flex
@@ -92,7 +99,7 @@ function SteeringBar({
           <Box
             style={{
               position: "absolute",
-              top: `calc(${(1 - targetFrac) * 100}% - ${indicatorH / 2}%)`,
+              top: indicatorTop(targetFrac),
               left: 2,
               right: 2,
               height: `${indicatorH}%`,
@@ -107,7 +114,7 @@ function SteeringBar({
         <Box
           style={{
             position: "absolute",
-            top: `calc(${(1 - actualFrac) * 100}% - ${indicatorH / 2}%)`,
+            top: indicatorTop(actualFrac),
             left: 2,
             right: 2,
             height: `${indicatorH}%`,
@@ -117,7 +124,7 @@ function SteeringBar({
         />
       </Box>
       <Text size="10px" ff="monospace" c="dimmed">
-        {actual != null ? `${actual > 0 ? "+" : ""}${actual}` : "--"}
+        {actual != null ? actualFrac.toFixed(2) : "--"}
       </Text>
     </Flex>
   );
@@ -226,6 +233,7 @@ function Telemetry() {
         {/* Left bar — left steering */}
         <SteeringBar
           label="Steer L"
+          side="left"
           actual={steeringActual?.leftPos}
           target={steeringTarget?.leftPos}
         />
@@ -343,6 +351,7 @@ function Telemetry() {
         {/* Right bar — right steering */}
         <SteeringBar
           label="Steer R"
+          side="right"
           actual={steeringActual?.rightPos}
           target={steeringTarget?.rightPos}
         />
