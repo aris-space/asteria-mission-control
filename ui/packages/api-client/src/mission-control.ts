@@ -15,11 +15,13 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  GncPolygon,
   Message,
   OptionalResultStateMachine,
   Pss,
   RemoteComputerInfo,
   ServerInfo,
+  TileServers200,
 } from "./mission-control.schemas";
 
 import { customAxiosInstance } from "./api/mutator/custom-axios-instance";
@@ -512,6 +514,270 @@ export function useSubscribeEvents<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getSubscribeEventsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the GNC polygon for the active remote computer.
+ */
+export const polygon = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<null | GncPolygon>(
+    { url: `/api/gnc-polygon`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getPolygonQueryKey = () => {
+  return [`/api/gnc-polygon`] as const;
+};
+
+export const getPolygonQueryOptions = <
+  TData = Awaited<ReturnType<typeof polygon>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof polygon>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getPolygonQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof polygon>>> = ({
+    signal,
+  }) => polygon(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof polygon>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type PolygonQueryResult = NonNullable<
+  Awaited<ReturnType<typeof polygon>>
+>;
+export type PolygonQueryError = ErrorType<unknown>;
+
+export function usePolygon<
+  TData = Awaited<ReturnType<typeof polygon>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof polygon>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof polygon>>,
+          TError,
+          Awaited<ReturnType<typeof polygon>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePolygon<
+  TData = Awaited<ReturnType<typeof polygon>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof polygon>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof polygon>>,
+          TError,
+          Awaited<ReturnType<typeof polygon>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function usePolygon<
+  TData = Awaited<ReturnType<typeof polygon>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof polygon>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the GNC polygon for the active remote computer.
+ */
+
+export function usePolygon<
+  TData = Awaited<ReturnType<typeof polygon>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof polygon>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getPolygonQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the configured tile servers for the map on the mission control.
+ */
+export const tileServers = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<TileServers200>(
+    { url: `/api/map/tile-servers`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getTileServersQueryKey = () => {
+  return [`/api/map/tile-servers`] as const;
+};
+
+export const getTileServersQueryOptions = <
+  TData = Awaited<ReturnType<typeof tileServers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof tileServers>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getTileServersQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof tileServers>>> = ({
+    signal,
+  }) => tileServers(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof tileServers>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type TileServersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof tileServers>>
+>;
+export type TileServersQueryError = ErrorType<unknown>;
+
+export function useTileServers<
+  TData = Awaited<ReturnType<typeof tileServers>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof tileServers>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof tileServers>>,
+          TError,
+          Awaited<ReturnType<typeof tileServers>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useTileServers<
+  TData = Awaited<ReturnType<typeof tileServers>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof tileServers>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof tileServers>>,
+          TError,
+          Awaited<ReturnType<typeof tileServers>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useTileServers<
+  TData = Awaited<ReturnType<typeof tileServers>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof tileServers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the configured tile servers for the map on the mission control.
+ */
+
+export function useTileServers<
+  TData = Awaited<ReturnType<typeof tileServers>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof tileServers>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getTileServersQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

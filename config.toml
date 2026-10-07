@@ -42,3 +42,15 @@ rfs_diagram_path = "./rfs-pss.svg"
 address = "http://localhost:8086"
 organization = "ARIS"
 bucket = "ASTERIA"
+
+[map.tiles.osm]
+description = "OpenStreetMap (Online)"
+type = "raster"
+url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+
+[map.tiles.local]
+description = "Local (Docker)"
+type = "vector"
+url = "http://localhost:8877/tiles.pmtiles"
+fonts = "http://localhost:8877/fonts"
+sprites = "http://localhost:8877/sprites"

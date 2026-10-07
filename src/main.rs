@@ -198,7 +198,9 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::rocket_pss)
         .service(web::rfs_pss)
         .service(web::send_message)
-        .service(web::abort);
+        .service(web::abort)
+        .service(web::tile_servers)
+        .service(web::polygon);
 }
 
 /// Start the heartbeat thread which periodically sends a MavLink heartbeat message

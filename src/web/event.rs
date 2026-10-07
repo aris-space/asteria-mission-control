@@ -1,5 +1,7 @@
 use crate::parser::statemachine::StateMachine;
 use crate::web::datatypes::{OptionalResult, TelemetryStats};
+use crate::remote::config::GncPolygon;
+use crate::web::datatypes::OptionalResult;
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;
@@ -16,6 +18,7 @@ pub enum EventKind {
     Ping,
     MavlinkMessage,
     TelemetryStats,
+    Polygon,
 }
 
 impl Display for EventKind {
@@ -32,6 +35,7 @@ pub enum Event {
     PssData(NamedDatapointValue),
     MavlinkMessage(Message),
     TelemetryStats(TelemetryStats),
+    Polygon(Option<GncPolygon>),
 }
 
 impl From<Event> for SseEvent {
@@ -50,6 +54,7 @@ impl From<Event> for SseEvent {
             Event::TelemetryStats(telemetry) => {
                 Self::Data(SseData::new_json(telemetry).unwrap().event(EventKind::TelemetryStats.to_string()))
             }
+            Event::Polygon(polygon) => Self::Data(SseData::new_json(polygon).unwrap().event(EventKind::Polygon.to_string())),
         }
     }
 }

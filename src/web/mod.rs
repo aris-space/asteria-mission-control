@@ -1,7 +1,10 @@
+use std::collections::BTreeMap;
+
 use crate::PssDiagrams;
-use crate::config::{Config, RemoteComputerKind};
+use crate::config::{Config, RemoteComputerKind, TilesConfig};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
+use crate::remote::config::GncPolygon;
 use crate::web::datatypes::*;
 use crate::web::event::Event;
 use crate::web::state::StateInstance;
@@ -231,4 +234,28 @@ pub async fn abort(state: Data<StateInstance>, config: Data<Config>) -> actix_we
             error::ErrorInternalServerError(format!("Error whilst sending MavLink message: {err}"))
         })
         .map(|_| abort_state_name.clone())
+}
+
+/// Get the configured tile servers for the map on the mission control.
+#[utoipa::path(responses((status = OK, body = BTreeMap<String, TileServer>)))]
+#[get("/map/tile-servers")]
+pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeMap<String, TileServer>>> {
+    let servers = config
+        .map
+        .tiles
+        .iter()
+        .map(|(name, TilesConfig { description, tile_kind })| {
+            (name.clone(), TileServer { description: description.clone(), tile_kind: tile_kind.clone() })
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    Ok(Json(servers))
+}
+
+/// Get the GNC polygon for the active remote computer.
+#[utoipa::path(responses((status = OK, body = Option<GncPolygon>)))]
+#[get("/gnc-polygon")]
+pub async fn polygon(state: Data<StateInstance>) -> actix_web::Result<Json<Option<GncPolygon>>> {
+    let polygon = state.read().await.get_gnc_polygon().clone();
+    Ok(Json(polygon))
 }

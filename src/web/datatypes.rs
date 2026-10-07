@@ -1,4 +1,4 @@
-use crate::config::RemoteComputerKind;
+use crate::config::{RemoteComputerKind, TileKind};
 
 use serde::Serialize;
 
@@ -37,6 +37,15 @@ pub struct TelemetryStats {
 
     /// The length of the sliding window in seconds.
     pub window_length: usize,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct TileServer {
+    /// Description about the tile server.
+    pub description: String,
+    /// The kind of tiles the server provides.
+    #[serde(flatten)]
+    pub tile_kind: TileKind,
 }
 
 #[derive(Serialize, Clone, utoipa::ToSchema, Default, PartialEq)]

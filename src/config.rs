@@ -33,6 +33,8 @@ pub struct Config {
     pub pss: PssConfig,
     /// Influx database config.
     pub influx: InfluxConfig,
+    /// Configuration related to the map displayed on the frontend.
+    pub map: MapConfig,
 }
 
 impl Config {
@@ -114,6 +116,38 @@ pub struct InfluxConfig {
     pub organization: String,
     /// Name of the bucket where the datapoints should be uploaded to.
     pub bucket: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct MapConfig {
+    /// Available tile servers for the mission control.
+    pub tiles: BTreeMap<String, TilesConfig>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct TilesConfig {
+    /// Description about the tile server.
+    pub description: String,
+    /// The kind of tiles the server provides.
+    #[serde(flatten)]
+    pub tile_kind: TileKind,
+}
+
+#[derive(Debug, Deserialize, Serialize, JsonSchema, ToSchema, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum TileKind {
+    Raster {
+        /// Template URL for fetching a raster tile (e.g., https://tile.openstreetmap.org/{z}/{x}/{y}.png).
+        url: String,
+    },
+    Vector {
+        /// Absolute URL to the location where the vector tiles are served (e.g., http://localhost:8888/data/test.pmtiles)
+        url: String,
+        /// Absolute URL to the location where the fonts for the vector layers are served (e.g., http://localhost:8888/fonts)
+        fonts: String,
+        /// Absolute URL to the location where the sprites for the vector layers are served (e.g., http://localhost:8888/sprites)
+        sprites: String,
+    },
 }
 
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative

@@ -8,6 +8,8 @@ import {
   StateMachine,
   Message,
   RemoteComputerKind,
+  GncPolygon,
+  usePolygon,
 } from "@asteria/mission-control-client";
 import {
   createContext,
@@ -27,6 +29,8 @@ interface RemoteComputerContextDefinition {
   isRemoteComputerLoading: boolean;
   stateMachine: StateMachine | null;
   isStateMachineLoading: boolean;
+  gncPolygon: GncPolygon | null;
+  isGncPolygonLoading: boolean;
   errors: Array<string>;
   dismissError: (idx: number) => void;
   dismissAllErrors: () => void;
@@ -39,6 +43,8 @@ const defaultValue: RemoteComputerContextDefinition = {
   isRemoteComputerLoading: false,
   stateMachine: null,
   isStateMachineLoading: false,
+  gncPolygon: null,
+  isGncPolygonLoading: false,
   errors: [],
   dismissError: () => {},
   dismissAllErrors: () => {},
@@ -63,6 +69,9 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
   } = useActiveRemote({ query: { retry: false } });
   const { data: stateMachineData, isLoading: isStateMachineLoading } =
     useStateMachine({ query: { retry: false } });
+  const { data: polygonData, isLoading: isPolygonLoading } = usePolygon({
+    query: { retry: false },
+  });
 
   const [errors, errorHandler] = useListState<string>([]);
 
@@ -70,6 +79,7 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
     null,
   );
   const [stateMachine, setStateMachine] = useState<StateMachine | null>(null);
+  const [polygon, setPolygon] = useState<GncPolygon | null>(null);
 
   useEffect(() => {
     remotesRef.current = remotes.data || [];
@@ -86,6 +96,10 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
   useEffect(() => {
     updateStateMachine(stateMachineData || null);
   }, [stateMachineData]);
+
+  useEffect(() => {
+    setPolygon(polygonData || null);
+  }, [polygonData]);
 
   useEvent<string>(EventKind.REMOTE, (event) => {
     const newActive = event.data;
@@ -115,6 +129,11 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
     updateStateMachine(stateMachineJson as OptionalResultStateMachine | null);
   });
 
+  useEvent<string>(EventKind.POLYGON, (event) => {
+    const polygonJson = JSON.parse(event.data);
+    setPolygon(polygonJson || null);
+  });
+
   const updateStateMachine = (result: OptionalResultStateMachine | null) => {
     if (!result || result.kind == "none") return setStateMachine(null);
 
@@ -138,6 +157,8 @@ export function RemoteComputerProvider(props: PropsWithChildren) {
         isRemoteComputerLoading,
         stateMachine,
         isStateMachineLoading,
+        gncPolygon: polygon,
+        isGncPolygonLoading: isPolygonLoading,
         errors,
         dismissError,
         dismissAllErrors: () => errorHandler.setState([]),

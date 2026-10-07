@@ -12,15 +12,15 @@ export const ActivePowerSource = {
 
 export type ActuatorKind =
   | {
-      default_enabled: boolean;
-      kind: "digital";
-    }
+    default_enabled: boolean;
+    kind: "digital";
+  }
   | {
-      kind: "dpr";
-    }
+    kind: "dpr";
+  }
   | {
-      kind: "fractional";
-    };
+    kind: "fractional";
+  };
 
 /**
  * Represents the current state of an actuator as detected by a board.
@@ -40,29 +40,29 @@ export const ActuatorStatus = {
 
 export type ActuatorValue =
   | {
-      kind: "digital";
-      value: {
-        /** Whether this actuator is in some logical On state.
-  (ie. Open for valves, On for outputs) */
-        enabled: boolean;
-      };
-    }
-  | {
-      kind: "dpr";
-      value: {
-        /** Whether the DPR is running the control logic */
-        enabled: boolean;
-        /** The setpoint in barg for the control logic */
-        setpoint: number;
-      };
-    }
-  | {
-      kind: "fractional";
-      value: {
-        /** Openness in range [0, 1]. */
-        fraction: number;
-      };
+    kind: "digital";
+    value: {
+      /** Whether this actuator is in some logical On state.
+(ie. Open for valves, On for outputs) */
+      enabled: boolean;
     };
+  }
+  | {
+    kind: "dpr";
+    value: {
+      /** Whether the DPR is running the control logic */
+      enabled: boolean;
+      /** The setpoint in barg for the control logic */
+      setpoint: number;
+    };
+  }
+  | {
+    kind: "fractional";
+    value: {
+      /** Openness in range [0, 1]. */
+      fraction: number;
+    };
+  };
 
 export type Alignment = (typeof Alignment)[keyof typeof Alignment];
 
@@ -134,85 +134,85 @@ export interface RailStatus {
 
 export type BackplaneMessage =
   | {
-      /** ## Type
-  - `Periodic @ 0.2 Hz`
+    /** ## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `Backplane`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `Backplane`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the backplane firmware.
+## Purpose
+Allows version tracking and verification of the backplane firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 1 Hz`
+    /** ## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `Backplane`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `Backplane`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health of the backplane.
+## Purpose
+Communicates the runtime health of the backplane.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: StatusCommonMessage;
-      type: "BoardStatus";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: StatusCommonMessage;
+    type: "BoardStatus";
+  }
   | {
-      /** ## Type
-  - Periodic @ 10Hz
+    /** ## Type
+- Periodic @ 10Hz
 
-  ## Direction
-  - **Emitted by:** `Backplane`
-  - **Received by:** unspecified
+## Direction
+- **Emitted by:** `Backplane`
+- **Received by:** unspecified
 
-  ## Purpose
-  Reports the measured voltage, current, and power on the 5V power rail.
+## Purpose
+Reports the measured voltage, current, and power on the 5V power rail.
 
-  ## Reaction
-  Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
-      content: RailStatus;
-      type: "RailStatus5V";
-    }
+## Reaction
+Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
+    content: RailStatus;
+    type: "RailStatus5V";
+  }
   | {
-      /** ## Type
-  - Periodic @ 10Hz
+    /** ## Type
+- Periodic @ 10Hz
 
-  ## Direction
-  - **Emitted by:** `Backplane`
-  - **Received by:** unspecified
+## Direction
+- **Emitted by:** `Backplane`
+- **Received by:** unspecified
 
-  ## Purpose
-  Reports the measured voltage, current, and power on the 24V power rail.
+## Purpose
+Reports the measured voltage, current, and power on the 24V power rail.
 
-  ## Reaction
-  Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
-      content: RailStatus;
-      type: "RailStatus24V";
-    }
+## Reaction
+Receivers may log, display, or track these values. They may trigger warnings if any measurement is out of nominal range. */
+    content: RailStatus;
+    type: "RailStatus24V";
+  }
   | {
-      /** ## Type
-  - Periodic @ 1 Hz
+    /** ## Type
+- Periodic @ 1 Hz
 
-  ## Direction
-  - **Emitted by:** `Backplane`
-  - **Received by:** unspecified
+## Direction
+- **Emitted by:** `Backplane`
+- **Received by:** unspecified
 
-  ## Purpose
-  Reports which power source is currently active.
+## Purpose
+Reports which power source is currently active.
 
-  ## Reaction
-  Receivers may log, display, or track this value. They may trigger warnings if the power source is not valid. */
-      content: ActivePowerSource;
-      type: "ActivePowerSource";
-    };
+## Reaction
+Receivers may log, display, or track this value. They may trigger warnings if the power source is not valid. */
+    content: ActivePowerSource;
+    type: "ActivePowerSource";
+  };
 
 /**
  * A pressure in bar relative to atmospheric pressure (`barg`).
@@ -272,31 +272,31 @@ export interface ControllinoStatus {
 
 export type DPRValve =
   | {
-      /** Enabled with pressure setpoint in Barg. 0-60. */
-      enabled: {
-        /** 0-60 barg */
-        setpoint: number;
-      };
-    }
+    /** Enabled with pressure setpoint in Barg. 0-60. */
+    enabled: {
+      /** 0-60 barg */
+      setpoint: number;
+    };
+  }
   | "disabled";
 
 export type SensorKind =
   | {
-      kind: "analog";
-      unit: string;
-    }
+    kind: "analog";
+    unit: string;
+  }
   | {
-      default_enabled: boolean;
-      kind: "digital";
-    };
+    default_enabled: boolean;
+    kind: "digital";
+  };
 
 export type DatapointKind =
   | (ActuatorKind & {
-      component: "actuator";
-    })
+    component: "actuator";
+  })
   | (SensorKind & {
-      component: "sensor";
-    });
+    component: "sensor";
+  });
 
 /**
  * Compile time information about a PSS datapoint
@@ -312,25 +312,25 @@ export interface DatapointInformation {
 
 export type SensorValue =
   | {
-      kind: "analog";
-      value: {
-        value: number;
-      };
-    }
-  | {
-      kind: "digital";
-      value: {
-        enabled: boolean;
-      };
+    kind: "analog";
+    value: {
+      value: number;
     };
+  }
+  | {
+    kind: "digital";
+    value: {
+      enabled: boolean;
+    };
+  };
 
 export type DatapointValue =
   | (ActuatorValue & {
-      component: "actuator";
-    })
+    component: "actuator";
+  })
   | (SensorValue & {
-      component: "sensor";
-    });
+    component: "sensor";
+  });
 
 /**
  * A digital input, mostly for proximity sensors.
@@ -417,258 +417,258 @@ export const NormallyClosedValve = {
 
 export type EngineControlBoardMessage =
   | {
-      /** # `EngineControlBoardBuildInfo`
-  Firmware build metadata emitted by the Engine Control Board.
+    /** # `EngineControlBoardBuildInfo`
+Firmware build metadata emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
+## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the Engine Control Board firmware.
+## Purpose
+Allows version tracking and verification of the Engine Control Board firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** # `EngineControlBoardStatus`
-  Periodic status message emitted by the Engine Control Board.
+    /** # `EngineControlBoardStatus`
+Periodic status message emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 1 Hz`
+## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health of the Engine Control Board.
+## Purpose
+Communicates the runtime health of the Engine Control Board.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: EngineControlBoardStatus;
-      type: "BoardStatus";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: EngineControlBoardStatus;
+    type: "BoardStatus";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the Fuel Main Valve State.
+## Purpose
+Communicates the Fuel Main Valve State.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: NormallyClosedValve;
-      type: "FuelMainValveState";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: NormallyClosedValve;
+    type: "FuelMainValveState";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the Oxidizer Main Valve State.
+## Purpose
+Communicates the Oxidizer Main Valve State.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: NormallyClosedValve;
-      type: "OxidizerMainValveState";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: NormallyClosedValve;
+    type: "OxidizerMainValveState";
+  }
   | {
-      /** # `EngineChamberPressure`
-  Periodic telemetry message emitted by the Engine Control Board.
+    /** # `EngineChamberPressure`
+Periodic telemetry message emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 20 Hz`
+## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the Combustion Chamber Pressure.
+## Purpose
+Reports the Combustion Chamber Pressure.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin
-  Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
-  The value will be `NaN` if reading the sensor fails. */
-      content: BarG;
-      type: "ChamberPressure";
-    }
+## Data Origin
+Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
+The value will be `NaN` if reading the sensor fails. */
+    content: BarG;
+    type: "ChamberPressure";
+  }
   | {
-      /** # `InjectorFuelPressure`
-  Periodic telemetry message emitted by the Engine Control Board.
+    /** # `InjectorFuelPressure`
+Periodic telemetry message emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 20 Hz`
+## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the Injector Fuel Pressure.
+## Purpose
+Reports the Injector Fuel Pressure.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin
-  Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
-  The value will be `NaN` if reading the sensor fails. */
-      content: BarG;
-      type: "InjectorFuelPressure";
-    }
+## Data Origin
+Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
+The value will be `NaN` if reading the sensor fails. */
+    content: BarG;
+    type: "InjectorFuelPressure";
+  }
   | {
-      /** # `InjectorOxidizerPressure`
-  Periodic telemetry message emitted by the Engine Control Board.
+    /** # `InjectorOxidizerPressure`
+Periodic telemetry message emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 20 Hz`
+## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the Injector Oxidizer Pressure.
+## Purpose
+Reports the Injector Oxidizer Pressure.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin
-  Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
-  The value will be `NaN` if reading the sensor fails. */
-      content: BarG;
-      type: "InjectorOxidizerPressure";
-    }
+## Data Origin
+Data originates from analog Trafag pressure sensors installed on the engine. They range from 0 to 60 barg
+The value will be `NaN` if reading the sensor fails. */
+    content: BarG;
+    type: "InjectorOxidizerPressure";
+  }
   | {
-      /** # `InjectorFuelTemperature`
-  Periodic telemetry message emitted by the Engine Control Board.
+    /** # `InjectorFuelTemperature`
+Periodic telemetry message emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 10 Hz`
+## Type
+- `Periodic @ 10 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the Injector Fuel Temperature.
+## Purpose
+Reports the Injector Fuel Temperature.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin
-  Data originates from high precision ADCs which read the differential thermocouple voltage together with a thermistor from which the temperature is calculated.
-  Thermocouples installed can be either Type K or Type T.
-  If the value read in firmware is outside the specific temperature range of [-200.0, 200.0] °C,
-  the value will be set to `NaN`. */
-      content: Celsius;
-      type: "InjectorFuelTemperature";
-    }
+## Data Origin
+Data originates from high precision ADCs which read the differential thermocouple voltage together with a thermistor from which the temperature is calculated.
+Thermocouples installed can be either Type K or Type T.
+If the value read in firmware is outside the specific temperature range of [-200.0, 200.0] °C,
+the value will be set to `NaN`. */
+    content: Celsius;
+    type: "InjectorFuelTemperature";
+  }
   | {
-      /** # `OxidizerTankTemperature`
-  Periodic telemetry message emitted by the Engine Control Board.
+    /** # `OxidizerTankTemperature`
+Periodic telemetry message emitted by the Engine Control Board.
 
-  ## Type
-  - `Periodic @ 10 Hz`
+## Type
+- `Periodic @ 10 Hz`
 
-  ## Direction
-  - **Emitted by:** `EngineControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `EngineControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the Oxidizer Tank Bottom Temperature.
+## Purpose
+Reports the Oxidizer Tank Bottom Temperature.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin
-  Data originates from high precision ADCs which read the differential thermocouple voltage together with a thermistor from which the temperature is calculated.
-  Thermocouples installed can be either Type K or Type T.
-  If the value read in firmware is outside the specific temperature range of [-200.0, 200.0] °C,
-  the value will be set to `NaN`. */
-      content: Celsius;
-      type: "OxidizerTankTemperature";
-    }
+## Data Origin
+Data originates from high precision ADCs which read the differential thermocouple voltage together with a thermistor from which the temperature is calculated.
+Thermocouples installed can be either Type K or Type T.
+If the value read in firmware is outside the specific temperature range of [-200.0, 200.0] °C,
+the value will be set to `NaN`. */
+    content: Celsius;
+    type: "OxidizerTankTemperature";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `EngineControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `EngineControlBoard`
 
-  ## Purpose
-  Sets the Oxidizer Main valve to a certain state.
+## Purpose
+Sets the Oxidizer Main valve to a certain state.
 
-  ## Reaction
-  The Engine Control Board shall change the Oxidizer Main Valve position accordingly */
-      content: NormallyClosedValve;
-      type: "OxidizerMainValveControlFC";
-    }
+## Reaction
+The Engine Control Board shall change the Oxidizer Main Valve position accordingly */
+    content: NormallyClosedValve;
+    type: "OxidizerMainValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `EngineControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `EngineControlBoard`
 
-  ## Purpose
-  Sets the Oxidizer Main valve to a certain state.
+## Purpose
+Sets the Oxidizer Main valve to a certain state.
 
-  ## Reaction
-  The Engine Control Board shall change the Oxidizer Main Valve position accordingly */
-      content: NormallyClosedValve;
-      type: "OxidizerMainValveControlRFS";
-    }
+## Reaction
+The Engine Control Board shall change the Oxidizer Main Valve position accordingly */
+    content: NormallyClosedValve;
+    type: "OxidizerMainValveControlRFS";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `EngineControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `EngineControlBoard`
 
-  ## Purpose
-  Sets the Fuel Main valve to a certain state.
+## Purpose
+Sets the Fuel Main valve to a certain state.
 
-  ## Reaction
-  The Engine Control Board shall change the Fuel Main Valve position accordingly. */
-      content: NormallyClosedValve;
-      type: "FuelMainValveControlFC";
-    }
+## Reaction
+The Engine Control Board shall change the Fuel Main Valve position accordingly. */
+    content: NormallyClosedValve;
+    type: "FuelMainValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `EngineControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `EngineControlBoard`
 
-  ## Purpose
-  Sets the Fuel Main valve to a certain state.
+## Purpose
+Sets the Fuel Main valve to a certain state.
 
-  ## Reaction
-  The Engine Control Board shall change the Fuel Main Valve position accordingly. */
-      content: NormallyClosedValve;
-      type: "FuelMainValveControlRFS";
-    };
+## Reaction
+The Engine Control Board shall change the Fuel Main Valve position accordingly. */
+    content: NormallyClosedValve;
+    type: "FuelMainValveControlRFS";
+  };
 
 /**
  * Atmospheric pressure in hPa.
@@ -699,6 +699,7 @@ export const EventKind = {
   PING: "PING",
   MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
   TELEMETRY_STATS: "TELEMETRY_STATS",
+  POLYGON: "POLYGON",
 } as const;
 
 export type ExtendedDatapointInformation = DatapointInformation & {
@@ -797,101 +798,101 @@ export interface ManualActuatorChange {
 
 export type FlightComputerMessage =
   | {
-      /** # `FlightComputerBuildInfo`
-  Firmware build metadata emitted by the Flight Computer.
+    /** # `FlightComputerBuildInfo`
+Firmware build metadata emitted by the Flight Computer.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
+## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the Flight Computer firmware.
+## Purpose
+Allows version tracking and verification of the Flight Computer firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** # `FlightComputerConfigHash`
-  First 5 hex characters of the config file Git Object Hash currently
-  loaded by the Flight Computer.
+    /** # `FlightComputerConfigHash`
+First 5 hex characters of the config file Git Object Hash currently
+loaded by the Flight Computer.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
+## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows Flight Computer config file tracking.
+## Purpose
+Allows Flight Computer config file tracking.
 
-  ## Reaction
-  Receivers may log or display the config hash. */
-      content: ConfigHash;
-      type: "ConfigHash";
-    }
+## Reaction
+Receivers may log or display the config hash. */
+    content: ConfigHash;
+    type: "ConfigHash";
+  }
   | {
-      /** # `FlightComputerStatus`
-  Periodic status message emitted by the Flight Computer.
+    /** # `FlightComputerStatus`
+Periodic status message emitted by the Flight Computer.
 
-  ## Type
-  - `Periodic @ 1 Hz`
+## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health and status of the Flight Computer.
+## Purpose
+Communicates the runtime health and status of the Flight Computer.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks.
-  It is also used to only arm the RFS if the FC is armed and ensure exclusive PSS control. */
-      content: FlightComputerStatus;
-      type: "Status";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks.
+It is also used to only arm the RFS if the FC is armed and ensure exclusive PSS control. */
+    content: FlightComputerStatus;
+    type: "Status";
+  }
   | {
-      /** The current state of the flight computer state machine. */
-      content: StateMachineState;
-      type: "StateMachineState";
-    }
+    /** The current state of the flight computer state machine. */
+    content: StateMachineState;
+    type: "StateMachineState";
+  }
   | {
-      /** Statistics about the health of the telemetry uplink received by the Flight Computer.
+    /** Statistics about the health of the telemetry uplink received by the Flight Computer.
 
-  Emitted periodically by the flight computer.
-  Can be used to calculate the throughput and loss rate. */
-      content: UplinkTelemetryHealth;
-      type: "UplinkTelemetryHealth";
-    }
+Emitted periodically by the flight computer.
+Can be used to calculate the throughput and loss rate. */
+    content: UplinkTelemetryHealth;
+    type: "UplinkTelemetryHealth";
+  }
   | {
-      /** Statistics about the telemetry downlink sent by the Flight Computer.
+    /** Statistics about the telemetry downlink sent by the Flight Computer.
 
-  Emitted periodically by the flight computer.
-  Can be used to calculate the throughput and loss rate. */
-      content: DownlinkTelemetryStats;
-      type: "DownlinkTelemetryStats";
-    }
+Emitted periodically by the flight computer.
+Can be used to calculate the throughput and loss rate. */
+    content: DownlinkTelemetryStats;
+    type: "DownlinkTelemetryStats";
+  }
   | {
-      /** Command a manual state transition on the FC.
-  The state machine will perform the state transition and emit a state change event. */
-      content: ManualStateTransition;
-      type: "ManualStateTransition";
-    }
+    /** Command a manual state transition on the FC.
+The state machine will perform the state transition and emit a state change event. */
+    content: ManualStateTransition;
+    type: "ManualStateTransition";
+  }
   | {
-      /** Command a specific actuator to move to a specific target position.
-  The actuator name and the semantics of the value are defined using
-  an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
-  macro.
+    /** Command a specific actuator to move to a specific target position.
+The actuator name and the semantics of the value are defined using
+an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
+macro.
 
-  Upon change, an "actuator states" message will be emitted. */
-      content: ManualActuatorChange;
-      type: "ManualActuatorChange";
-    };
+Upon change, an "actuator states" message will be emitted. */
+    content: ManualActuatorChange;
+    type: "ManualActuatorChange";
+  };
 
 export interface FuelControlBoardStatus {
   common: StatusCommonMessage;
@@ -918,318 +919,327 @@ export const NormallyOpenValve = {
 
 export type FueldControlBoardMessage =
   | {
-      /** ## Type
-  - `Periodic @ 0.2 Hz`
+    /** ## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the Fuel Control Board firmware.
+## Purpose
+Allows version tracking and verification of the Fuel Control Board firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 1 Hz`
+    /** ## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health of the Fuel Control Board, including sensor.
+## Purpose
+Communicates the runtime health of the Fuel Control Board, including sensor.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: FuelControlBoardStatus;
-      type: "BoardStatus";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: FuelControlBoardStatus;
+    type: "BoardStatus";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the pressure of the Pressurization Line (COPV).
-   */
-      content: BarG;
-      type: "PressurizationLinePressure";
-    }
+## Purpose
+Reports the pressure of the Pressurization Line (COPV).
+ */
+    content: BarG;
+    type: "PressurizationLinePressure";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports Fuel Tank Pressure Sensor 1.
-  This is mainly used as an input to the Control Loop running on the Fuel Control Board.
-   */
-      content: BarG;
-      type: "FuelTankPressureSensor1";
-    }
+## Purpose
+Reports Fuel Tank Pressure Sensor 1.
+This is mainly used as an input to the Control Loop running on the Fuel Control Board.
+ */
+    content: BarG;
+    type: "FuelTankPressureSensor1";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports Fuel Tank Pressure Sensor 2.
-  This is mainly used as an input to the Control Loop running on the Fuel Control Board.
-   */
-      content: BarG;
-      type: "FuelTankPressureSensor2";
-    }
+## Purpose
+Reports Fuel Tank Pressure Sensor 2.
+This is mainly used as an input to the Control Loop running on the Fuel Control Board.
+ */
+    content: BarG;
+    type: "FuelTankPressureSensor2";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the filtered Fuel Tank pressure used as DPR control loop input.
-   */
-      content: BarG;
-      type: "FuelTankPressureFiltered";
-    }
+## Purpose
+Reports the filtered Fuel Tank pressure used as DPR control loop input.
+ */
+    content: BarG;
+    type: "FuelTankPressureFiltered";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the DPR Valve State including setpoint.
+## Purpose
+Communicates the DPR Valve State including setpoint.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: DPRValve;
-      type: "FuelDprValveState";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: DPRValve;
+    type: "FuelDprValveState";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the Pressurization Valve State
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: NormallyOpenValve;
-      type: "PressurizationVentValveState";
-    }
+## Purpose
+Communicates the Pressurization Valve State
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: NormallyOpenValve;
+    type: "PressurizationVentValveState";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `FuelControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `FuelControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the Fuel Vent Valve State
+## Purpose
+Communicates the Fuel Vent Valve State
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: NormallyOpenValve;
-      type: "FuelVentValveState";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: NormallyOpenValve;
+    type: "FuelVentValveState";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Set ETH Pressure Regulator configuration
+## Purpose
+Set ETH Pressure Regulator configuration
 
-  ## Reaction
-  The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
-      content: DPRValve;
-      type: "FuelDprValveControlFC";
-    }
+## Reaction
+The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
+    content: DPRValve;
+    type: "FuelDprValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the N2 Vent Valve to a certain state.
+## Purpose
+Sets the N2 Vent Valve to a certain state.
 
-  ## Reaction
-  The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
-      content: NormallyOpenValve;
-      type: "PressurizationVentValveControlFC";
-    }
+## Reaction
+The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
+    content: NormallyOpenValve;
+    type: "PressurizationVentValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the Fuel Vent Valve to a certain state.
+## Purpose
+Sets the Fuel Vent Valve to a certain state.
 
-  ## Reaction
-  The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
-      content: NormallyOpenValve;
-      type: "FuelVentValveControlFC";
-    }
+## Reaction
+The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
+    content: NormallyOpenValve;
+    type: "FuelVentValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Set ETH Pressure Regulator configuration
+## Purpose
+Set ETH Pressure Regulator configuration
 
-  ## Reaction
-  The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
-      content: DPRValve;
-      type: "FuelDprValveControlRFS";
-    }
+## Reaction
+The Fuel Control Board shall adjust the FUE DPR setpoint and enable/disable the controller accordingly */
+    content: DPRValve;
+    type: "FuelDprValveControlRFS";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the N2 Vent Valve to a certain state.
+## Purpose
+Sets the N2 Vent Valve to a certain state.
 
-  ## Reaction
-  The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
-      content: NormallyOpenValve;
-      type: "PressurizationVentValveControlRFS";
-    }
+## Reaction
+The Fuel Control Board shall adjust N2 Vent Valve state accordingly */
+    content: NormallyOpenValve;
+    type: "PressurizationVentValveControlRFS";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the Fuel Vent Valve to a certain state.
+## Purpose
+Sets the Fuel Vent Valve to a certain state.
 
-  ## Reaction
-  The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
-      content: NormallyOpenValve;
-      type: "FuelVentValveControlRFS";
-    }
+## Reaction
+The Fuel Control Board shall adjust the Fuel Vent Valve state accordingly */
+    content: NormallyOpenValve;
+    type: "FuelVentValveControlRFS";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the proportional Fuel DPR Gain
+## Purpose
+Sets the proportional Fuel DPR Gain
 
-  ## Reaction
-  The Fuel Control Board shall adjust the proportional DPR gain accordingly */
-      content: number;
-      type: "FuelDprGainP";
-    }
+## Reaction
+The Fuel Control Board shall adjust the proportional DPR gain accordingly */
+    content: number;
+    type: "FuelDprGainP";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the integral Fuel DPR Gain
+## Purpose
+Sets the integral Fuel DPR Gain
 
-  ## Reaction
-  The Fuel Control Board shall adjust the integral DPR gain accordingly */
-      content: number;
-      type: "FuelDprGainI";
-    }
+## Reaction
+The Fuel Control Board shall adjust the integral DPR gain accordingly */
+    content: number;
+    type: "FuelDprGainI";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the derivative Fuel DPR Gain
+## Purpose
+Sets the derivative Fuel DPR Gain
 
-  ## Reaction
-  The Fuel Control Board shall adjust the derivative DPR gain accordingly */
-      content: number;
-      type: "FuelDprGainD";
-    }
+## Reaction
+The Fuel Control Board shall adjust the derivative DPR gain accordingly */
+    content: number;
+    type: "FuelDprGainD";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the minimum opening time ms of the DPR
+## Purpose
+Sets the minimum opening time ms of the DPR
 
-  ## Reaction
-  The Fuel Control Board shall adjust the derivative DPR minimum opening time accordingly */
-      content: number;
-      type: "FuelDprMinOpeningTime";
-    }
+## Reaction
+The Fuel Control Board shall adjust the derivative DPR minimum opening time accordingly */
+    content: number;
+    type: "FuelDprMinOpeningTime";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `FuelControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `FuelControlBoard`
 
-  ## Purpose
-  Sets the maximum opening time ms of the DPR
+## Purpose
+Sets the maximum opening time ms of the DPR
 
-  ## Reaction
-  The Fuel Control Board shall adjust the derivative DPR maximum opening time accordingly */
-      content: number;
-      type: "FuelDprMaxOpeningTime";
-    };
+## Reaction
+The Fuel Control Board shall adjust the derivative DPR maximum opening time accordingly */
+    content: number;
+    type: "FuelDprMaxOpeningTime";
+  };
+
+export interface GncPolygon {
+  /** Latitude-longitude pair of the origin of the bounding polygon. */
+  origin: number[];
+  /** Points which span the polygon.
+  Every point is a tuple of distances in meters to the north- and east
+  of the origin. */
+  points: number[][];
+}
 
 /**
  * MAVLink enum `MAV_AUTOPILOT` for `minimal` dialect.
@@ -1464,463 +1474,463 @@ export interface ThrottleableValve {
 
 export type RfsComputerMessage =
   | {
-      /** Software build metadata periodically emitted by the RFS Computer.
+    /** Software build metadata periodically emitted by the RFS Computer.
 
-  # CAN
-  - **Kind**: Debug message
-  - **Sent by**: RFS Computer */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+# CAN
+- **Kind**: Debug message
+- **Sent by**: RFS Computer */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** First 5 hex characters of the config file Git Object Hash currently
-  loaded by the Rfs Computer.
+    /** First 5 hex characters of the config file Git Object Hash currently
+loaded by the Rfs Computer.
 
-  This is used to auto-select the state machine in the mission control */
-      content: ConfigHash;
-      type: "ConfigHash";
-    }
+This is used to auto-select the state machine in the mission control */
+    content: ConfigHash;
+    type: "ConfigHash";
+  }
   | {
-      /** Periodic status message emitted by the RFS Computer.
+    /** Periodic status message emitted by the RFS Computer.
 
-  Contains runtime health of the RFS Computer.
-  It is also used to only ignite if the RFS is armed.
+Contains runtime health of the RFS Computer.
+It is also used to only ignite if the RFS is armed.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: RfsComputerStatus;
-      type: "Status";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: RfsComputerStatus;
+    type: "Status";
+  }
   | {
-      /** The current state of the rfs computer state machine. */
-      content: StateMachineState;
-      type: "StateMachineState";
-    }
+    /** The current state of the rfs computer state machine. */
+    content: StateMachineState;
+    type: "StateMachineState";
+  }
   | {
-      /** Statistics about the health of the telemetry uplink received by the Rfs Computer.
+    /** Statistics about the health of the telemetry uplink received by the Rfs Computer.
 
-  Emitted periodically by the rfs computer.
-  Can be used to calculate the throughput and loss rate. */
-      content: UplinkTelemetryHealth;
-      type: "UplinkTelemetryHealth";
-    }
+Emitted periodically by the rfs computer.
+Can be used to calculate the throughput and loss rate. */
+    content: UplinkTelemetryHealth;
+    type: "UplinkTelemetryHealth";
+  }
   | {
-      /** Statistics about the telemetry downlink sent by the Rfs Computer.
+    /** Statistics about the telemetry downlink sent by the Rfs Computer.
 
-  Emitted periodically by the Rfs computer.
-  Can be used to calculate the throughput and loss rate. */
-      content: DownlinkTelemetryStats;
-      type: "DownlinkTelemetryStats";
-    }
+Emitted periodically by the Rfs computer.
+Can be used to calculate the throughput and loss rate. */
+    content: DownlinkTelemetryStats;
+    type: "DownlinkTelemetryStats";
+  }
   | {
-      /** The current active state of the normally off spark plug.
+    /** The current active state of the normally off spark plug.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: DigitalOut;
-      type: "IgniterSparkPlugState";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: DigitalOut;
+    type: "IgniterSparkPlugState";
+  }
   | {
-      /** The current active state of the normally closed GOX igniter valve.
+    /** The current active state of the normally closed GOX igniter valve.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: NormallyClosedValve;
-      type: "GoxIgniterValveState";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: NormallyClosedValve;
+    type: "GoxIgniterValveState";
+  }
   | {
-      /** The current active state of the normally closed H2 igniter valve.
+    /** The current active state of the normally closed H2 igniter valve.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: NormallyClosedValve;
-      type: "H2IgniterValveState";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: NormallyClosedValve;
+    type: "H2IgniterValveState";
+  }
   | {
-      /** The current active state of the normally closed GOX purge valve.
+    /** The current active state of the normally closed GOX purge valve.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: NormallyClosedValve;
-      type: "GoxPurgeValveState";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: NormallyClosedValve;
+    type: "GoxPurgeValveState";
+  }
   | {
-      /** The current active state of the normally closed H2 purge valve.
+    /** The current active state of the normally closed H2 purge valve.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: NormallyClosedValve;
-      type: "H2PurgeValveState";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: NormallyClosedValve;
+    type: "H2PurgeValveState";
+  }
   | {
-      /** The current active state of the normally open N2 bleed valve. */
-      content: NormallyOpenValve;
-      type: "N2BleedValveState";
-    }
+    /** The current active state of the normally open N2 bleed valve. */
+    content: NormallyOpenValve;
+    type: "N2BleedValveState";
+  }
   | {
-      /** The current active state of the normally closed LOX purge valve. */
-      content: NormallyClosedValve;
-      type: "LoxPurgeValveState";
-    }
+    /** The current active state of the normally closed LOX purge valve. */
+    content: NormallyClosedValve;
+    type: "LoxPurgeValveState";
+  }
   | {
-      /** The current active state of the normally open GOX bleed valve. */
-      content: NormallyOpenValve;
-      type: "GoxBleedValveState";
-    }
+    /** The current active state of the normally open GOX bleed valve. */
+    content: NormallyOpenValve;
+    type: "GoxBleedValveState";
+  }
   | {
-      /** The current active state of the normally closed N2 purge valve. */
-      content: NormallyClosedValve;
-      type: "N2PurgeValveState";
-    }
+    /** The current active state of the normally closed N2 purge valve. */
+    content: NormallyClosedValve;
+    type: "N2PurgeValveState";
+  }
   | {
-      /** The current active state of the normally closed N2 fill valve. */
-      content: NormallyClosedValve;
-      type: "N2FillValveState";
-    }
+    /** The current active state of the normally closed N2 fill valve. */
+    content: NormallyClosedValve;
+    type: "N2FillValveState";
+  }
   | {
-      /** The current active state of the normally open H2 bleed valve. */
-      content: NormallyOpenValve;
-      type: "H2BleedValveState";
-    }
+    /** The current active state of the normally open H2 bleed valve. */
+    content: NormallyOpenValve;
+    type: "H2BleedValveState";
+  }
   | {
-      /** The current active state of the normally closed LOX bleed valve. */
-      content: NormallyClosedValve;
-      type: "LoxBleedValveState";
-    }
+    /** The current active state of the normally closed LOX bleed valve. */
+    content: NormallyClosedValve;
+    type: "LoxBleedValveState";
+  }
   | {
-      /** The current active state of the normally closed pneumatic booster valve. */
-      content: NormallyClosedValve;
-      type: "BoosterValveState";
-    }
+    /** The current active state of the normally closed pneumatic booster valve. */
+    content: NormallyClosedValve;
+    type: "BoosterValveState";
+  }
   | {
-      /** The current active state of the normally closed LOX decoupler extend valve. */
-      content: NormallyClosedValve;
-      type: "LoxDecouplerExtendValveState";
-    }
+    /** The current active state of the normally closed LOX decoupler extend valve. */
+    content: NormallyClosedValve;
+    type: "LoxDecouplerExtendValveState";
+  }
   | {
-      /** The current active state of the normally closed LOX decoupler retract valve. */
-      content: NormallyClosedValve;
-      type: "LoxDecouplerRetractValveState";
-    }
+    /** The current active state of the normally closed LOX decoupler retract valve. */
+    content: NormallyClosedValve;
+    type: "LoxDecouplerRetractValveState";
+  }
   | {
-      /** The current active state of the normally closed N2 decoupler extend valve. */
-      content: NormallyClosedValve;
-      type: "N2DecouplerExtendValveState";
-    }
+    /** The current active state of the normally closed N2 decoupler extend valve. */
+    content: NormallyClosedValve;
+    type: "N2DecouplerExtendValveState";
+  }
   | {
-      /** The current active state of the normally closed N2 decoupler retract valve. */
-      content: NormallyClosedValve;
-      type: "N2DecouplerRetractValveState";
-    }
+    /** The current active state of the normally closed N2 decoupler retract valve. */
+    content: NormallyClosedValve;
+    type: "N2DecouplerRetractValveState";
+  }
   | {
-      /** The current active state of the normally closed N2 shower valves. */
-      content: NormallyClosedValve;
-      type: "N2ShowerValvesState";
-    }
+    /** The current active state of the normally closed N2 shower valves. */
+    content: NormallyClosedValve;
+    type: "N2ShowerValvesState";
+  }
   | {
-      /** The current active state of the normally closed N2 engine purge valve valve.
+    /** The current active state of the normally closed N2 engine purge valve valve.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: NormallyClosedValve;
-      type: "N2RocketPurgeValveState";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: NormallyClosedValve;
+    type: "N2RocketPurgeValveState";
+  }
   | {
-      /** The current active state of the rocket power output. */
-      content: InvertedDigitalOut;
-      type: "RocketPowerState";
-    }
+    /** The current active state of the rocket power output. */
+    content: InvertedDigitalOut;
+    type: "RocketPowerState";
+  }
   | {
-      /** The current active state of the Maxon board power output. */
-      content: InvertedDigitalOut;
-      type: "MaxonBoardPowerState";
-    }
+    /** The current active state of the Maxon board power output. */
+    content: InvertedDigitalOut;
+    type: "MaxonBoardPowerState";
+  }
   | {
-      /** The current active state of the rocket heating output. */
-      content: DigitalOut;
-      type: "RocketHeatingState";
-    }
+    /** The current active state of the rocket heating output. */
+    content: DigitalOut;
+    type: "RocketHeatingState";
+  }
   | {
-      /** The current active state of the custom output 1. */
-      content: DigitalOut;
-      type: "Custom1State";
-    }
+    /** The current active state of the custom output 1. */
+    content: DigitalOut;
+    type: "Custom1State";
+  }
   | {
-      /** The current active state of the custom output 2. */
-      content: DigitalOut;
-      type: "Custom2State";
-    }
+    /** The current active state of the custom output 2. */
+    content: DigitalOut;
+    type: "Custom2State";
+  }
   | {
-      /** The current active state of the custom output 3. */
-      content: DigitalOut;
-      type: "Custom3State";
-    }
+    /** The current active state of the custom output 3. */
+    content: DigitalOut;
+    type: "Custom3State";
+  }
   | {
-      /** The current openness state of the LOX fill valve */
-      content: ThrottleableValve;
-      type: "LoxFillValveState";
-    }
+    /** The current openness state of the LOX fill valve */
+    content: ThrottleableValve;
+    type: "LoxFillValveState";
+  }
   | {
-      /** The temperature of the LOx line. */
-      content: Celsius;
-      type: "LoxTemperature";
-    }
+    /** The temperature of the LOx line. */
+    content: Celsius;
+    type: "LoxTemperature";
+  }
   | {
-      /** The temperature of the igniter.
+    /** The temperature of the igniter.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: Celsius;
-      type: "IgniterTemperature";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: Celsius;
+    type: "IgniterTemperature";
+  }
   | {
-      /** The temperature inside the DACS cabinet. */
-      content: Celsius;
-      type: "CabinetTemperature";
-    }
+    /** The temperature inside the DACS cabinet. */
+    content: Celsius;
+    type: "CabinetTemperature";
+  }
   | {
-      /** The ambient temperature. */
-      content: Celsius;
-      type: "AmbientTemperature";
-    }
+    /** The ambient temperature. */
+    content: Celsius;
+    type: "AmbientTemperature";
+  }
   | {
-      /** The temperature inside the SMART box. */
-      content: Celsius;
-      type: "SmartBoxTemperature";
-    }
+    /** The temperature inside the SMART box. */
+    content: Celsius;
+    type: "SmartBoxTemperature";
+  }
   | {
-      /** A unused thermocouple on the RFS. */
-      content: Celsius;
-      type: "CustomT1";
-    }
+    /** A unused thermocouple on the RFS. */
+    content: Celsius;
+    type: "CustomT1";
+  }
   | {
-      /** Whether the LOx decoupler is in its retracted state, from the proximity sensor. */
-      content: DigitalIn;
-      type: "LoxDecouplerProximity";
-    }
+    /** Whether the LOx decoupler is in its retracted state, from the proximity sensor. */
+    content: DigitalIn;
+    type: "LoxDecouplerProximity";
+  }
   | {
-      /** Whether the N2 decoupler is in its retracted state, from the proximity sensor. */
-      content: DigitalIn;
-      type: "N2DecouplerProximity";
-    }
+    /** Whether the N2 decoupler is in its retracted state, from the proximity sensor. */
+    content: DigitalIn;
+    type: "N2DecouplerProximity";
+  }
   | {
-      /** Whether the valves are receiving power (arming relay state). */
-      content: DigitalIn;
-      type: "ValvesArmed";
-    }
+    /** Whether the valves are receiving power (arming relay state). */
+    content: DigitalIn;
+    type: "ValvesArmed";
+  }
   | {
-      /** Whether the spark plug is receiving power (arming relay state). */
-      content: DigitalIn;
-      type: "IgniterArmed";
-    }
+    /** Whether the spark plug is receiving power (arming relay state). */
+    content: DigitalIn;
+    type: "IgniterArmed";
+  }
   | {
-      /** Whether the valves of the smart box are receiving power (arming relay state). */
-      content: ArmingState;
-      type: "ValvesArmedSmartBox";
-    }
+    /** Whether the valves of the smart box are receiving power (arming relay state). */
+    content: ArmingState;
+    type: "ValvesArmedSmartBox";
+  }
   | {
-      /** Whether the rocket is given power and is connected. */
-      content: DigitalIn;
-      type: "RocketConnected";
-    }
+    /** Whether the rocket is given power and is connected. */
+    content: DigitalIn;
+    type: "RocketConnected";
+  }
   | {
-      /** The pressure from the igniter block.
+    /** The pressure from the igniter block.
 
-  # CAN
-  - **Kind**: Status message
-  - **Sent by**: RFS Computer */
-      content: BarG;
-      type: "IgniterPressure";
-    }
+# CAN
+- **Kind**: Status message
+- **Sent by**: RFS Computer */
+    content: BarG;
+    type: "IgniterPressure";
+  }
   | {
-      /** Pressure of the N2 pre-booster line. */
-      content: BarG;
-      type: "N2PreBoosterPressure";
-    }
+    /** Pressure of the N2 pre-booster line. */
+    content: BarG;
+    type: "N2PreBoosterPressure";
+  }
   | {
-      /** Pressure of the H2 purge line. */
-      content: BarG;
-      type: "H2PurgePressure";
-    }
+    /** Pressure of the H2 purge line. */
+    content: BarG;
+    type: "H2PurgePressure";
+  }
   | {
-      /** Pressure of the N2 post-booster line. */
-      content: BarG;
-      type: "N2PostBoosterPressure";
-    }
+    /** Pressure of the N2 post-booster line. */
+    content: BarG;
+    type: "N2PostBoosterPressure";
+  }
   | {
-      /** Pressure of the LOX line. */
-      content: BarG;
-      type: "LoxPressure";
-    }
+    /** Pressure of the LOX line. */
+    content: BarG;
+    type: "LoxPressure";
+  }
   | {
-      /** Pressure of the purge line. */
-      content: BarG;
-      type: "PurgePressure";
-    }
+    /** Pressure of the purge line. */
+    content: BarG;
+    type: "PurgePressure";
+  }
   | {
-      /** Pressure of the pneumatic line. */
-      content: BarG;
-      type: "PneumaticPressure";
-    }
+    /** Pressure of the pneumatic line. */
+    content: BarG;
+    type: "PneumaticPressure";
+  }
   | {
-      /** Pressure of the GOX igniter line. */
-      content: BarG;
-      type: "GoxPressure";
-    }
+    /** Pressure of the GOX igniter line. */
+    content: BarG;
+    type: "GoxPressure";
+  }
   | {
-      /** Pressure of the H2 igniter line. */
-      content: BarG;
-      type: "H2Pressure";
-    }
+    /** Pressure of the H2 igniter line. */
+    content: BarG;
+    type: "H2Pressure";
+  }
   | {
-      /** Command a manual state transition on the RFSC.
-  The state machine will perform the state transition and emit a state change event. */
-      content: ManualStateTransition;
-      type: "ManualStateTransition";
-    }
+    /** Command a manual state transition on the RFSC.
+The state machine will perform the state transition and emit a state change event. */
+    content: ManualStateTransition;
+    type: "ManualStateTransition";
+  }
   | {
-      /** Command a specific actuator to move to a specific target position.
-  The actuator name and the semantics of the value are defined using
-  an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
-  macro.
+    /** Command a specific actuator to move to a specific target position.
+The actuator name and the semantics of the value are defined using
+an `#[pss(name = "...", kind  = "...")]` attribute from the [`data_core::pss::Data`]
+macro.
 
-  Upon change, an "actuator states" message will be emitted. */
-      content: ManualActuatorChange;
-      type: "ManualActuatorChange";
-    }
+Upon change, an "actuator states" message will be emitted. */
+    content: ManualActuatorChange;
+    type: "ManualActuatorChange";
+  }
   | {
-      /** Controls the GOX igniter valve on the RFS from the FC.
+    /** Controls the GOX igniter valve on the RFS from the FC.
 
-  This is needed during the ignition sequence where the flight computer controls the igniter
-  and thus needs to open and close valves.
+This is needed during the ignition sequence where the flight computer controls the igniter
+and thus needs to open and close valves.
 
-  # CAN
-  - **Kind**: Event message
-  - **Sent by**: Flight Computer */
-      content: NormallyClosedValve;
-      type: "GoxIgniterValveControl";
-    }
+# CAN
+- **Kind**: Event message
+- **Sent by**: Flight Computer */
+    content: NormallyClosedValve;
+    type: "GoxIgniterValveControl";
+  }
   | {
-      /** Controls the H2 igniter valve on the RFS from the FC.
+    /** Controls the H2 igniter valve on the RFS from the FC.
 
-  This is needed during the ignition sequence where the flight computer controls the igniter
-  and thus needs to open and close valves.
+This is needed during the ignition sequence where the flight computer controls the igniter
+and thus needs to open and close valves.
 
-  # CAN
-  - **Kind**: Event message
-  - **Sent by**: Flight Computer */
-      content: NormallyClosedValve;
-      type: "H2IgniterValveControl";
-    }
+# CAN
+- **Kind**: Event message
+- **Sent by**: Flight Computer */
+    content: NormallyClosedValve;
+    type: "H2IgniterValveControl";
+  }
   | {
-      /** Controls the igniter spark plug on the RFS from the FC.
+    /** Controls the igniter spark plug on the RFS from the FC.
 
-  This is needed during the ignition sequence where the flight computer controls the igniter
-  and thus needs to activate the spark plug.
+This is needed during the ignition sequence where the flight computer controls the igniter
+and thus needs to activate the spark plug.
 
-  # CAN
-  - **Kind**: Event message
-  - **Sent by**: Flight Computer */
-      content: DigitalOut;
-      type: "IgniterSparkPlugControl";
-    }
+# CAN
+- **Kind**: Event message
+- **Sent by**: Flight Computer */
+    content: DigitalOut;
+    type: "IgniterSparkPlugControl";
+  }
   | {
-      /** Controls the H2 purge valve on the RFS from the FC.
+    /** Controls the H2 purge valve on the RFS from the FC.
 
-  This is needed during the ignition sequence where the flight computer controls the ignition
-  and thus needs to purge.
+This is needed during the ignition sequence where the flight computer controls the ignition
+and thus needs to purge.
 
-  # CAN
-  - **Kind**: Event message
-  - **Sent by**: Flight Computer */
-      content: NormallyClosedValve;
-      type: "H2IgniterPurgeControl";
-    }
+# CAN
+- **Kind**: Event message
+- **Sent by**: Flight Computer */
+    content: NormallyClosedValve;
+    type: "H2IgniterPurgeControl";
+  }
   | {
-      /** Controls the GOX purge valve on the RFS from the FC.
+    /** Controls the GOX purge valve on the RFS from the FC.
 
-  This is needed during the ignition sequence where the flight computer controls the ignition
-  and thus needs to purge.
+This is needed during the ignition sequence where the flight computer controls the ignition
+and thus needs to purge.
 
-  # CAN
-  - **Kind**: Event message
-  - **Sent by**: Flight Computer */
-      content: NormallyClosedValve;
-      type: "GoxIgniterPurgeControl";
-    }
+# CAN
+- **Kind**: Event message
+- **Sent by**: Flight Computer */
+    content: NormallyClosedValve;
+    type: "GoxIgniterPurgeControl";
+  }
   | {
-      /** Controls the N2 engine purge valve on the RFS from the FC.
+    /** Controls the N2 engine purge valve on the RFS from the FC.
 
-  This is needed during the ignition sequence where the flight computer controls the
-  ignition and thus needs to purge the engine.
+This is needed during the ignition sequence where the flight computer controls the
+ignition and thus needs to purge the engine.
 
-  # CAN
-  - **Kind**: Event message
-  - **Sent by**: Flight Computer */
-      content: NormallyClosedValve;
-      type: "N2RocketPurgeValveControl";
-    };
+# CAN
+- **Kind**: Event message
+- **Sent by**: Flight Computer */
+    content: NormallyClosedValve;
+    type: "N2RocketPurgeValveControl";
+  };
 
 export type SystemManagementMessage =
   | {
-      /** Sends a mavlink compatible Heartbeat message. */
-      content: Heartbeat;
-      type: "Heartbeat";
-    }
+    /** Sends a mavlink compatible Heartbeat message. */
+    content: Heartbeat;
+    type: "Heartbeat";
+  }
   | {
-      /** # `UTCTimeUpdate`
-  Synchronizes system time using GPS-derived UTC.
+    /** # `UTCTimeUpdate`
+Synchronizes system time using GPS-derived UTC.
 
-  This value is derived from the GPS time sensors and is therefore highly accurate.
+This value is derived from the GPS time sensors and is therefore highly accurate.
 
-  ## Type
-  - `Periodic @ 10 Hz`
+## Type
+- `Periodic @ 10 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `All nodes`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `All nodes`
 
-  ## Purpose
-  Ensures consistent timekeeping across all nodes using GPS as a source of truth.
+## Purpose
+Ensures consistent timekeeping across all nodes using GPS as a source of truth.
 
-  ## Reaction
-  Boards shall update their internal time reference used for logging and
-  time-sensitive operations *once at startup*. While this value could in theory
-  be used to correct for drift, this may result in non-monotonic timekeeping
-  and is therefore discouraged. */
-      content: InstantUs;
-      type: "UTCTimeUpdate";
-    }
+## Reaction
+Boards shall update their internal time reference used for logging and
+time-sensitive operations *once at startup*. While this value could in theory
+be used to correct for drift, this may result in non-monotonic timekeeping
+and is therefore discouraged. */
+    content: InstantUs;
+    type: "UTCTimeUpdate";
+  }
   | {
-      /** # `ResetSpecific`
-  Instructs a specific board to reset.
+    /** # `ResetSpecific`
+Instructs a specific board to reset.
 
-  ## Type
-  - `Event`: triggered by user command or fault condition
+## Type
+- `Event`: triggered by user command or fault condition
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** All nodes except `FlightComputer` and `RfsComputer`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** All nodes except `FlightComputer` and `RfsComputer`
 
-  ## Purpose
-  Allows targeted recovery or restart of a malfunctioning board.
+## Purpose
+Allows targeted recovery or restart of a malfunctioning board.
 
-  ## Reaction
-  The addressed board performs an immediate reset. Others shall ignore the message. */
-      content: BoardId;
-      type: "ResetSpecific";
-    }
+## Reaction
+The addressed board performs an immediate reset. Others shall ignore the message. */
+    content: BoardId;
+    type: "ResetSpecific";
+  }
   | {
-      type: "ResetAll";
-    };
+    type: "ResetAll";
+  };
 
 /**
  * Represents the current state of a watchdog timer.
@@ -1980,116 +1990,116 @@ export interface RecoveryPowerConfig {
 
 export type RecoveryBoardMessage =
   | {
-      /** # `RecoveryBoardBuildInfo`
-  Firmware build metadata emitted by the Recovery Board.
+    /** # `RecoveryBoardBuildInfo`
+Firmware build metadata emitted by the Recovery Board.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
+## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `RecoveryBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `RecoveryBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the Recovery Board firmware.
+## Purpose
+Allows version tracking and verification of the Recovery Board firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** # `RecoveryBoardStatus`
-  Periodic status message emitted by the Recovery Board.
+    /** # `RecoveryBoardStatus`
+Periodic status message emitted by the Recovery Board.
 
-  ## Type
-  - `Periodic @ 1 Hz`
+## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `RecoveryBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `RecoveryBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health of the Recovery Board, including actuator and steering diagnostics.
+## Purpose
+Communicates the runtime health of the Recovery Board, including actuator and steering diagnostics.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: RecoveryBoardStatus;
-      type: "BoardStatus";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: RecoveryBoardStatus;
+    type: "BoardStatus";
+  }
   | {
-      /** # `SteeringActualPositions`
-  Periodic event message emitted by the Recovery Board.
+    /** # `SteeringActualPositions`
+Periodic event message emitted by the Recovery Board.
 
-  ## Type
-  - `Periodic @ 10 Hz`, but only during active steering phase
+## Type
+- `Periodic @ 10 Hz`, but only during active steering phase
 
-  ## Direction
-  - **Emitted by:** `RecoveryBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `RecoveryBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Returns the actual motor positions of the left and right steering actuators for monitoring or logging.
+## Purpose
+Returns the actual motor positions of the left and right steering actuators for monitoring or logging.
 
-  ## Reaction
-  No action required. */
-      content: SteeringPositions;
-      type: "SteeringActualPositions";
-    }
+## Reaction
+No action required. */
+    content: SteeringPositions;
+    type: "SteeringActualPositions";
+  }
   | {
-      type: "SeparationOccurred";
-    }
+    type: "SeparationOccurred";
+  }
   | {
-      type: "DeploymentOccurred";
-    }
+    type: "DeploymentOccurred";
+  }
   | {
-      /** # `SteeringTargetPositions`
-  Periodic event message emitted by the Flight Computer.
+    /** # `SteeringTargetPositions`
+Periodic event message emitted by the Flight Computer.
 
-  ## Type
-  - `Periodic @ 10 Hz`, but only during active steering phase
+## Type
+- `Periodic @ 10 Hz`, but only during active steering phase
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `RecoveryBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `RecoveryBoard`
 
-  ## Purpose
-  Sets motor target positions for the steering servos.
+## Purpose
+Sets motor target positions for the steering servos.
 
-  ## Reaction
-  The first received message starts the `RecoveryBoard` watchdog, which expects frequent
-  steering target position messages until deactivation.
+## Reaction
+The first received message starts the `RecoveryBoard` watchdog, which expects frequent
+steering target position messages until deactivation.
 
-  When this message is received, the `RecoveryBoard` shall set the target positions for the left and
-  right steering motors to the values indicated by `left_pos` and `right_pos` respectively. */
-      content: SteeringPositions;
-      type: "SteeringTargetPositions";
-    }
+When this message is received, the `RecoveryBoard` shall set the target positions for the left and
+right steering motors to the values indicated by `left_pos` and `right_pos` respectively. */
+    content: SteeringPositions;
+    type: "SteeringTargetPositions";
+  }
   | {
-      /** # `RecoveryPowerConfig`
-  Event message sent by the Flight Computer.
+    /** # `RecoveryPowerConfig`
+Event message sent by the Flight Computer.
 
-  ## Type
-  - `Event`: sent by the Flight Computer to change the actuator power state
+## Type
+- `Event`: sent by the Flight Computer to change the actuator power state
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `RecoveryBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `RecoveryBoard`
 
-  ## Purpose
-  Configures the power state for all Recovery Board actuators.
+## Purpose
+Configures the power state for all Recovery Board actuators.
 
-  ## Reaction
-  The Recovery Board shall switch power to the actuators as specified in the message. */
-      content: RecoveryPowerConfig;
-      type: "RecoveryPowerConfig";
-    }
+## Reaction
+The Recovery Board shall switch power to the actuators as specified in the message. */
+    content: RecoveryPowerConfig;
+    type: "RecoveryPowerConfig";
+  }
   | {
-      type: "SeparationTrigger";
-    }
+    type: "SeparationTrigger";
+  }
   | {
-      type: "DeploymentTrigger";
-    };
+    type: "DeploymentTrigger";
+  };
 
 /**
  * Represents the online/offline status of all sensors on the Sensor Carrier board.
@@ -2164,287 +2174,287 @@ export interface OrientationData {
 
 export type SensorCarrierMessage =
   | {
-      /** # `SensorCarrierBuildInfo`
-  Firmware build metadata emitted by the Sensor Carrier.
+    /** # `SensorCarrierBuildInfo`
+Firmware build metadata emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 0.2 Hz`
+## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the Sensor Carrier firmware.
+## Purpose
+Allows version tracking and verification of the Sensor Carrier firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** # `SensorCarrierStatus`
-  Periodic status message emitted by the Sensor Carrier.
+    /** # `SensorCarrierStatus`
+Periodic status message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 1 Hz`
+## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health of the Sensor Carrier.
+## Purpose
+Communicates the runtime health of the Sensor Carrier.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: SensorCarrierStatus;
-      type: "BoardStatus";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: SensorCarrierStatus;
+    type: "BoardStatus";
+  }
   | {
-      /** # `PositionData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `PositionData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 20 Hz`
+## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Provides fused and filtered position data in the WGS84 geodetic frame.
+## Purpose
+Provides fused and filtered position data in the WGS84 geodetic frame.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin & Quality
-  This data is produced by an extended Kalman filter that fuses:
-  - Two GNSS receivers (single-antenna each)
-  - Two IMUs (accelerometer + gyroscope)
-  - Two barometric pressure sensors
+## Data Origin & Quality
+This data is produced by an extended Kalman filter that fuses:
+- Two GNSS receivers (single-antenna each)
+- Two IMUs (accelerometer + gyroscope)
+- Two barometric pressure sensors
 
-  The system estimates position in the WGS84 geodetic frame, using:
-  - GNSS as the primary position reference
-  - IMU and barometric data for dead-reckoning and short-term vertical stability
+The system estimates position in the WGS84 geodetic frame, using:
+- GNSS as the primary position reference
+- IMU and barometric data for dead-reckoning and short-term vertical stability
 
-  GNSS data provides reliable long-term accuracy but is subject to multipath and signal dropout.
-  Short-term dynamics are improved by inertial fusion, and barometric height assists with
-  vertical resolution. If GNSS data becomes unreliable, the filter will tend to dead-reckoning using
-  IMU and barometric data, which is subject to drift over time.
+GNSS data provides reliable long-term accuracy but is subject to multipath and signal dropout.
+Short-term dynamics are improved by inertial fusion, and barometric height assists with
+vertical resolution. If GNSS data becomes unreliable, the filter will tend to dead-reckoning using
+IMU and barometric data, which is subject to drift over time.
 
-  Accuracy estimates (`horizontal_accuracy` and `vertical_accuracy`) represent **1-sigma**
-  standard deviations from the Kalman filter covariance and take into account the GNSS
-  hdop and vdop values.
+Accuracy estimates (`horizontal_accuracy` and `vertical_accuracy`) represent **1-sigma**
+standard deviations from the Kalman filter covariance and take into account the GNSS
+hdop and vdop values.
 
-  During GNSS dropout, position will degrade based on IMU drift and model assumptions.
-  Barometer-based altitude is relative to the initialization pressure and is sensitive to weather.
-  GNSS height is referred to mean sea level (HAMSL). */
-      content: PositionData;
-      type: "PositionData";
-    }
+During GNSS dropout, position will degrade based on IMU drift and model assumptions.
+Barometer-based altitude is relative to the initialization pressure and is sensitive to weather.
+GNSS height is referred to mean sea level (HAMSL). */
+    content: PositionData;
+    type: "PositionData";
+  }
   | {
-      /** # `ImuData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `ImuData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 40 Hz`
+## Type
+- `Periodic @ 40 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
+## Direction
+- **Emitted by:** `SensorCarrier`
 
-  ## Purpose
-  Provides fused and filtered acceleration and angular velocity in both the body-fixed
-  and inertial NED frames.
+## Purpose
+Provides fused and filtered acceleration and angular velocity in both the body-fixed
+and inertial NED frames.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin & Quality
-  This data is derived from two IMUs (each an accelerometer + gyroscope pair), mounted
-  closely together and aligned in the same direction.
+## Data Origin & Quality
+This data is derived from two IMUs (each an accelerometer + gyroscope pair), mounted
+closely together and aligned in the same direction.
 
-  The body-fixed frame is the sensor-native reference frame, and all acceleration and angular
-  velocity data in this frame is directly measured and highly reliable.
+The body-fixed frame is the sensor-native reference frame, and all acceleration and angular
+velocity data in this frame is directly measured and highly reliable.
 
-  The inertial NED frame is computed by rotating the body-frame data using the estimated
-  orientation quaternion. This transformation introduces small errors due to attitude estimation
-  uncertainty. Roll and pitch are generally accurate. Yaw, while observed by a magnetometer,
-  is more prone to environmental noise and remains a larger source of error than roll and pitch.
+The inertial NED frame is computed by rotating the body-frame data using the estimated
+orientation quaternion. This transformation introduces small errors due to attitude estimation
+uncertainty. Roll and pitch are generally accurate. Yaw, while observed by a magnetometer,
+is more prone to environmental noise and remains a larger source of error than roll and pitch.
 
-  Coordinate frame conversion therefore introduces small errors in the inertial NED frame data for:
-  - `angular_velocity_north`
-  - `angular_velocity_east`
-  - `acceleration_north`
-  - `acceleration_east`
+Coordinate frame conversion therefore introduces small errors in the inertial NED frame data for:
+- `angular_velocity_north`
+- `angular_velocity_east`
+- `acceleration_north`
+- `acceleration_east`
 
-  Note that `acceleration_down` and `angular_velocity_down` are not affected by errors in
-  inertial yaw. */
-      content: ImuData;
-      type: "ImuData";
-    }
+Note that `acceleration_down` and `angular_velocity_down` are not affected by errors in
+inertial yaw. */
+    content: ImuData;
+    type: "ImuData";
+  }
   | {
-      /** # `VelocityData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `VelocityData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 20 Hz`
+## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports linear velocity in both the body-fixed and inertial NED frames.
+## Purpose
+Reports linear velocity in both the body-fixed and inertial NED frames.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin & Quality
-  Velocity is estimated by a Kalman filter fusing:
-  - Two GNSS receivers
-  - Two IMUs (accelerometer + gyroscope)
+## Data Origin & Quality
+Velocity is estimated by a Kalman filter fusing:
+- Two GNSS receivers
+- Two IMUs (accelerometer + gyroscope)
 
-  The **inertial NED frame** (North, East, Down) is the **native reference frame** for this data.
-  Velocity is provided directly by GNSS and is globally referenced and stable. GNSS velocity is
-  typically accurate to within ±0.1 m/s and valid up to ±500 m/s under normal conditions.
+The **inertial NED frame** (North, East, Down) is the **native reference frame** for this data.
+Velocity is provided directly by GNSS and is globally referenced and stable. GNSS velocity is
+typically accurate to within ±0.1 m/s and valid up to ±500 m/s under normal conditions.
 
-  If GNSS data becomes unreliable, the filter will tend to dead-reckoning using inertial data.
+If GNSS data becomes unreliable, the filter will tend to dead-reckoning using inertial data.
 
-  The **body-fixed frame** (X forward, Y right, Z down) velocity is computed by rotating the
-  inertial velocity into the body frame using the estimated orientation quaternion. Since the
-  orientation estimate (especially yaw) is subject to small errors, this transformation introduces
-  small errors in the corresponding body-frame velocity components. This primarily affects the
-  horizontal components:
-  - `velocity_x`
-  - `velocity_y`
+The **body-fixed frame** (X forward, Y right, Z down) velocity is computed by rotating the
+inertial velocity into the body frame using the estimated orientation quaternion. Since the
+orientation estimate (especially yaw) is subject to small errors, this transformation introduces
+small errors in the corresponding body-frame velocity components. This primarily affects the
+horizontal components:
+- `velocity_x`
+- `velocity_y`
 
-  The vertical component (`velocity_z`) is not affected by errors in inertial yaw. */
-      content: VelocityData;
-      type: "VelocityData";
-    }
+The vertical component (`velocity_z`) is not affected by errors in inertial yaw. */
+    content: VelocityData;
+    type: "VelocityData";
+  }
   | {
-      /** # `OrientationData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `OrientationData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 40 Hz`
+## Type
+- `Periodic @ 40 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports orientation as a quaternion rotating from the inertial NED zero attitude
-  to the body-fixed frame.
+## Purpose
+Reports orientation as a quaternion rotating from the inertial NED zero attitude
+to the body-fixed frame.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin & Quality
-  The orientation estimate is derived from two IMUs (accelerometer + gyroscope), fused with two
-  magnetometers and corrected for local magnetic declination to yield a stable yaw reference.
+## Data Origin & Quality
+The orientation estimate is derived from two IMUs (accelerometer + gyroscope), fused with two
+magnetometers and corrected for local magnetic declination to yield a stable yaw reference.
 
-  The quaternion describes a passive rotation from the **inertial NED frame** (North-East-Down)
-  to the **body-fixed frame** (X forward, Y right, Z down). This follows a right-handed,
-  3-2-1 (ZYX) intrinsic rotation convention:
-  - Positive roll (X): Right canopy wingtip moves down
-  - Positive pitch (Y): Leading canopy edge moves up
-  - Positive yaw (Z): Heading turns right (clockwise when viewed from above)
+The quaternion describes a passive rotation from the **inertial NED frame** (North-East-Down)
+to the **body-fixed frame** (X forward, Y right, Z down). This follows a right-handed,
+3-2-1 (ZYX) intrinsic rotation convention:
+- Positive roll (X): Right canopy wingtip moves down
+- Positive pitch (Y): Leading canopy edge moves up
+- Positive yaw (Z): Heading turns right (clockwise when viewed from above)
 
-  The zero orientation is represented by the identity quaternion `(1, 0, 0, 0)`, where the body
-  frame is aligned with the NED frame. That is, the body X-axis points (True) North, Y-axis points
-  East, and Z-axis points down.
+The zero orientation is represented by the identity quaternion `(1, 0, 0, 0)`, where the body
+frame is aligned with the NED frame. That is, the body X-axis points (True) North, Y-axis points
+East, and Z-axis points down.
 
-  - **Roll** and **pitch** are well-constrained using the gravity vector, which can be directly
-  observed by the accelerometers.
-  - **Yaw** is initialized to zero at system startup. Yaw is observed by the magnetometers
-  and corrected by the gyroscopes. Under stable magnetic conditions, the yaw will converge
-  to true north over time. As soon as the yaw estimate has converged, it is expected to
-  remain stable.
+- **Roll** and **pitch** are well-constrained using the gravity vector, which can be directly
+observed by the accelerometers.
+- **Yaw** is initialized to zero at system startup. Yaw is observed by the magnetometers
+and corrected by the gyroscopes. Under stable magnetic conditions, the yaw will converge
+to true north over time. As soon as the yaw estimate has converged, it is expected to
+remain stable.
 
-  The emitted quaternion is always **normalised**. */
-      content: OrientationData;
-      type: "OrientationData";
-    }
+The emitted quaternion is always **normalised**. */
+    content: OrientationData;
+    type: "OrientationData";
+  }
   | {
-      /** # `EnvironmentalData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `EnvironmentalData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 1 Hz`
+## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Provides low-rate environmental data in the form of temperature, humidity, and
-  smoothed pressure values.
+## Purpose
+Provides low-rate environmental data in the form of temperature, humidity, and
+smoothed pressure values.
 
-  ## Reaction
-  No action required. */
-      content: EnvironmentalData;
-      type: "EnvironmentalData";
-    }
+## Reaction
+No action required. */
+    content: EnvironmentalData;
+    type: "EnvironmentalData";
+  }
   | {
-      /** # `MagnetometerData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `MagnetometerData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 10 Hz`
+## Type
+- `Periodic @ 10 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Provides fused and filtered magnetic field strength in both the body-fixed
-  and inertial NED frames.
+## Purpose
+Provides fused and filtered magnetic field strength in both the body-fixed
+and inertial NED frames.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Data Origin & Quality
-  This data is derived from two magnetometers mounted closely and aligned in the same direction.
+## Data Origin & Quality
+This data is derived from two magnetometers mounted closely and aligned in the same direction.
 
-  Hard and soft iron correction **has** been applied to this data to compensate for the
-  vehicle's own magnetic distortions.
+Hard and soft iron correction **has** been applied to this data to compensate for the
+vehicle's own magnetic distortions.
 
-  The body-fixed frame values represent this corrected field. The inertial NED frame is
-  rotated from the body-fixed frame using the orientation quaternion. This transformation
-  introduces small conversion errors due to minor inaccuracies in the attitude estimate.
+The body-fixed frame values represent this corrected field. The inertial NED frame is
+rotated from the body-fixed frame using the orientation quaternion. This transformation
+introduces small conversion errors due to minor inaccuracies in the attitude estimate.
 
-  Small errors in the attitude estimate will primarily affect the horizontal components:
-  - `magnetic_field_north`
-  - `magnetic_field_east`
+Small errors in the attitude estimate will primarily affect the horizontal components:
+- `magnetic_field_north`
+- `magnetic_field_east`
 
-  Note that `magnetic_field_down` is not affected by errors in inertial yaw. */
-      content: MagnetometerData;
-      type: "MagnetometerData";
-    }
+Note that `magnetic_field_down` is not affected by errors in inertial yaw. */
+    content: MagnetometerData;
+    type: "MagnetometerData";
+  }
   | {
-      /** # `PressureData`
-  Periodic telemetry message emitted by the Sensor Carrier.
+    /** # `PressureData`
+Periodic telemetry message emitted by the Sensor Carrier.
 
-  ## Type
-  - `Periodic @ 40 Hz`
+## Type
+- `Periodic @ 40 Hz`
 
-  ## Direction
-  - **Emitted by:** `SensorCarrier`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `SensorCarrier`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports filtered atmospheric pressure (scalar) for altitude estimation.
+## Purpose
+Reports filtered atmospheric pressure (scalar) for altitude estimation.
 
-  ## Reaction
-  No action required.
+## Reaction
+No action required.
 
-  ## Note
-  This differs from `EnvironmentalData`, which is lower-rate and smoothed. */
-      content: HPa;
-      type: "PressureData";
-    };
+## Note
+This differs from `EnvironmentalData`, which is lower-rate and smoothed. */
+    content: HPa;
+    type: "PressureData";
+  };
 
 export interface OxidizerControlBoardStatus {
   common: StatusCommonMessage;
@@ -2460,298 +2470,298 @@ export interface OxidizerControlBoardStatus {
 
 export type OxidizerControlBoardMessage =
   | {
-      /** ## Type
-  - `Periodic @ 0.2 Hz`
+    /** ## Type
+- `Periodic @ 0.2 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Allows version tracking and verification of the Oxidizer Control Board firmware.
+## Purpose
+Allows version tracking and verification of the Oxidizer Control Board firmware.
 
-  ## Reaction
-  Receivers may log or display the firmware version and build metadata. */
-      content: BuildInformationCommon;
-      type: "BuildInfo";
-    }
+## Reaction
+Receivers may log or display the firmware version and build metadata. */
+    content: BuildInformationCommon;
+    type: "BuildInfo";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 1 Hz`
+    /** ## Type
+- `Periodic @ 1 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the runtime health of the Oxidizer Control Board, including sensor status.
+## Purpose
+Communicates the runtime health of the Oxidizer Control Board, including sensor status.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: OxidizerControlBoardStatus;
-      type: "BoardStatus";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: OxidizerControlBoardStatus;
+    type: "BoardStatus";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports Oxidizer Tank Pressure Sensor 1.
-  This is mainly used as an input to the Control Loop running on the Oxidizer Control Board.
-   */
-      content: BarG;
-      type: "OxidizerTankPressureSensor1";
-    }
+## Purpose
+Reports Oxidizer Tank Pressure Sensor 1.
+This is mainly used as an input to the Control Loop running on the Oxidizer Control Board.
+ */
+    content: BarG;
+    type: "OxidizerTankPressureSensor1";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports Oxidizer Tank Pressure Sensor 2.
-  This is mainly used as an input to the Control Loop running on the Oxidizer Control Board.
-   */
-      content: BarG;
-      type: "OxidizerTankPressureSensor2";
-    }
+## Purpose
+Reports Oxidizer Tank Pressure Sensor 2.
+This is mainly used as an input to the Control Loop running on the Oxidizer Control Board.
+ */
+    content: BarG;
+    type: "OxidizerTankPressureSensor2";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 20 Hz`
+    /** ## Type
+- `Periodic @ 20 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Reports the absolute valued Oxidizer Tank differential pressure.
-   */
-      content: BarG;
-      type: "OxidizerTankDifferentialPressure";
-    }
+## Purpose
+Reports the absolute valued Oxidizer Tank differential pressure.
+ */
+    content: BarG;
+    type: "OxidizerTankDifferentialPressure";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the DPR Valve State including setpoint.
+## Purpose
+Communicates the DPR Valve State including setpoint.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: DPRValve;
-      type: "OxidizerDprValveState";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: DPRValve;
+    type: "OxidizerDprValveState";
+  }
   | {
-      /** ## Type
-  - `Periodic @ 5 Hz`
+    /** ## Type
+- `Periodic @ 5 Hz`
 
-  ## Direction
-  - **Emitted by:** `OxidizerControlBoard`
-  - **Received by:** `unspecified`
+## Direction
+- **Emitted by:** `OxidizerControlBoard`
+- **Received by:** `unspecified`
 
-  ## Purpose
-  Communicates the Oxidizer Vent Valve State.
+## Purpose
+Communicates the Oxidizer Vent Valve State.
 
-  ## Reaction
-  Receivers may log the data or use it for diagnostics and system health checks. */
-      content: NormallyOpenValve;
-      type: "OxidizerVentValveState";
-    }
+## Reaction
+Receivers may log the data or use it for diagnostics and system health checks. */
+    content: NormallyOpenValve;
+    type: "OxidizerVentValveState";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Set OXD Pressure Regulator configuration
+## Purpose
+Set OXD Pressure Regulator configuration
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
-      content: DPRValve;
-      type: "OxidizerDprValveControlFC";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
+    content: DPRValve;
+    type: "OxidizerDprValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the Oxidizer Vent Valve to a certain state.
+## Purpose
+Sets the Oxidizer Vent Valve to a certain state.
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: NormallyOpenValve;
-      type: "OxidizerVentValveControlFC";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
+    content: NormallyOpenValve;
+    type: "OxidizerVentValveControlFC";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Set OXD Pressure Regulator configuration
+## Purpose
+Set OXD Pressure Regulator configuration
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
-      content: DPRValve;
-      type: "OxidizerDprValveControlRFS";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the OXD DPR setpoint and enable/disable the controller accordingly */
+    content: DPRValve;
+    type: "OxidizerDprValveControlRFS";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the RFS
+    /** ## Type
+- `Event`: sent by the RFS
 
-  ## Direction
-  - **Emitted by:** `RemoteFillingStation`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `RemoteFillingStation`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the Oxidizer Vent Valve to a certain state.
+## Purpose
+Sets the Oxidizer Vent Valve to a certain state.
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
-      content: NormallyOpenValve;
-      type: "OxidizerVentValveControlRFS";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the Oxidizer Vent Valve state accordingly */
+    content: NormallyOpenValve;
+    type: "OxidizerVentValveControlRFS";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the proportional Oxidizer DPR Gain
+## Purpose
+Sets the proportional Oxidizer DPR Gain
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the proportional DPR gain accordingly */
-      content: number;
-      type: "OxidizerDprGainP";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the proportional DPR gain accordingly */
+    content: number;
+    type: "OxidizerDprGainP";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the integral Oxidizer DPR Gain
+## Purpose
+Sets the integral Oxidizer DPR Gain
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the integral DPR gain accordingly */
-      content: number;
-      type: "OxidizerDprGainI";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the integral DPR gain accordingly */
+    content: number;
+    type: "OxidizerDprGainI";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the derivative Oxidizer DPR Gain
+## Purpose
+Sets the derivative Oxidizer DPR Gain
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the derivative DPR gain accordingly */
-      content: number;
-      type: "OxidizerDprGainD";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the derivative DPR gain accordingly */
+    content: number;
+    type: "OxidizerDprGainD";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the minimum opening time ms of the DPR
+## Purpose
+Sets the minimum opening time ms of the DPR
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the derivative DPR minimum opening time accordingly */
-      content: number;
-      type: "OxidizerDprMinOpeningTime";
-    }
+## Reaction
+The Oxidizer Control Board shall adjust the derivative DPR minimum opening time accordingly */
+    content: number;
+    type: "OxidizerDprMinOpeningTime";
+  }
   | {
-      /** ## Type
-  - `Event`: sent by the FC
+    /** ## Type
+- `Event`: sent by the FC
 
-  ## Direction
-  - **Emitted by:** `FlightComputer`
-  - **Received by:** `OxidizerControlBoard`
+## Direction
+- **Emitted by:** `FlightComputer`
+- **Received by:** `OxidizerControlBoard`
 
-  ## Purpose
-  Sets the maximum opening time ms of the DPR
+## Purpose
+Sets the maximum opening time ms of the DPR
 
-  ## Reaction
-  The Oxidizer Control Board shall adjust the derivative DPR maximum opening time accordingly */
-      content: number;
-      type: "OxidizerDprMaxOpeningTime";
-    };
+## Reaction
+The Oxidizer Control Board shall adjust the derivative DPR maximum opening time accordingly */
+    content: number;
+    type: "OxidizerDprMaxOpeningTime";
+  };
 
 /**
  * All messages in the full system
  */
 export type Message =
   | {
-      board: "FlightComputer";
-      message: FlightComputerMessage;
-    }
+    board: "FlightComputer";
+    message: FlightComputerMessage;
+  }
   | {
-      board: "RfsComputer";
-      message: RfsComputerMessage;
-    }
+    board: "RfsComputer";
+    message: RfsComputerMessage;
+  }
   | {
-      board: "SystemManagement";
-      message: SystemManagementMessage;
-    }
+    board: "SystemManagement";
+    message: SystemManagementMessage;
+  }
   | {
-      board: "RecoveryBoard";
-      message: RecoveryBoardMessage;
-    }
+    board: "RecoveryBoard";
+    message: RecoveryBoardMessage;
+  }
   | {
-      board: "Backplane";
-      message: BackplaneMessage;
-    }
+    board: "Backplane";
+    message: BackplaneMessage;
+  }
   | {
-      board: "SensorCarrier";
-      message: SensorCarrierMessage;
-    }
+    board: "SensorCarrier";
+    message: SensorCarrierMessage;
+  }
   | {
-      board: "FuelControlBoard";
-      message: FueldControlBoardMessage;
-    }
+    board: "FuelControlBoard";
+    message: FueldControlBoardMessage;
+  }
   | {
-      board: "OxidizerControlBoard";
-      message: OxidizerControlBoardMessage;
-    }
+    board: "OxidizerControlBoard";
+    message: OxidizerControlBoardMessage;
+  }
   | {
-      board: "EngineControlBoard";
-      message: EngineControlBoardMessage;
-    };
+    board: "EngineControlBoard";
+    message: EngineControlBoardMessage;
+  };
 
 export interface NamedDatapointValue {
   /** Unique name of the datapoint */
@@ -2762,29 +2772,29 @@ export interface NamedDatapointValue {
 
 export type OptionalResultStateMachine =
   | {
-      kind: "some";
-      /** Representation of a state machine diagram. */
-      value: {
-        /** Allowed actuators for every state. */
-        allowedActuators: { [key: string]: string[] };
-        /** State machine diagram SVG without the drawio XML content. */
-        diagram: string;
-        /** Initial state of the state machine. */
-        initialState: string;
-        /** Allowed manual transitions for every state and whether they
-  are an abort transition. */
-        manualTransitions: { [key: string]: [string, boolean][] };
-        /** Mapping of state names to diagram cell ids. */
-        stateNodes: { [key: string]: string };
-      };
-    }
-  | {
-      kind: "error";
-      value: string;
-    }
-  | {
-      kind: "none";
+    kind: "some";
+    /** Representation of a state machine diagram. */
+    value: {
+      /** Allowed actuators for every state. */
+      allowedActuators: { [key: string]: string[] };
+      /** State machine diagram SVG without the drawio XML content. */
+      diagram: string;
+      /** Initial state of the state machine. */
+      initialState: string;
+      /** Allowed manual transitions for every state and whether they
+are an abort transition. */
+      manualTransitions: { [key: string]: [string, boolean][] };
+      /** Mapping of state names to diagram cell ids. */
+      stateNodes: { [key: string]: string };
     };
+  }
+  | {
+    kind: "error";
+    value: string;
+  }
+  | {
+    kind: "none";
+  };
 
 /**
  * Map of all datapoints defined in the diagram together with information
