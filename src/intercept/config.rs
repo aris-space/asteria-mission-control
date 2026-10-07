@@ -11,7 +11,7 @@ use mavlink_lib::MavlinkMessage;
 
 use crate::intercept::Interceptor;
 use crate::parser::statemachine::StateMachine;
-use crate::remote::config::RemoteComputerConfig;
+use crate::remote::config::{GNC_POLYGON_STATE_NAME, RemoteComputerConfig};
 use crate::web::broadcast::Broadcast;
 use crate::web::datatypes::OptionalResult;
 use crate::web::event::Event;
@@ -79,10 +79,18 @@ impl Interceptor for ConfigInterceptor {
             Ok(config) => {
                 let state_machine = StateMachine::new(&config, &self.configs_repository_path)
                     .map_err(|err| format!("Remote computer state machine is not valid: {err}"));
-                if config.gnc_polygon.is_none() {
-                    log::debug!("Remote computer config does not specify a GNC polygon")
+
+                let gnc_polygon = config
+                    .state_machine
+                    .states
+                    .get(GNC_POLYGON_STATE_NAME)
+                    .and_then(|state| state.gnc_config.as_ref())
+                    .and_then(|gnc| gnc.polygon().cloned());
+
+                if gnc_polygon.is_none() {
+                    log::debug!("Remote computer config does not specify a GNC polygon in {GNC_POLYGON_STATE_NAME} state")
                 }
-                (OptionalResult::from(Some(state_machine)), config.gnc_polygon)
+                (OptionalResult::from(Some(state_machine)), gnc_polygon)
             }
             Err(err) => {
                 // If the lookup failed we also log an error on the backend.
