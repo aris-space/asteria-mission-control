@@ -1,7 +1,6 @@
 use crate::parser::statemachine::StateMachine;
-use crate::web::datatypes::{OptionalResult, TelemetryStats};
 use crate::remote::config::GncPolygon;
-use crate::web::datatypes::OptionalResult;
+use crate::web::datatypes::{OptionalResult, TelemetryStats};
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
 use asteria_datapoint_information::datapoint::NamedDatapointValue;
