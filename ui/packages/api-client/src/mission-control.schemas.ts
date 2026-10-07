@@ -1238,12 +1238,19 @@ export interface GncPolygonInner {
   points: number[][];
 }
 
-export type GncPolygon = GncPolygonInner & {
+/**
+ * Utoipa does not support `rename_all(serialize = "...")`. But since Utoipa
+is anyways only concerned with the serialized version, we can just explicitly
+rename it for both operations in the schema.
+ */
+export interface GncPolygon {
+  /** Due to architectural reasons, the bounding box is nested one deeper */
+  inner: GncPolygonInner;
   /** Latitude of the origin of the bounding polygon. */
   originLat: number;
   /** Longitude of the origin of the bounding polygon. */
   originLng: number;
-};
+}
 
 /**
  * MAVLink enum `MAV_AUTOPILOT` for `minimal` dialect.
