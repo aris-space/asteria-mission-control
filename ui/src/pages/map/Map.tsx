@@ -140,12 +140,12 @@ function Map() {
       features:
         history.current.length >= 2
           ? [
-              {
-                type: "Feature",
-                properties: {},
-                geometry: { type: "LineString", coordinates: history.current },
-              },
-            ]
+            {
+              type: "Feature",
+              properties: {},
+              geometry: { type: "LineString", coordinates: history.current },
+            },
+          ]
           : [],
     });
   };
@@ -168,7 +168,7 @@ function Map() {
   const polygonFeatures = useMemo<Feature<Polygon> | null>(() => {
     if (!gncPolygon) return null;
     const origin = point([gncPolygon.originLng, gncPolygon.originLat]);
-    const coordinates = gncPolygon.points.map(([north, east]) => {
+    const coordinates = gncPolygon.inner.points.map(([north, east]) => {
       // Hypothenuse distance in meters.
       const dist = Math.sqrt(north ** 2 + east ** 2);
       // Clockwise angle from the north axis.
