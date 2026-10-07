@@ -43,6 +43,9 @@ function useDiagramSvg(
       ref.current = null;
       zoomRef.current = null;
       setZoomDirty(false);
+      setReady(false);
+    } else {
+      setReady(false);
     }
   }, [diagram, container]);
 

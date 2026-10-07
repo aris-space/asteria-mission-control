@@ -7,6 +7,7 @@ use asteria_messages::datapoints::dp_flight_computer::Message as FcMessage;
 use asteria_messages::datapoints::dp_rfs_computer::Message as RfscMessage;
 use async_trait::async_trait;
 use gix::{Repository, ThreadSafeRepository};
+use mavlink_lib::MavlinkMessage;
 
 use crate::intercept::Interceptor;
 use crate::parser::statemachine::StateMachine;
@@ -73,7 +74,7 @@ impl ConfigInterceptor {
 
 #[async_trait]
 impl Interceptor for ConfigInterceptor {
-    async fn on_message(&self, message: &Message) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let hash = match message {
             Message::FlightComputer(FcMessage::ConfigHash(ConfigHash { hash })) => hash,
             Message::RfsComputer(RfscMessage::ConfigHash(ConfigHash { hash })) => hash,

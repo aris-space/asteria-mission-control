@@ -3,7 +3,7 @@ use crate::config::{Config, MavlinkAddress, RemoteComputerConfig};
 use asteria_messages::Message;
 use asteria_messages::datapoints::dp_system_management::{self, Heartbeat, MavAutopilot, MavState, MavType};
 use mavio::Dialect;
-use mavlink_lib::{MavlinkSender, SendError};
+use mavlink_lib::{MavlinkMessage, MavlinkSender, SendError};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -40,17 +40,24 @@ pub struct RemoteComputer {
     mavlink_system_id: u8,
     mavlink_sender: Option<Arc<MavlinkSender>>,
     token: Option<CancellationToken>,
-    msg_tx: UnboundedSender<Message>,
+    incoming_msg_tx: UnboundedSender<MavlinkMessage>,
+    outgoing_msg_tx: UnboundedSender<MavlinkMessage>,
 }
 
 impl RemoteComputer {
-    pub fn new(rc_config: RemoteComputerConfig, config: Arc<Config>, msg_tx: UnboundedSender<Message>) -> Self {
+    pub fn new(
+        rc_config: RemoteComputerConfig,
+        config: Arc<Config>,
+        incoming_msg_tx: UnboundedSender<MavlinkMessage>,
+        outgoing_msg_tx: UnboundedSender<MavlinkMessage>,
+    ) -> Self {
         Self {
             mavlink_address: rc_config.mavlink_address,
             mavlink_system_id: config.mavlink.system_id,
             mavlink_sender: None,
             token: None,
-            msg_tx,
+            incoming_msg_tx,
+            outgoing_msg_tx,
         }
     }
 
@@ -71,13 +78,14 @@ impl RemoteComputer {
             mavlink_lib::tx_rx(self.mavlink_system_id, self.mavlink_address.clone().into());
         let mavlink_sender = Arc::new(mavlink_sender);
 
-        let msg_tx = self.msg_tx.clone();
+        let incoming_msg_tx = self.incoming_msg_tx.clone();
+        let outgoing_msg_tx = self.outgoing_msg_tx.clone();
         let token_clone = token.clone();
         // `run` reconnects on its own and never returns - this task's only job is to
         // stop driving it once the remote computer gets deactivated.
         tokio::spawn(async move {
             tokio::select! {
-                _ = mavlink_connection.run(&msg_tx) => {}
+                _ = mavlink_connection.run(&incoming_msg_tx, &outgoing_msg_tx) => {}
                 () = token_clone.cancelled() => {}
             }
         });
