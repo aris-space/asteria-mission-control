@@ -1231,14 +1231,19 @@ export type FueldControlBoardMessage =
       type: "FuelDprMaxOpeningTime";
     };
 
-export interface GncPolygon {
-  /** Latitude-longitude pair of the origin of the bounding polygon. */
-  origin: number[];
+export interface GncPolygonInner {
   /** Points which span the polygon.
   Every point is a tuple of distances in meters to the north- and east
   of the origin. */
   points: number[][];
 }
+
+export type GncPolygon = GncPolygonInner & {
+  /** Latitude of the origin of the bounding polygon. */
+  originLat: number;
+  /** Longitude of the origin of the bounding polygon. */
+  originLng: number;
+};
 
 /**
  * MAVLink enum `MAV_AUTOPILOT` for `minimal` dialect.

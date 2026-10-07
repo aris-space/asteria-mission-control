@@ -167,7 +167,7 @@ function Map() {
   // GeoJSON features for the GNC polygon.
   const polygonFeatures = useMemo<Feature<Polygon> | null>(() => {
     if (!gncPolygon) return null;
-    const origin = point([gncPolygon.origin[1], gncPolygon.origin[0]]);
+    const origin = point([gncPolygon.originLng, gncPolygon.originLat]);
     const coordinates = gncPolygon.points.map(([north, east]) => {
       // Hypothenuse distance in meters.
       const dist = Math.sqrt(north ** 2 + east ** 2);
