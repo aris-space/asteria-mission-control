@@ -84,7 +84,7 @@ impl Interceptor for ConfigInterceptor {
                     .states
                     .get(GNC_POLYGON_STATE_NAME)
                     .and_then(|state| state.gnc_config.as_ref())
-                    .and_then(|gnc| gnc.polygon.clone());
+                    .and_then(|gnc| gnc.polygon().cloned());
 
                 if gnc_polygon.is_none() {
                     log::debug!("Remote computer config does not specify a GNC polygon in {GNC_POLYGON_STATE_NAME} state")
