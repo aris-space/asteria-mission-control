@@ -73,7 +73,7 @@ impl StateMachineTransition {
 #[derive(Deserialize)]
 pub struct GncConfig {
     #[serde(rename = "gnc")]
-    pub polygon: GncPolygon,
+    pub polygon: Option<GncPolygon>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, utoipa::ToSchema)]
