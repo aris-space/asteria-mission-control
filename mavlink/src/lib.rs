@@ -146,10 +146,6 @@ impl MavlinkConnection {
                                         break "send failed";
                                     }
                                 }
-                                if let Err(err) = sender.send(&frame).await {
-                                    log::warn!("Unable to send mavlink message: {err}");
-                                    break "send failed";
-                                }
                             }
                             Err(err) => log::warn!("Unable to encode mavlink message, dropping it: {err}"),
                         },
