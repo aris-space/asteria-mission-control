@@ -1,4 +1,6 @@
-import { Box, Flex, Text } from "@mantine/core";
+import { useState, type ReactNode } from "react";
+import { ActionIcon, Box, Flex, Text } from "@mantine/core";
+import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
 import type {
   EnvironmentalData,
   ImuData,
@@ -153,10 +155,12 @@ function Section({
   label,
   main,
   detail,
+  action,
 }: {
   label: string;
   main?: string;
   detail?: string;
+  action?: ReactNode;
 }) {
   return (
     <Flex direction="column" align="center" gap={2}>
@@ -164,9 +168,12 @@ function Section({
         {label}
       </Text>
       {main != null && (
-        <Text fw={700} ff="monospace" lh={1.1} fz="2.25rem">
-          {main}
-        </Text>
+        <Flex align="center" gap="xs">
+          <Text fw={700} ff="monospace" lh={1.1} fz="2.25rem">
+            {main}
+          </Text>
+          {action}
+        </Flex>
       )}
       {detail != null && (
         <Text ff="monospace" fz="1.25rem">
@@ -178,6 +185,8 @@ function Section({
 }
 
 function Telemetry() {
+  // AMSL altitude captured by "Zero ground"; altitude is shown as AGL while set.
+  const [groundAmsl, setGroundAmsl] = useState<number>();
   const pos = content<PositionData>(useMavlinkMessage("SensorCarrier", "PositionData"));
   const vel = content<VelocityData>(useMavlinkMessage("SensorCarrier", "VelocityData"));
   const imu = content<ImuData>(useMavlinkMessage("SensorCarrier", "ImuData"));
@@ -191,6 +200,8 @@ function Telemetry() {
   const steeringTarget = content<SteeringPositions>(
     useMavlinkMessage("RecoveryBoard", "SteeringTargetPositions"),
   );
+
+  const altitude = pos?.locationHamsl == null ? undefined : pos.locationHamsl - (groundAmsl ?? 0);
 
   const rail = (r?: RailStatus) =>
     `${fmt(r?.voltage)} V  ${fmt(r?.current)} A  ${fmt(r?.power)} W`;
@@ -210,9 +221,33 @@ function Telemetry() {
 
         <Flex direction="column" align="center" gap="lg" style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
           <Section
-            label="Altitude"
-            main={`${fmt(pos?.locationHamsl, 1)} m${pos?.verticalAccuracy != null ? ` ±${fmt(pos.verticalAccuracy)}` : ""}`}
+            label={groundAmsl == null ? "Altitude AMSL" : "Altitude AGL"}
+            main={`${fmt(altitude, 1)} m${pos?.verticalAccuracy != null ? ` ±${fmt(pos.verticalAccuracy)}` : ""}`}
             detail={location}
+            action={
+              <Flex gap={4}>
+                <ActionIcon
+                  size="sm"
+                  variant="light"
+                  title="Zero ground"
+                  disabled={pos?.locationHamsl == null}
+                  onClick={() => setGroundAmsl(pos?.locationHamsl)}
+                >
+                  <IconArrowBarToDown size={14} />
+                </ActionIcon>
+                {groundAmsl != null && (
+                  <ActionIcon
+                    size="sm"
+                    variant="subtle"
+                    color="gray"
+                    title="Reset to AMSL"
+                    onClick={() => setGroundAmsl(undefined)}
+                  >
+                    <IconRestore size={14} />
+                  </ActionIcon>
+                )}
+              </Flex>
+            }
           />
           <Section
             label="Velocity"
