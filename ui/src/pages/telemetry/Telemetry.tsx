@@ -299,7 +299,7 @@ function Telemetry() {
           <Box style={{ width: "80%", height: 1, backgroundColor: "#ccc" }} />
           <Section
             label="Orientation"
-            detail={vec(quatToRpy(ori), ["°R", "°P", "°Y"], undefined, 1)}
+            detail={vec(quatToRpy(ori), "RPY", "°", 1)}
           />
           <Section
             label="Angular velocity"
