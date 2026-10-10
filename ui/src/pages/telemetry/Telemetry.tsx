@@ -293,7 +293,7 @@ function Telemetry() {
           <Section
             label="Acceleration"
             main={<Val v={fmt(magnitude(imu?.accelerationNorth, imu?.accelerationEast, imu?.accelerationDown))} unit=" m/s²" />}
-            detail={vec([imu?.accelerationNorth, imu?.accelerationEast, imu?.accelerationDown], "NED", "m/s²")}
+            detail={vec([imu?.accelerationX, imu?.accelerationY, imu?.accelerationZ], "XYZ", "m/s²")}
           />
 
           <Box style={{ width: "80%", height: 1, backgroundColor: "#ccc" }} />
