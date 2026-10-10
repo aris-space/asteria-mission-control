@@ -26,10 +26,41 @@ function magnitude(...v: Num[]): Num {
   return Math.sqrt(v.reduce((s, x) => s + x! * x!, 0));
 }
 
-/** Inline-labelled vector, e.g. vec([1, 2, 3], "NED", "m/s") -> "1.00N 2.00E 3.00D m/s" */
-function vec(values: Num[], labels: ArrayLike<string>, unit = "", decimals = 2): string {
-  const body = values.map((v, i) => `${fmt(v, decimals)}${labels[i]}`).join(" ");
-  return unit ? `${body} ${unit}` : body;
+function Dim({ children }: { children: ReactNode }) {
+  return (
+    <Text span c="dimmed" inherit>
+      {children}
+    </Text>
+  );
+}
+
+/** Value with a dimmed unit, e.g. <Val v="1.20" unit=" m/s" /> */
+function Val({ v, unit }: { v: string; unit: string }) {
+  return (
+    <>
+      {v}
+      <Dim>{unit}</Dim>
+    </>
+  );
+}
+
+/** Row of [value, dimmed suffix] fields with a gap between them, plus an optional dimmed trailing unit. */
+function Fields({ fields, unit }: { fields: [string, string][]; unit?: string }) {
+  return (
+    <Flex gap="0.9em" justify="center" wrap="wrap">
+      {fields.map(([v, suffix], i) => (
+        <span key={i}>
+          <Val v={v} unit={suffix} />
+        </span>
+      ))}
+      {unit && <Dim>{unit}</Dim>}
+    </Flex>
+  );
+}
+
+/** Inline-labelled vector, e.g. vec([1, 2, 3], "NED", "m/s") -> 1.00N 2.00E 3.00D m/s */
+function vec(values: Num[], labels: ArrayLike<string>, unit?: string, decimals = 2) {
+  return <Fields fields={values.map((v, i) => [fmt(v, decimals), labels[i]])} unit={unit} />;
 }
 
 /** Quaternion (NED -> body) to roll/pitch/yaw in degrees (aerospace ZYX). */
@@ -42,9 +73,9 @@ function quatToRpy(q?: OrientationData): [Num, Num, Num] {
   return [roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG];
 }
 
-function coord(value: Num, pos: string, neg: string): string {
-  if (value == null) return "--";
-  return `${Math.abs(value).toFixed(6)}°${value >= 0 ? pos : neg}`;
+function coord(value: Num, pos: string, neg: string): [string, string] {
+  if (value == null) return ["--", ""];
+  return [`${Math.abs(value).toFixed(6)}°`, value >= 0 ? pos : neg];
 }
 
 /** Content of a message, as delivered by useMavlinkMessage. */
@@ -158,8 +189,8 @@ function Section({
   action,
 }: {
   label: string;
-  main?: string;
-  detail?: string;
+  main?: ReactNode;
+  detail?: ReactNode;
   action?: ReactNode;
 }) {
   return (
@@ -176,7 +207,7 @@ function Section({
         </Flex>
       )}
       {detail != null && (
-        <Text ff="monospace" fz="1.25rem">
+        <Text component="div" ff="monospace" fz="1.25rem">
           {detail}
         </Text>
       )}
@@ -203,11 +234,19 @@ function Telemetry() {
 
   const altitude = pos?.locationHamsl == null ? undefined : pos.locationHamsl - (groundAmsl ?? 0);
 
-  const rail = (r?: RailStatus) =>
-    `${fmt(r?.voltage)} V  ${fmt(r?.current)} A  ${fmt(r?.power)} W`;
+  const rail = (r?: RailStatus) => (
+    <Fields fields={[[fmt(r?.voltage), " V"], [fmt(r?.current), " A"], [fmt(r?.power), " W"]]} />
+  );
 
-  const location = `${coord(pos?.locationLatitude, "N", "S")}  ${coord(pos?.locationLongitude, "E", "W")}${pos?.horizontalAccuracy != null ? `  ±${fmt(pos.horizontalAccuracy)} m` : ""
-    }`;
+  const location = (
+    <Fields
+      fields={[
+        coord(pos?.locationLatitude, "N", "S"),
+        coord(pos?.locationLongitude, "E", "W"),
+        ...(pos?.horizontalAccuracy != null ? [["±" + fmt(pos.horizontalAccuracy), " m"] as [string, string]] : []),
+      ]}
+    />
+  );
 
   return (
     <Flex direction="column" p="md" style={{ width: "100%", overflow: "auto", boxSizing: "border-box" }}>
@@ -222,48 +261,40 @@ function Telemetry() {
         <Flex direction="column" align="center" gap="lg" style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
           <Section
             label={groundAmsl == null ? "Altitude AMSL" : "Altitude AGL"}
-            main={`${fmt(altitude, 1)} m${pos?.verticalAccuracy != null ? ` ±${fmt(pos.verticalAccuracy)}` : ""}`}
+            main={
+              <>
+                <Val v={fmt(altitude, 1)} unit=" m" />
+                {pos?.verticalAccuracy != null && <Dim> ±{fmt(pos.verticalAccuracy)}</Dim>}
+              </>
+            }
             detail={location}
             action={
-              <Flex gap={4}>
-                <ActionIcon
-                  size="sm"
-                  variant="light"
-                  title="Zero ground"
-                  disabled={pos?.locationHamsl == null}
-                  onClick={() => setGroundAmsl(pos?.locationHamsl)}
-                >
-                  <IconArrowBarToDown size={14} />
-                </ActionIcon>
-                {groundAmsl != null && (
-                  <ActionIcon
-                    size="sm"
-                    variant="subtle"
-                    color="gray"
-                    title="Reset to AMSL"
-                    onClick={() => setGroundAmsl(undefined)}
-                  >
-                    <IconRestore size={14} />
-                  </ActionIcon>
-                )}
-              </Flex>
+              <ActionIcon
+                size="sm"
+                variant="light"
+                title={groundAmsl == null ? "Zero ground" : "Reset to AMSL"}
+                disabled={groundAmsl == null && pos?.locationHamsl == null}
+                onClick={() => setGroundAmsl(groundAmsl == null ? pos?.locationHamsl : undefined)}
+              >
+                {groundAmsl == null ? <IconArrowBarToDown size={14} /> : <IconRestore size={14} />}
+              </ActionIcon>
             }
           />
           <Section
             label="Velocity"
-            main={`${fmt(magnitude(vel?.velocityNorth, vel?.velocityEast, vel?.velocityDown))} m/s`}
-            detail={vec([vel?.velocityNorth, vel?.velocityEast, vel?.velocityDown], "NED")}
+            main={<Val v={fmt(magnitude(vel?.velocityNorth, vel?.velocityEast, vel?.velocityDown))} unit=" m/s" />}
+            detail={vec([vel?.velocityNorth, vel?.velocityEast, vel?.velocityDown], "NED", "m/s")}
           />
           <Section
             label="Acceleration"
-            main={`${fmt(magnitude(imu?.accelerationNorth, imu?.accelerationEast, imu?.accelerationDown))} m/s²`}
-            detail={vec([imu?.accelerationNorth, imu?.accelerationEast, imu?.accelerationDown], "NED")}
+            main={<Val v={fmt(magnitude(imu?.accelerationNorth, imu?.accelerationEast, imu?.accelerationDown))} unit=" m/s²" />}
+            detail={vec([imu?.accelerationNorth, imu?.accelerationEast, imu?.accelerationDown], "NED", "m/s²")}
           />
 
           <Box style={{ width: "80%", height: 1, backgroundColor: "#ccc" }} />
           <Section
             label="Orientation"
-            detail={vec(quatToRpy(ori), ["°R", "°P", "°Y"], "", 1)}
+            detail={vec(quatToRpy(ori), ["°R", "°P", "°Y"], undefined, 1)}
           />
           <Section
             label="Angular velocity"
@@ -271,7 +302,15 @@ function Telemetry() {
           />
           <Section
             label="Environment"
-            detail={`${fmt(env?.temperature, 1)} °C  ${fmt(env?.humidity, 1)} %  ${fmt(env?.pressure, 0)} hPa`}
+            detail={
+              <Fields
+                fields={[
+                  [fmt(env?.temperature, 1), " °C"],
+                  [fmt(env?.humidity, 1), " %"],
+                  [fmt(env?.pressure, 0), " hPa"],
+                ]}
+              />
+            }
           />
           <Section label="Rail 5V" detail={rail(rail5v)} />
           <Section label="Rail 24V" detail={rail(rail24v)} />
