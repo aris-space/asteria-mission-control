@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { ActionIcon, Box, Flex, Text } from "@mantine/core";
 import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
 import type {
+  ActivePowerSource,
   EnvironmentalData,
   ImuData,
   OrientationData,
@@ -13,6 +14,12 @@ import type {
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 type Num = number | undefined;
+
+const POWER_SOURCE_LABEL: Record<ActivePowerSource, string> = {
+  external: "EXT",
+  battery: "BAT",
+  none: "?",
+};
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -224,6 +231,7 @@ function Telemetry() {
   const ori = content<OrientationData>(useMavlinkMessage("SensorCarrier", "OrientationData"));
   const env = content<EnvironmentalData>(useMavlinkMessage("SensorCarrier", "EnvironmentalData"));
   const rail5v = content<RailStatus>(useMavlinkMessage("Backplane", "RailStatus5V"));
+  const powerSource = content<ActivePowerSource>(useMavlinkMessage("Backplane", "ActivePowerSource"));
   const rail24v = content<RailStatus>(useMavlinkMessage("Backplane", "RailStatus24V"));
   const steeringActual = content<SteeringPositions>(
     useMavlinkMessage("RecoveryBoard", "SteeringActualPositions"),
@@ -318,7 +326,7 @@ function Telemetry() {
             }
           />
           <Section label="Rail 5V" detail={rail(rail5v)} />
-          <Section label="Rail 24V" detail={rail(rail24v)} />
+          <Section label={`Rail 24V${powerSource ? ` · ${POWER_SOURCE_LABEL[powerSource]}` : ""}`} detail={rail(rail24v)} />
         </Flex>
 
         <SteeringBar
