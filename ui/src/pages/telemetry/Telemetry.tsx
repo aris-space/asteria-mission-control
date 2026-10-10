@@ -239,13 +239,14 @@ function Telemetry() {
   );
 
   const location = (
-    <Fields
-      fields={[
-        coord(pos?.locationLatitude, "N", "S"),
-        coord(pos?.locationLongitude, "E", "W"),
-        ...(pos?.horizontalAccuracy != null ? [["±" + fmt(pos.horizontalAccuracy), " m"] as [string, string]] : []),
-      ]}
-    />
+    <Flex gap="0.9em" justify="center" align="baseline" wrap="wrap">
+      <Fields fields={[coord(pos?.locationLatitude, "N", "S"), coord(pos?.locationLongitude, "E", "W")]} />
+      {pos?.horizontalAccuracy != null && (
+        <Text span c="dimmed" fz="sm">
+          ±{fmt(pos.horizontalAccuracy)} m
+        </Text>
+      )}
+    </Flex>
   );
 
   return (
@@ -264,7 +265,11 @@ function Telemetry() {
             main={
               <>
                 <Val v={fmt(altitude, 1)} unit=" m" />
-                {pos?.verticalAccuracy != null && <Dim> ±{fmt(pos.verticalAccuracy)}</Dim>}
+                {pos?.verticalAccuracy != null && (
+                  <Text span c="dimmed" fz="sm" ml={6}>
+                    ±{fmt(pos.verticalAccuracy)} m
+                  </Text>
+                )}
               </>
             }
             detail={location}
