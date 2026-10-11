@@ -319,6 +319,14 @@ export const BOARD_MESSAGE_MAP = {
       hasContent: false,
     },
     {
+      type: "CATSSeparationState",
+      hasContent: true,
+    },
+    {
+      type: "CATSDeploymentState",
+      hasContent: true,
+    },
+    {
       type: "SteeringTargetPositions",
       hasContent: true,
     },
