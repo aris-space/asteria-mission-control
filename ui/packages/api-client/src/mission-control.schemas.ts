@@ -698,6 +698,7 @@ export const EventKind = {
   PSS_DATA: "PSS_DATA",
   PING: "PING",
   MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
+  POLYGON: "POLYGON",
 } as const;
 
 export type ExtendedDatapointInformation = DatapointInformation & {
@@ -1229,6 +1230,27 @@ export type FueldControlBoardMessage =
       content: number;
       type: "FuelDprMaxOpeningTime";
     };
+
+export interface GncPolygonInner {
+  /** Points which span the polygon.
+  Every point is a tuple of distances in meters to the north- and east
+  of the origin. */
+  points: number[][];
+}
+
+/**
+ * Utoipa does not support `rename_all(serialize = "...")`. But since Utoipa
+is anyways only concerned with the serialized version, we can just explicitly
+rename it for both operations in the schema.
+ */
+export interface GncPolygon {
+  /** Due to architectural reasons, the bounding box is nested one deeper */
+  inner: GncPolygonInner;
+  /** Latitude of the origin of the bounding polygon. */
+  originLat: number;
+  /** Longitude of the origin of the bounding polygon. */
+  originLng: number;
+}
 
 /**
  * MAVLink enum `MAV_AUTOPILOT` for `minimal` dialect.
@@ -2859,3 +2881,26 @@ export interface StateMachine {
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
 }
+
+export type TileKind =
+  | {
+      type: "raster";
+      /** Template URL for fetching a raster tile (e.g., https://tile.openstreetmap.org/{z}/{x}/{y}.png). */
+      url: string;
+    }
+  | {
+      /** Absolute URL to the location where the fonts for the vector layers are served (e.g., http://localhost:8888/fonts) */
+      fonts: string;
+      /** Absolute URL to the location where the sprites for the vector layers are served (e.g., http://localhost:8888/sprites) */
+      sprites: string;
+      type: "vector";
+      /** Absolute URL to the location where the vector tiles are served (e.g., http://localhost:8888/data/test.pmtiles) */
+      url: string;
+    };
+
+export type TileServer = TileKind & {
+  /** Description about the tile server. */
+  description: string;
+};
+
+export type TileServers200 = { [key: string]: TileServer };

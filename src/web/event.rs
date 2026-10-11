@@ -1,4 +1,5 @@
 use crate::parser::statemachine::StateMachine;
+use crate::remote::config::GncPolygon;
 use crate::web::datatypes::OptionalResult;
 
 use actix_web_lab::sse::{Data as SseData, Event as SseEvent};
@@ -15,6 +16,7 @@ pub enum EventKind {
     PssData,
     Ping,
     MavlinkMessage,
+    Polygon,
 }
 
 impl Display for EventKind {
@@ -30,6 +32,7 @@ pub enum Event {
     StateMachine(OptionalResult<StateMachine>),
     PssData(NamedDatapointValue),
     MavlinkMessage(Message),
+    Polygon(Option<GncPolygon>),
 }
 
 impl From<Event> for SseEvent {
@@ -45,6 +48,7 @@ impl From<Event> for SseEvent {
             Event::MavlinkMessage(message) => {
                 Self::Data(SseData::new_json(message).unwrap().event(EventKind::MavlinkMessage.to_string()))
             }
+            Event::Polygon(polygon) => Self::Data(SseData::new_json(polygon).unwrap().event(EventKind::Polygon.to_string())),
         }
     }
 }

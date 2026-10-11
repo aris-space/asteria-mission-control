@@ -18,6 +18,15 @@ services:
     # Use host networking because the `config.toml` references localhost addresses
     network_mode: host
 
+  tiles:
+    profiles: ["tiles", "full"]
+    build:
+      context: .
+      dockerfile: ./tiles.Dockerfile
+    ports:
+      # Tile server.
+      - "8877:80"
+
   flight-computer:
     profiles: ["flight-computer", "remote-computers", "full"]
     build:
@@ -54,7 +63,7 @@ services:
       - "5776:5766"
     volumes:
       - ./replays:/app/replays:ro
-    command: mavlink-log-replay --path /app/replays/pss-functionality.jsonl --speed 2 --repeat tcp localhost:5766
+    command: mavlink-log-replay --path /app/replays/droptest.jsonl --speed 2 --repeat tcp localhost:5766
 
   # Local InfluxDB to aggregate telemetry
   influxdb2:

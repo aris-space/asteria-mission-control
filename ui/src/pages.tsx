@@ -2,6 +2,7 @@ import {
   IconChartLine,
   IconGasStation,
   IconHeartRateMonitor,
+  IconMap,
   IconRocket,
   IconSitemap,
 } from "@tabler/icons-react";
@@ -10,6 +11,7 @@ import StateMachine from "./pages/statemachine/StateMachine";
 import Telemetry from "./pages/telemetry/Telemetry";
 import Health from "./pages/health/Health";
 import PSS from "./pages/pss/PSS";
+import Map from "./pages/map/Map";
 
 interface Page {
   path: string;
@@ -58,5 +60,12 @@ export const pages: Page[] = [
       "Visualize and interact with the RFS PSS datapoints of the active remote",
     icon: <IconGasStation size="2rem" />,
     page: <PSS kind="rfs" />,
+  },
+  {
+    title: "Map",
+    description: "Visualize the position of the rocket on a map",
+    icon: <IconMap size="2rem" />,
+    path: "/map",
+    page: <Map />,
   },
 ];

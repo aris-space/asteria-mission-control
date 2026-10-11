@@ -25,6 +25,11 @@ logging:
     docker compose --profile full down
     docker compose --profile logging up --detach
 
+# Start the offline tile server
+tiles:
+    docker compose --profile tiles down
+    docker compose --profile tiles up --detach
+
 # Start both the backend and frontend
 [parallel]
 run: frontend backend logging

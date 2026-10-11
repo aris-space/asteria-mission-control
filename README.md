@@ -64,7 +64,9 @@ There are some things which need to be followed whilst exporting the diagram as 
 > [!IMPORTANT]
 > The draw.io plugins are not stored inside the diagram file. They need to be enabled on every editor with which you want to edit the diagram!
 
-![Screenshot of SVG export on draw.io](./docs/svg-export.png)
+<p align="center">
+  <img src="./docs/svg-export.png" height="550">
+</p>
 
 ### Validating state machine configs
 
@@ -102,6 +104,45 @@ Start the logging with `docker compose --profile logging up`, and shut down agai
 - the local Grafana instance can be reached [here](http://localhost:3001)
   - Username: Admin
   - Password: defined in your `.env` file (same as for local InfluxDB)
+
+### Offline tile server
+
+Since the Mission Control is also expected to work in environment without internet, there is the ability to download offline maps and use a local
+tile server instead of the hosted OpenStreetMaps tiles.
+
+First, the `tiles.Dockerfile` is used to create a new tile server. When you want to add a new region to this tile server, look up the bounding box
+of your region on [https://bboxfinder.com](https://bboxfinder.com) and use this bounding box to add an environment variable starting with `BBOX_` to the `extractor` phase of the build:
+
+```bash
+# Get coordinates from <https://bboxfinder.com>.
+ENV BBOX_DUEBENDORF="8.617401,47.389285,8.677826,47.409619"
+```
+
+A script inside the Dockerfile will automatically add the tiles of this bounding box to the region of tiles it downloads.
+
+The docker tile server is added to the config, however, if you want to add a new (vector) tile server, you'll need to add 
+a config entry which looks something like this:
+
+```toml
+# Unique name of your tile server.
+[map.tiles.duebendorf]
+# Description of the tile server which is shown on the frontend.
+description = "Dübendorf (Docker)"
+# The downloaded tiles are vector tiles.
+type = "vector"
+# The url to the vector tiles.
+url = "<url/to/your/pmtiles>"
+# The url to the fonts.
+fonts = "<url/to/your/fonts>"
+# The url to the sprites.
+sprites = "<url/to/your/sprites>"
+```
+
+The `fonts` and `sprites` parts are only relevant if you have `type = "vector"`. For `type = "raster"` the `url` parameter is enough.
+
+The `docker-compose.yml` in the project root contains a fully configured tile server which is exposed under [http://localhost:8877/](http://localhost:8877/).
+By running `docker compose --profile tiles up -d`, the tile server will be started.
+Alternatively, `--profile full` will also start the tile server in addition to everything else.
 
 ## Development Utilities
 

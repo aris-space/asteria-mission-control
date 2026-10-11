@@ -1,4 +1,5 @@
 use crate::parser::statemachine::*;
+use crate::remote::config::GncPolygon;
 use crate::remote::{RemoteComputer, Remotes};
 use crate::web::datatypes::OptionalResult;
 
@@ -29,13 +30,23 @@ pub struct State {
     /// path index of the state machine. [`None`] if no remote is currently active, or
     /// the current state of the active remote's state machine hasn't been received.
     state_machine_state: Option<(String, u32)>,
+    /// GNC polygon of the active remote computer. [`None`] if no remote is currently
+    /// active, or the current state of the active remote's polygon hasn't been received,
+    /// or the active remote doesn't have a polygon configured.
+    gnc_polygon: Option<GncPolygon>,
 
     remotes: Arc<Remotes>,
 }
 
 impl State {
     pub fn new(remotes: Arc<Remotes>) -> StateInstance {
-        let instance = Self { remotes, active_remote: None, state_machine: OptionalResult::None, state_machine_state: None };
+        let instance = Self {
+            remotes,
+            active_remote: None,
+            state_machine: OptionalResult::None,
+            state_machine_state: None,
+            gnc_polygon: None,
+        };
         Arc::new(RwLock::new(instance))
     }
 
@@ -114,11 +125,19 @@ impl State {
         self.state_machine_state = Some((state_name, path_index))
     }
 
+    pub fn set_gnc_polygon(&mut self, polygon: Option<GncPolygon>) {
+        self.gnc_polygon = polygon
+    }
+
     pub fn get_state_machine(&self) -> &OptionalResult<StateMachine> {
         &self.state_machine
     }
 
     pub fn get_state_machine_state(&self) -> &Option<(String, u32)> {
         &self.state_machine_state
+    }
+
+    pub fn get_gnc_polygon(&self) -> &Option<GncPolygon> {
+        &self.gnc_polygon
     }
 }
