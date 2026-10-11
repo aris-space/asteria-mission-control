@@ -1,11 +1,15 @@
 import { useState, type ReactNode } from "react";
-import { ActionIcon, Box, Flex, Text } from "@mantine/core";
+import { ActionIcon, Box, Flex, SimpleGrid, Text } from "@mantine/core";
 import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
 import type {
   ActivePowerSource,
+  DeploymentState,
+  EngineControlBoardStatus,
   EnvironmentalData,
+  FuelControlBoardStatus,
   ImuData,
   OrientationData,
+  OxidizerControlBoardStatus,
   PositionData,
   RailStatus,
   SteeringPositions,
@@ -19,6 +23,12 @@ const POWER_SOURCE_LABEL: Record<ActivePowerSource, string> = {
   external: "EXT",
   battery: "BAT",
   none: "?",
+};
+
+const DEPLOYMENT_STATE_LABEL: Record<DeploymentState, string> = {
+  unarmed: "Unarmed",
+  notYetDeployed: "Not yet",
+  deployed: "Deployed",
 };
 
 const RAD2DEG = 180 / Math.PI;
@@ -240,6 +250,14 @@ function Telemetry() {
     useMavlinkMessage("RecoveryBoard", "SteeringTargetPositions"),
   );
 
+  const fuelBoard = content<FuelControlBoardStatus>(useMavlinkMessage("FuelControlBoard", "BoardStatus"));
+  const oxidizerBoard = content<OxidizerControlBoardStatus>(
+    useMavlinkMessage("OxidizerControlBoard", "BoardStatus"),
+  );
+  const engineBoard = content<EngineControlBoardStatus>(useMavlinkMessage("EngineControlBoard", "BoardStatus"));
+  const catsSeparation = content<DeploymentState>(useMavlinkMessage("RecoveryBoard", "CATSSeparationState"));
+  const catsDeployment = content<DeploymentState>(useMavlinkMessage("RecoveryBoard", "CATSDeploymentState"));
+
   const altitude = pos?.locationHamsl == null ? undefined : pos.locationHamsl - (groundAmsl ?? 0);
 
   const rail = (r?: RailStatus) => (
@@ -305,28 +323,54 @@ function Telemetry() {
           />
 
           <Box style={{ width: "80%", height: 1, backgroundColor: "#ccc" }} />
-          <Section
-            label="Orientation"
-            detail={vec(quatToRpy(ori), "RPY", "°", 1)}
-          />
-          <Section
-            label="Angular velocity"
-            detail={vec([imu?.angularVelocityX, imu?.angularVelocityY, imu?.angularVelocityZ], "XYZ", "°/s")}
-          />
-          <Section
-            label="Environment"
-            detail={
-              <Fields
-                fields={[
-                  [fmt(env?.temperature, 1), " °C"],
-                  [fmt(env?.humidity, 1), " %"],
-                  [fmt(env?.pressure, 0), " hPa"],
-                ]}
-              />
-            }
-          />
-          <Section label="Rail 5V" detail={rail(rail5v)} />
-          <Section label={`Rail 24V${powerSource ? ` · ${POWER_SOURCE_LABEL[powerSource]}` : ""}`} detail={rail(rail24v)} />
+          <SimpleGrid cols={2} spacing="lg" verticalSpacing="lg" style={{ width: "100%" }}>
+            <Section
+              label="Orientation"
+              detail={vec(quatToRpy(ori), "RPY", "°", 1)}
+            />
+            <Section
+              label="Angular velocity"
+              detail={vec([imu?.angularVelocityX, imu?.angularVelocityY, imu?.angularVelocityZ], "XYZ", "°/s")}
+            />
+            <Section
+              label="Stack Environment"
+              detail={
+                <Fields
+                  fields={[
+                    [fmt(env?.temperature, 1), " °C"],
+                    [fmt(env?.humidity, 1), " %"],
+                    [fmt(env?.pressure, 0), " hPa"],
+                  ]}
+                />
+              }
+            />
+            <Section
+              label="Bay temperatures"
+              detail={
+                <Fields
+                  fields={[
+                    [fmt(fuelBoard?.temperature, 1), " F"],
+                    [fmt(oxidizerBoard?.temperature, 1), " O"],
+                    [fmt(engineBoard?.temperature, 1), " E"],
+                  ]}
+                  unit="°C"
+                />
+              }
+            />
+            <Section label="Rail 5V" detail={rail(rail5v)} />
+            <Section label={`Rail 24V${powerSource ? ` · ${POWER_SOURCE_LABEL[powerSource]}` : ""}`} detail={rail(rail24v)} />
+            <Section
+              label="CATS"
+              detail={
+                <Fields
+                  fields={[
+                    [catsSeparation ? DEPLOYMENT_STATE_LABEL[catsSeparation] : "--", " sep"],
+                    [catsDeployment ? DEPLOYMENT_STATE_LABEL[catsDeployment] : "--", " dep"],
+                  ]}
+                />
+              }
+            />
+          </SimpleGrid>
         </Flex>
 
         <SteeringBar
