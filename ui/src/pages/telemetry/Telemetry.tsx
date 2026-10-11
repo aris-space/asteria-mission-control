@@ -39,8 +39,12 @@ function fmt(value: Num, decimals = 2): string {
 
 /** Euclidean norm; undefined if any component is missing. */
 function magnitude(...v: Num[]): Num {
-  if (v.some((x) => x == null)) return undefined;
-  return Math.sqrt(v.reduce((s, x) => s + x! * x!, 0));
+  let sumSquares = 0;
+  for (const x of v) {
+    if (x == null) return undefined;
+    sumSquares += x * x;
+  }
+  return Math.sqrt(sumSquares);
 }
 
 function Dim({ children }: { children: ReactNode }) {
