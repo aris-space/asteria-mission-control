@@ -333,6 +333,18 @@ export type DatapointValue =
     });
 
 /**
+ * The state of a parachute deployment (main or drogue).
+ */
+export type DeploymentState =
+  (typeof DeploymentState)[keyof typeof DeploymentState];
+
+export const DeploymentState = {
+  unarmed: "unarmed",
+  notYetDeployed: "notYetDeployed",
+  deployed: "deployed",
+} as const;
+
+/**
  * A digital input, mostly for proximity sensors.
  */
 export type DigitalIn = (typeof DigitalIn)[keyof typeof DigitalIn];
@@ -400,6 +412,8 @@ export interface EngineControlBoardStatus {
   /** `Armed` if the engine is armed and the main valves receive power, ie engine arming Pin is pulled */
   armed: ArmingState;
   common: StatusCommonMessage;
+  /** Approximate temperature of the board. */
+  temperature: Celsius;
   /** State of the ADS1120 device used to read thermocouples */
   thermocoupleStatus: SensorStatus;
 }
@@ -901,6 +915,8 @@ export interface FuelControlBoardStatus {
   dprLoopInfo: DprLoopInfo;
   /** State of the Keller BUS used to read pressure, indicates whether a single sensor is online or not. */
   pressureBus: SensorStatus;
+  /** Approximate temperature of the board. */
+  temperature: Celsius;
   /** State of the ADS1120 device used to read thermocouples */
   thermocoupleStatus: SensorStatus;
 }
@@ -1645,7 +1661,7 @@ export type RfsComputerMessage =
       type: "N2ShowerValvesState";
     }
   | {
-      /** The current active state of the normally closed N2 engine purge valve valve.
+      /** The current active state of the normally closed engine purge valve valve.
 
   # CAN
   - **Kind**: Status message
@@ -1697,7 +1713,7 @@ export type RfsComputerMessage =
       /** The temperature of the igniter.
 
   # CAN
-  - **Kind**: Status message
+  - **Kind**: Sensor message
   - **Sent by**: RFS Computer */
       content: Celsius;
       type: "IgniterTemperature";
@@ -1756,7 +1772,7 @@ export type RfsComputerMessage =
       /** The pressure from the igniter block.
 
   # CAN
-  - **Kind**: Status message
+  - **Kind**: Sensor message
   - **Sent by**: RFS Computer */
       content: BarG;
       type: "IgniterPressure";
@@ -1878,7 +1894,7 @@ export type RfsComputerMessage =
       type: "GoxIgniterPurgeControl";
     }
   | {
-      /** Controls the N2 engine purge valve on the RFS from the FC.
+      /** Controls the engine purge valve on the RFS from the FC.
 
   This is needed during the ignition sequence where the flight computer controls the
   ignition and thus needs to purge the engine.
@@ -1944,6 +1960,18 @@ export type SystemManagementMessage =
     };
 
 /**
+ * Represents the state of one steering motor.
+ */
+export type SteeringStatus =
+  (typeof SteeringStatus)[keyof typeof SteeringStatus];
+
+export const SteeringStatus = {
+  unpowered: "unpowered",
+  unresponsive: "unresponsive",
+  responsive: "responsive",
+} as const;
+
+/**
  * Represents the current state of a watchdog timer.
  */
 export type WatchdogState = (typeof WatchdogState)[keyof typeof WatchdogState];
@@ -1966,14 +1994,10 @@ export interface RecoveryBoardStatus {
   sep1Status: ActuatorStatus;
   /** Detected state of separation actuator 2. */
   sep2Status: ActuatorStatus;
-  /** General steering actuator state as observed from detection circuitry. */
-  steeringGeneral: ActuatorStatus;
-  /** True if left steering motor has correctly responded to ping.
-  Will be false until the steering servos have power */
-  steeringLeftConnected: boolean;
-  /** True if right steering motor has correctly responded to ping.
-  Will be false until the steering servos have power */
-  steeringRightConnected: boolean;
+  /** State of the left steering motor. */
+  steeringLeftStatus: SteeringStatus;
+  /** State of the right steering motor. */
+  steeringRightStatus: SteeringStatus;
   /** Current state of the steering watchdog. */
   steeringWatchdogStatus: WatchdogState;
 }
@@ -2062,6 +2086,24 @@ export type RecoveryBoardMessage =
     }
   | {
       type: "DeploymentOccurred";
+    }
+  | {
+      /** Informs the FC if the CATS has triggered separation.
+
+  # CAN
+  - **Kind**: Status event message
+  - **Sent by**: Recovery Board */
+      content: DeploymentState;
+      type: "CATSSeparationState";
+    }
+  | {
+      /** Informs the FC if the CATS has triggered main deployment.
+
+  # CAN
+  - **Kind**: Status event message
+  - **Sent by**: Recovery Board */
+      content: DeploymentState;
+      type: "CATSDeploymentState";
     }
   | {
       /** # `SteeringTargetPositions`
@@ -2475,6 +2517,8 @@ export interface OxidizerControlBoardStatus {
   dprLoopInfo: DprLoopInfo;
   /** State of the Keller BUS used to read pressure, indicates whether a single sensor is online or not. */
   pressureBus: SensorStatus;
+  /** Approximate temperature of the board. */
+  temperature: Celsius;
   /** State of the ADS1120 device used to read thermocouples */
   thermocoupleStatus: SensorStatus;
 }
