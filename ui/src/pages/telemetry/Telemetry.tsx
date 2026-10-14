@@ -1,3 +1,9 @@
+/**
+ * This page shows various telemetry datapoints, mainly position, velocity and acceleration. 
+ * 
+ * Every section has a title, maybe a large value and/or a detailed value.
+ */
+
 import { useState, type ReactNode } from "react";
 import { ActionIcon, Box, Flex, SimpleGrid, Text } from "@mantine/core";
 import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
