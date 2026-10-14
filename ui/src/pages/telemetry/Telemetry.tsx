@@ -3,6 +3,7 @@ import { ActionIcon, Box, Flex, SimpleGrid, Text } from "@mantine/core";
 import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
 import type {
   ActivePowerSource,
+  ArmingState,
   DeploymentState,
   EngineControlBoardStatus,
   EnvironmentalData,
@@ -12,6 +13,8 @@ import type {
   OxidizerControlBoardStatus,
   PositionData,
   RailStatus,
+  RecoveryBoardStatus,
+  RfsComputerStatus,
   SteeringPositions,
   VelocityData,
 } from "@asteria/mission-control-client";
@@ -29,6 +32,11 @@ const DEPLOYMENT_STATE_LABEL: Record<DeploymentState, string> = {
   unarmed: "Unarmed",
   notYetDeployed: "Not yet",
   deployed: "Deployed",
+};
+
+const ARMING_LABEL: Record<ArmingState, string> = {
+  safe: "Unarmed",
+  armed: "Armed",
 };
 
 const RAD2DEG = 180 / Math.PI;
@@ -261,6 +269,9 @@ function Telemetry() {
   const engineBoard = content<EngineControlBoardStatus>(useMavlinkMessage("EngineControlBoard", "BoardStatus"));
   const catsSeparation = content<DeploymentState>(useMavlinkMessage("RecoveryBoard", "CATSSeparationState"));
   const catsDeployment = content<DeploymentState>(useMavlinkMessage("RecoveryBoard", "CATSDeploymentState"));
+  const recBoard = content<RecoveryBoardStatus>(useMavlinkMessage("RecoveryBoard", "BoardStatus"));
+  const rfsStatus = content<RfsComputerStatus>(useMavlinkMessage("RfsComputer", "Status"));
+  const fcStatus = content<RfsComputerStatus>(useMavlinkMessage("FlightComputer", "Status"));
 
   const altitude = pos?.locationHamsl == null ? undefined : pos.locationHamsl - (groundAmsl ?? 0);
 
@@ -370,6 +381,18 @@ function Telemetry() {
                   fields={[
                     [catsSeparation ? DEPLOYMENT_STATE_LABEL[catsSeparation] : "--", " sep"],
                     [catsDeployment ? DEPLOYMENT_STATE_LABEL[catsDeployment] : "--", " dep"],
+                  ]}
+                />
+              }
+            />
+            <Section
+              label="Arming"
+              detail={
+                <Fields
+                  fields={[
+                    [fcStatus ? ARMING_LABEL[fcStatus.isIgnitionArmed] : "--", " fc"],
+                    [rfsStatus ? ARMING_LABEL[rfsStatus.isIgnitionArmed] : "--", " rfs"],
+                    [recBoard ? ARMING_LABEL[recBoard.armingState] : "--", " rec"],
                   ]}
                 />
               }
