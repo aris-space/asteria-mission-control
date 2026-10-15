@@ -122,7 +122,6 @@ function SteeringBar({
   label,
   side,
   actual,
-  target,
 }: {
   label: string;
   side: "left" | "right";
@@ -141,9 +140,8 @@ function SteeringBar({
       : Math.max(0, Math.min(1, ((steps / 4096) + 2.273) / 4.95));
 
   const actualFrac = actual != null ? toFrac(actual, side) : 0.5;
-  const targetFrac = target != null ? toFrac(target, side) : null;
 
-  const indicatorH = 12; // percent
+  const indicatorH = 8; // percent
   // Map frac in [0, 1] to a top offset that keeps the whole indicator inside the bar:
   // frac = 1 -> top edge flush with the top, frac = 0 -> bottom edge flush with the bottom.
   const indicatorTop = (frac: number) => `${(1 - frac) * (100 - indicatorH)}%`;
@@ -180,27 +178,11 @@ function SteeringBar({
           }}
         />
 
-        {/* Target marker (outline) */}
-        {targetFrac != null && (
-          <Box
-            style={{
-              position: "absolute",
-              top: indicatorTop(targetFrac),
-              left: 2,
-              right: 2,
-              height: `${indicatorH}%`,
-              border: "2px solid #6c8ebf",
-              borderRadius: 2,
-              opacity: 0.8,
-            }}
-          />
-        )}
-
         {/* Actual position (solid) */}
         <Box
           style={{
             position: "absolute",
-            top: indicatorTop(actualFrac),
+            bottom: indicatorTop(actualFrac), // flipped to make 1 be pulling down
             left: 2,
             right: 2,
             height: `${indicatorH}%`,
@@ -264,9 +246,6 @@ function Telemetry() {
   const steeringActual = content<SteeringPositions>(
     useMavlinkMessage("RecoveryBoard", "SteeringActualPositions"),
   );
-  const steeringTarget = content<SteeringPositions>(
-    useMavlinkMessage("RecoveryBoard", "SteeringTargetPositions"),
-  );
 
   const fuelBoard = content<FuelControlBoardStatus>(useMavlinkMessage("FuelControlBoard", "BoardStatus"));
   const oxidizerBoard = content<OxidizerControlBoardStatus>(
@@ -303,7 +282,6 @@ function Telemetry() {
           label="L"
           side="left"
           actual={steeringActual?.leftPos}
-          target={steeringTarget?.leftPos}
         />
 
         <Flex direction="column" align="center" gap="lg" style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
@@ -410,7 +388,6 @@ function Telemetry() {
           label="R"
           side="right"
           actual={steeringActual?.rightPos}
-          target={steeringTarget?.rightPos}
         />
       </Flex>
     </Flex>
