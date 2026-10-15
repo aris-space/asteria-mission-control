@@ -20,9 +20,9 @@ use crate::web::event::Event;
 
 /// An aggregate of telemetry stats of the incoming and outgoing messages
 /// of every second are stored in a bucket.
-/// With 120 buckets we can represent the telemetry stats of the last
-/// two minutes in a sliding-window style.
-const TELEMETRY_BUCKETS: usize = 120;
+/// With a fixed amount of buckets we can represent the telemetry stats of the last
+/// few seconds in a sliding-window style.
+const TELEMETRY_BUCKETS: usize = 20;
 
 #[derive(Default)]
 pub struct TelemetryAggregate {
@@ -65,7 +65,7 @@ pub struct TelemetryAggregateWindow {
 }
 
 /// Interceptor which aggregates telemetry stats about the incoming and outgoing messages
-/// of the last 120 seconds and compares it to the advertised telemetry stats from the RC.
+/// of the last few seconds and compares it to the advertised telemetry stats from the RC.
 #[derive(Clone)]
 pub struct TelemetryInterceptor {
     last_bucket: Arc<AtomicUsize>,
