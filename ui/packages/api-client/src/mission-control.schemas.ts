@@ -713,6 +713,7 @@ export const EventKind = {
   PING: "PING",
   MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
   POLYGON: "POLYGON",
+  TELEMETRY_STATS: "TELEMETRY_STATS",
 } as const;
 
 export type ExtendedDatapointInformation = DatapointInformation & {
@@ -2924,6 +2925,44 @@ export interface StateMachine {
   manualTransitions: StateMachineManualTransitions;
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
+}
+
+export interface TelemetryStats {
+  /**
+   * Total size of all incoming messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  incoming_bytes: number;
+  /**
+   * Amount of incoming messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  incoming_msgs: number;
+  /**
+   * Total size of all outgoing messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  outgoing_bytes: number;
+  /**
+   * Amount of outgoing messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  outgoing_msgs: number;
+  /**
+   * Amount of messages sent from the RC during the sliding window.
+   * @minimum 0
+   */
+  rc_dowlink_msgs: number;
+  /**
+   * Amount of messages received by the RC during the sliding window.
+   * @minimum 0
+   */
+  rc_uplink_msgs: number;
+  /**
+   * The length of the sliding window in seconds.
+   * @minimum 0
+   */
+  window_length: number;
 }
 
 export type TileKind =
