@@ -90,6 +90,10 @@ impl MavlinkConnection {
     /// Run the connection until the caller cancels it (e.g. via `tokio::select!` or by
     /// dropping the future). The `Infallible` return type is a promise: this loop never
     /// stops on its own, so callers don't need to handle a "the connection died" case.
+    /// All incoming MavLink messages are queued in the `incoming_msg` channel. Furthermore,
+    /// all outgoing MavLink messages are queued in the `outgoing_msg` channel **after**
+    /// they've been sent. This allows interceptors to intercept and work on incoming as well
+    /// as outgoing messages.
     pub async fn run(
         mut self,
         incoming_msg_tx: &UnboundedSender<MavlinkMessage>,
