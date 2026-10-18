@@ -70,6 +70,12 @@ pub struct TelemetryAggregateWindow {
 pub struct TelemetryInterceptor {
     last_bucket: Arc<AtomicUsize>,
     buckets: Arc<Mutex<[TelemetryAggregateBucket; TELEMETRY_BUCKETS]>>,
+    // Aggregate about the incoming telemetry since the last downlink
+    // telemetry stats message.
+    dirty_incoming: Arc<Mutex<TelemetryAggregate>>,
+    // Aggregate about the outgoing telemetry since the last uplink
+    // telemetry health message.
+    dirty_outgoing: Arc<Mutex<TelemetryAggregate>>,
     window_total: Arc<Mutex<TelemetryAggregateWindow>>,
     broadcast: Arc<Broadcast>,
 }
@@ -79,7 +85,10 @@ impl TelemetryInterceptor {
         let last_bucket = Arc::new(AtomicUsize::new(0));
         let buckets = Arc::new(Mutex::new(array::from_fn(|_| TelemetryAggregateBucket::default())));
         let window_total = Arc::new(Mutex::new(TelemetryAggregateWindow::default()));
-        let instance = TelemetryInterceptor { last_bucket, buckets, window_total, broadcast };
+        let dirty_incoming = Arc::new(Mutex::new(TelemetryAggregate::default()));
+        let dirty_outgoing = Arc::new(Mutex::new(TelemetryAggregate::default()));
+        let instance =
+            TelemetryInterceptor { last_bucket, buckets, dirty_incoming, dirty_outgoing, window_total, broadcast };
         {
             let instance = instance.clone();
             // To ensure the sliding window advances even when no messages are received, we
@@ -154,20 +163,32 @@ impl Interceptor for TelemetryInterceptor {
 
         let bucket_idx = self.advance_sliding_window().await;
 
-        let bucket = &mut self.buckets.lock().await[bucket_idx];
-        let mut window_total = self.window_total.lock().await;
-
-        // Update bucket aggregate.
-        bucket.incoming.bytes += message.size;
-        bucket.incoming.messages += 1;
-
-        // Update sliding window total to account for updated bucket.
-        window_total.incoming.bytes += message.size;
-        window_total.incoming.messages += 1;
+        // Update aggregate of dirty incoming bucket.
+        let mut dirty_incoming = self.dirty_incoming.lock().await;
+        dirty_incoming.bytes += message.size;
+        dirty_incoming.messages += 1;
 
         match &message.message {
             Message::FlightComputer(FcMessage::UplinkTelemetryHealth(health))
             | Message::RfsComputer(RfscMessage::UplinkTelemetryHealth(health)) => {
+                let bucket = &mut self.buckets.lock().await[bucket_idx];
+                let mut window_total = self.window_total.lock().await;
+                let mut dirty_outgoing = self.dirty_outgoing.lock().await;
+
+                // We received a new message with uplink telemetry stats.
+                // The dirty outgoing aggregate should thus now be close to
+                // up-to-date. We thus apply it to the sliding window and count
+                // it towards the current bucket.
+                window_total.outgoing.bytes += dirty_outgoing.bytes;
+                window_total.outgoing.messages += dirty_outgoing.messages;
+                bucket.outgoing.bytes += dirty_outgoing.bytes;
+                bucket.outgoing.messages += dirty_outgoing.messages;
+
+                // We just applied the dirty outgoing aggregate to the
+                // sliding window and the active bucket. We thus need to reset it.
+                dirty_outgoing.bytes = 0;
+                dirty_outgoing.messages = 0;
+
                 let new_num_msg_processed = health.num_msg_processed as usize;
 
                 // The delta this bucket has contributed so far.
@@ -187,6 +208,23 @@ impl Interceptor for TelemetryInterceptor {
             }
             Message::FlightComputer(FcMessage::DownlinkTelemetryStats(stats))
             | Message::RfsComputer(RfscMessage::DownlinkTelemetryStats(stats)) => {
+                let bucket = &mut self.buckets.lock().await[bucket_idx];
+                let mut window_total = self.window_total.lock().await;
+
+                // We received a new message with downlink telemetry stats.
+                // The dirty incoming aggregate should thus now be close to
+                // up-to-date. We thus apply it to the sliding window and count
+                // it towards the current bucket.
+                window_total.incoming.bytes += dirty_incoming.bytes;
+                window_total.incoming.messages += dirty_incoming.messages;
+                bucket.incoming.bytes += dirty_incoming.bytes;
+                bucket.incoming.messages += dirty_incoming.messages;
+
+                // We just applied the dirty incoming aggregate to the
+                // sliding window and the active bucket. We thus need to reset it.
+                dirty_incoming.bytes = 0;
+                dirty_incoming.messages = 0;
+
                 let new_num_msg_sent = stats.num_messages_sent as usize;
 
                 // The delta this bucket has contributed so far.
@@ -210,21 +248,16 @@ impl Interceptor for TelemetryInterceptor {
 
     async fn on_outgoing_message(&self, message: &MavlinkMessage) {
         if let Message::SystemManagement(SysMessage::Heartbeat(_)) = &message.message {
-            // Heartbeat messages aren't included in telemetry.
+            // Mission Control heartbeat messages aren't counted towards the
+            // number of processed messages on the RC. We thus ignore them here
+            // since we compare the amount of outgoing Mission Control messages against
+            // the amount of processed messages of the RC.
             return;
         }
 
-        let bucket_idx = self.advance_sliding_window().await;
-
-        let bucket = &mut self.buckets.lock().await[bucket_idx];
-        let mut window_total = self.window_total.lock().await;
-
-        // Update bucket aggregate.
-        bucket.outgoing.bytes += message.size;
-        bucket.outgoing.messages += 1;
-
-        // Update sliding window total to account for updated bucket.
-        window_total.outgoing.bytes += message.size;
-        window_total.outgoing.messages += 1;
+        // Update aggregate of dirty outgoing bucket.
+        let mut dirty_outgoing = self.dirty_outgoing.lock().await;
+        dirty_outgoing.bytes += message.size;
+        dirty_outgoing.messages += 1;
     }
 }
