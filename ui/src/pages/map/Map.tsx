@@ -14,9 +14,7 @@ import {
   Card,
   Flex,
   Loader,
-  Paper,
   Select,
-  Text,
   Tooltip,
   useMantineTheme,
 } from "@mantine/core";
@@ -67,11 +65,6 @@ const DEFAULT_TILE_SERVER_NAME = "osm";
 const TILE_SERVER_NAME_STORAGE_KEY = "TILE_SERVER";
 
 type NamedTileServer = TileServer & { name: string };
-
-/** Format a coordinate in degrees with a hemisphere suffix, e.g. 47.405831° N. */
-function formatCoordinate(value: number, pos: string, neg: string): string {
-  return `${Math.abs(value).toFixed(6)}° ${value >= 0 ? pos : neg}`;
-}
 
 const protocol = new Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
@@ -415,25 +408,13 @@ function Map() {
               latitude={groundStation.latitude}
               anchor="bottom"
             >
-              {/* The label sits above the pin so that the pin's tip stays on the exact position. */}
-              <Flex direction="column" align="center">
-                <Paper shadow="sm" radius="sm" px="xs" py={4} withBorder>
-                  <Text size="xs" fw={700} ta="center">
-                    Mission Control · {groundStation.name}
-                  </Text>
-                  <Text size="xs" ff="monospace" c="dimmed" ta="center">
-                    {formatCoordinate(groundStation.latitude, "N", "S")}{" "}
-                    {formatCoordinate(groundStation.longitude, "E", "W")}
-                  </Text>
-                </Paper>
-                <IconMapPinFilled
-                  size={36}
-                  color={theme.colors.red[7]}
-                  style={{
-                    filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))",
-                  }}
-                />
-              </Flex>
+              <IconMapPinFilled
+                size={36}
+                color={theme.colors.red[7]}
+                style={{
+                  filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))",
+                }}
+              />
             </Marker>
           )}
         </MapContainer>
