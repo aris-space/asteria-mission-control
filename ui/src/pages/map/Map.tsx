@@ -37,7 +37,7 @@ import {
 } from "@tabler/icons-react";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { Feature, Polygon } from "geojson";
+import { Feature, LineString, Polygon } from "geojson";
 import { bbox, destination, distance, point, polygon } from "@turf/turf";
 
 // Maximum amount of stored data points to keep.
@@ -65,6 +65,24 @@ const DEFAULT_TILE_SERVER_NAME = "osm";
 
 // Key to store the name of the active tile server in the local storage.
 const TILE_SERVER_NAME_STORAGE_KEY = "TILE_SERVER";
+
+// Latitude (degrees north) above which the flight computer leaves the nominal
+// flight path and goes to "Off Nominal".
+// Must match `north_limit_deg` in the flight computer's flight state machine config.
+const NORTH_LIMIT_LATITUDE = 39.39051;
+
+// GeoJSON line along the north limit.
+const NORTH_LIMIT_LINE: Feature<LineString> = {
+  type: "Feature",
+  properties: {},
+  geometry: {
+    type: "LineString",
+    coordinates: [
+      [-180, NORTH_LIMIT_LATITUDE],
+      [180, NORTH_LIMIT_LATITUDE],
+    ],
+  },
+};
 
 type NamedTileServer = TileServer & { name: string };
 
@@ -389,6 +407,19 @@ function Map() {
               />
             </Source>
           )}
+
+          <Source id="north-limit" type="geojson" data={NORTH_LIMIT_LINE}>
+            <Layer
+              id="north-limit-layer"
+              type="line"
+              source="north-limit"
+              paint={{
+                "line-color": theme.colors.orange[7],
+                "line-width": 3,
+                "line-dasharray": [2, 2],
+              }}
+            />
+          </Source>
 
           <Source
             id="latest-point"

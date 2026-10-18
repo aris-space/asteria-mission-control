@@ -2,6 +2,7 @@ use asteria_messages::Message;
 use asteria_messages::datapoints::dp_flight_computer::Message as FcMessage;
 use asteria_messages::datapoints::dp_rfs_computer::Message as RfscMessage;
 use async_trait::async_trait;
+use mavlink_lib::MavlinkMessage;
 
 use crate::intercept::Interceptor;
 use crate::web::state::StateInstance;
@@ -20,7 +21,7 @@ impl StateMachineStateInterceptor {
 
 #[async_trait]
 impl Interceptor for StateMachineStateInterceptor {
-    async fn on_message(&self, message: &Message) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         let state_machine_state = match message {
             Message::FlightComputer(FcMessage::StateMachineState(state)) => state,
             Message::RfsComputer(RfscMessage::StateMachineState(state)) => state,

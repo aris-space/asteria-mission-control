@@ -1,5 +1,5 @@
 import { useEffect, useState, type PropsWithChildren } from "react";
-import { useBackendLatency } from "@asteria/hooks/EventContext";
+import { useBackendLatency, useEvent } from "@asteria/hooks/EventContext";
 import {
   useMavlinkMessage,
   useMavlinkTelemetryHealth,
@@ -20,12 +20,15 @@ import {
   Modal,
   ModalProps,
   Stack,
+  Table,
   Text,
   Tooltip,
   useMantineTheme,
 } from "@mantine/core";
 import {
   RemoteComputerKind,
+  EventKind,
+  TelemetryStats,
   useChangeActiveRemote,
   useDeactivateActiveRemote,
   useInfo,
@@ -33,6 +36,7 @@ import {
 import {
   IconAlertCircle,
   IconAlertTriangle,
+  IconCloudDown,
   IconPlug,
   IconPlugX,
   IconRocket,
@@ -90,6 +94,7 @@ export function Layout(props: PropsWithChildren) {
               />
               <ConfigHash />
               <RailStatus24V />
+              <MissionControlLinkStats />
               <MavlinkTelemetryHealth />
               {errors.length > 0 && (
                 <Errors
@@ -348,6 +353,14 @@ function BackendLatency() {
 
 function MavlinkTelemetryHealth() {
   const { getLastMessageTimestamp } = useMavlinkTelemetryHealth();
+  const [telemetryStats, setTelemetryStats] = useState<TelemetryStats | null>(
+    null,
+  );
+
+  useEvent<string>(EventKind.TELEMETRY_STATS, (stats) => {
+    const telemetryStatsJson = JSON.parse(stats.data) as TelemetryStats;
+    setTelemetryStats(telemetryStatsJson);
+  });
 
   const [timeSinceLastMessage, setTimeSinceLastMessage] =
     useState<number>(Infinity);
@@ -377,8 +390,12 @@ function MavlinkTelemetryHealth() {
           {isTelemetryActive
             ? `Received MavLink telemetry within last ${timeSinceLastMessage} milliseconds`
             : "No MavLink telemetry received within last second"}
-          <UplinkHealth />
-          <DownlinkStats />
+          <Divider />
+          <SlidingWindowTelemetryStats stats={telemetryStats} />
+          <Divider />
+          <AllTimeUplinkHealth />
+          <Divider />
+          <AllTimeDownlinkStats />
         </Stack>
       }
     >
@@ -400,7 +417,95 @@ function MavlinkTelemetryHealth() {
   );
 }
 
-function UplinkHealth() {
+interface SlidingWindowTelemtryStatsProps {
+  stats: TelemetryStats | null;
+}
+
+function SlidingWindowTelemetryStats({
+  stats,
+}: SlidingWindowTelemtryStatsProps) {
+  const fmt = (intVal?: number) => intVal?.toLocaleString("de-CH") || "--";
+
+  const downlinkLoss =
+    stats &&
+    stats.rc_dowlink_msgs != 0 &&
+    fmt((1 - stats.incoming_msgs / stats.rc_dowlink_msgs) * 100);
+
+  const uplinkLoss =
+    stats &&
+    stats.outgoing_msgs != 0 &&
+    fmt((1 - stats.rc_uplink_msgs / stats.outgoing_msgs) * 100);
+
+  return (
+    <Flex direction={"column"} gap={"xs"}>
+      <Text size="sm" fw={600}>
+        Sliding Window Telemetry Statistics
+      </Text>
+      {stats ? (
+        <>
+          Sliding window spans {stats.window_length} seconds
+          <Table withRowBorders={false}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th w={"40%"} fw={600} py={2} px={0}>
+                  Remote Computer
+                </Table.Th>
+                <Table.Th w={"40%"} fw={600} py={2} px={4}>
+                  Mission Control
+                </Table.Th>
+                <Table.Th w={"20%"} fw={600} py={2} px={0}>
+                  Loss
+                </Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              <Table.Tr>
+                <Table.Th fw={"normal"} py={2} px={0}>
+                  <code>{fmt(stats.rc_dowlink_msgs)}</code> messages sent
+                </Table.Th>
+                <Table.Th fw={"normal"} py={2} px={4}>
+                  <code>{fmt(stats.incoming_msgs)}</code> messages received
+                </Table.Th>
+                <Table.Th fw={"normal"} py={2} px={0}>
+                  {stats.rc_dowlink_msgs == 0 ? (
+                    "N/A"
+                  ) : (
+                    <code>≈{downlinkLoss}%</code>
+                  )}
+                </Table.Th>
+              </Table.Tr>
+              <Table.Tr>
+                <Table.Th fw={"normal"} py={2} px={0}>
+                  <code>{fmt(stats.rc_uplink_msgs)}</code> messages processed
+                </Table.Th>
+                <Table.Th fw={"normal"} py={2} px={4}>
+                  <code>{fmt(stats.outgoing_msgs)}</code> messages sent
+                </Table.Th>
+                <Table.Th fw={"normal"} py={2} px={0}>
+                  {stats.outgoing_bytes == 0 ? (
+                    "N/A"
+                  ) : (
+                    <code>≈{uplinkLoss}%</code>
+                  )}
+                </Table.Th>
+              </Table.Tr>
+            </Table.Tbody>
+          </Table>
+        </>
+      ) : (
+        <Alert
+          w="100%"
+          title="No telemetry stats event has been received until now"
+          color="yellow"
+          variant="light"
+          icon={<IconAlertTriangle />}
+        />
+      )}
+    </Flex>
+  );
+}
+
+function AllTimeUplinkHealth() {
   const { remoteComputerBoard } = useRemoteComputer();
   const uplinkTelemetryHealthMessage = useMavlinkMessage(
     remoteComputerBoard as any,
@@ -429,7 +534,7 @@ function UplinkHealth() {
   return (
     <Flex direction={"column"} gap={"xs"}>
       <Text size="sm" fw={600}>
-        Uplink Statistics
+        All-Time Remote Computer Uplink Statistics
       </Text>
       {remoteComputerBoard ? (
         <>
@@ -466,7 +571,7 @@ function UplinkHealth() {
   );
 }
 
-function DownlinkStats() {
+function AllTimeDownlinkStats() {
   const { remoteComputerBoard } = useRemoteComputer();
   const downlinkTelemetryStatsMessage = useMavlinkMessage(
     remoteComputerBoard as any,
@@ -481,7 +586,7 @@ function DownlinkStats() {
   return (
     <Flex direction={"column"} gap="xs">
       <Text size="sm" fw={600}>
-        Downlink Statistics
+        All-Time Remote Computer Downlink Statistics
       </Text>
       {remoteComputerBoard ? (
         <Group>
@@ -502,6 +607,69 @@ function DownlinkStats() {
         />
       )}
     </Flex>
+  );
+}
+
+function MissionControlLinkStats() {
+  const [stats, setStats] = useState<TelemetryStats | null>(null);
+
+  useEvent<string>(EventKind.TELEMETRY_STATS, (stats) => {
+    const telemetryStatsJson = JSON.parse(stats.data) as TelemetryStats;
+    setStats(telemetryStatsJson);
+  });
+
+  const fmt = (intVal?: number) =>
+    intVal?.toLocaleString("de-CH", { maximumFractionDigits: 2 }) || "--";
+
+  const downlinkLoss =
+    stats &&
+    stats.rc_dowlink_msgs != 0 &&
+    fmt((1 - stats.incoming_msgs / stats.rc_dowlink_msgs) * 100);
+
+  return (
+    <>
+      <Tooltip
+        label={
+          stats
+            ? `Average utilization of the downlink from the RC to the MC over the last ${stats.window_length} seconds`
+            : "Downlink utilization not known"
+        }
+      >
+        <Badge color={stats ? "blue" : "red"}>
+          {stats ? (
+            <Flex gap={"0.25rem"} align={"center"}>
+              <IconCloudDown size="1rem" />
+              <code>
+                {fmt(stats.incoming_bytes / stats.window_length / 1000)}kB/s
+              </code>
+            </Flex>
+          ) : (
+            "N/A"
+          )}
+        </Badge>
+      </Tooltip>
+      <Tooltip
+        label={
+          stats
+            ? `Average loss on the downlink from the RC to the MC over the last ${stats.window_length} seconds`
+            : "Downlink loss not known"
+        }
+      >
+        <Badge
+          color={
+            stats
+              ? (downlinkLoss as unknown as number) < 5
+                ? "green"
+                : (downlinkLoss as unknown as number) < 50
+                  ? "orange"
+                  : "red"
+              : "red"
+          }
+        >
+          {stats ? <code>{downlinkLoss || 0}%</code> : "N/A"}
+        </Badge>
+      </Tooltip>
+    </>
   );
 }
 
@@ -569,7 +737,11 @@ function RailStatus24V() {
         }
       >
         <code>
-          <b>{voltage != undefined ? `${voltage}V` : "N/A"}</b>
+          <b>
+            {voltage != undefined
+              ? `${voltage.toLocaleString("de-CH", { maximumFractionDigits: 1 })}V`
+              : "N/A"}
+          </b>
         </code>
       </Tooltip>
     </Badge>

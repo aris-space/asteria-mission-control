@@ -72,6 +72,7 @@ function StateMachine() {
   const {
     isZoomDirty,
     resetZoom,
+    ready: svgReady,
     ref: svgRef,
   } = useDiagramSvg(
     stateMachine?.diagram as string,
@@ -115,7 +116,7 @@ function StateMachine() {
     highlightAvailableStates();
     removeStateListeners();
     setupStateListeners();
-  }, [activeState, stateMachine, svgRef.current]);
+  }, [activeState, stateMachine, svgRef.current, svgReady]);
 
   /**
    * Get the name of the state how it's present in the diagram. If no (postfixed) version of the
