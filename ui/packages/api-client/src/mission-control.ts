@@ -16,9 +16,11 @@ import type {
 
 import type {
   GncPolygon,
+  GroundStationConfig,
   Message,
   OptionalResultStateMachine,
   Pss,
+  RecoveryPoint,
   RemoteComputerInfo,
   ServerInfo,
   TileServers200,
@@ -656,6 +658,138 @@ export function usePolygon<
 }
 
 /**
+ * @summary Get the configured location of the ground station.
+ */
+export const groundStation = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<GroundStationConfig>(
+    { url: `/api/ground-station`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getGroundStationQueryKey = () => {
+  return [`/api/ground-station`] as const;
+};
+
+export const getGroundStationQueryOptions = <
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGroundStationQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof groundStation>>> = ({
+    signal,
+  }) => groundStation(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof groundStation>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GroundStationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof groundStation>>
+>;
+export type GroundStationQueryError = ErrorType<unknown>;
+
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof groundStation>>,
+          TError,
+          Awaited<ReturnType<typeof groundStation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof groundStation>>,
+          TError,
+          Awaited<ReturnType<typeof groundStation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the configured location of the ground station.
+ */
+
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGroundStationQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Get the configured tile servers for the map on the mission control.
  */
 export const tileServers = (
@@ -1127,6 +1261,140 @@ export function useRocketPss<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getRocketPssQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the final recovery position, i.e. the intended point of impact (IPI) of the
+`euroc_limit_cycle` GNC configuration.
+ */
+export const recoveryPoint = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<RecoveryPoint>(
+    { url: `/api/recovery-point`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getRecoveryPointQueryKey = () => {
+  return [`/api/recovery-point`] as const;
+};
+
+export const getRecoveryPointQueryOptions = <
+  TData = Awaited<ReturnType<typeof recoveryPoint>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof recoveryPoint>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getRecoveryPointQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof recoveryPoint>>> = ({
+    signal,
+  }) => recoveryPoint(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof recoveryPoint>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type RecoveryPointQueryResult = NonNullable<
+  Awaited<ReturnType<typeof recoveryPoint>>
+>;
+export type RecoveryPointQueryError = ErrorType<unknown>;
+
+export function useRecoveryPoint<
+  TData = Awaited<ReturnType<typeof recoveryPoint>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof recoveryPoint>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof recoveryPoint>>,
+          TError,
+          Awaited<ReturnType<typeof recoveryPoint>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useRecoveryPoint<
+  TData = Awaited<ReturnType<typeof recoveryPoint>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof recoveryPoint>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof recoveryPoint>>,
+          TError,
+          Awaited<ReturnType<typeof recoveryPoint>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useRecoveryPoint<
+  TData = Awaited<ReturnType<typeof recoveryPoint>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof recoveryPoint>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the final recovery position, i.e. the intended point of impact (IPI) of the
+`euroc_limit_cycle` GNC configuration.
+ */
+
+export function useRecoveryPoint<
+  TData = Awaited<ReturnType<typeof recoveryPoint>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof recoveryPoint>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getRecoveryPointQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

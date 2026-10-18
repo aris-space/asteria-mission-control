@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::PssDiagrams;
-use crate::config::{Config, RemoteComputerKind, TilesConfig};
+use crate::config::{Config, GroundStationConfig, RemoteComputerKind, TilesConfig};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::remote::config::GncPolygon;
@@ -250,6 +250,40 @@ pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeM
         .collect::<BTreeMap<_, _>>();
 
     Ok(Json(servers))
+}
+
+/// Get the configured location of the ground station.
+#[utoipa::path(responses((status = OK, body = GroundStationConfig)))]
+#[get("/ground-station")]
+pub async fn ground_station(config: Data<Config>) -> actix_web::Result<Json<GroundStationConfig>> {
+    Ok(Json(config.ground_station.clone()))
+}
+
+/// Intended point of impact (IPI) of the `euroc_limit_cycle` GNC configuration, given as
+/// `[north, east, altitude]` in meters relative to [`gnc_configurations::EUROC25_ZERO_POINT`].
+///
+/// Copied from `gnc_configurations::euroc_limit_cycle::guidance().ipi` (asteria-gnc `673aa17`)
+/// since the pinned `asteria-gnc` submodule doesn't include `euroc_limit_cycle` yet.
+// TODO: read it from `euroc_limit_cycle::guidance().ipi` once the submodule pin includes it.
+const EUROC_LIMIT_CYCLE_IPI: [f64; 3] = [-305.6, 231.6, 0.0];
+
+/// Get the final recovery position, i.e. the intended point of impact (IPI) of the
+/// `euroc_limit_cycle` GNC configuration.
+#[utoipa::path(responses((status = OK, body = RecoveryPoint)))]
+#[get("/recovery-point")]
+pub async fn recovery_point() -> actix_web::Result<Json<RecoveryPoint>> {
+    use gnc_configurations::EUROC25_ZERO_POINT;
+    use nav_types::{ECEF, NED, WGS84};
+
+    let [north, east, altitude] = EUROC_LIMIT_CYCLE_IPI;
+    let point = WGS84::from(ECEF::from(EUROC25_ZERO_POINT) + NED::new(north, east, -altitude));
+
+    Ok(Json(RecoveryPoint {
+        name: "euroc_limit_cycle".to_string(),
+        latitude: point.latitude_degrees(),
+        longitude: point.longitude_degrees(),
+        altitude: point.altitude(),
+    }))
 }
 
 /// Get the GNC polygon for the active remote computer.

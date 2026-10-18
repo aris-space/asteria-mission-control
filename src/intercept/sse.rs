@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use mavlink_lib::MavlinkMessage;
 
 use crate::intercept::Interceptor;
 use crate::web::broadcast::Broadcast;
@@ -21,7 +22,7 @@ impl SseInterceptor {
 
 #[async_trait]
 impl Interceptor for SseInterceptor {
-    async fn on_message(&self, message: &asteria_messages::Message) {
+    async fn on_incoming_message(&self, MavlinkMessage { message, .. }: &MavlinkMessage) {
         self.broadcast.broadcast(Event::MavlinkMessage(message.clone())).await
     }
 }

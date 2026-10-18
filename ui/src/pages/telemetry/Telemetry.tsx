@@ -6,7 +6,8 @@
 
 import { useState, type ReactNode } from "react";
 import { ActionIcon, Box, Flex, SimpleGrid, Text } from "@mantine/core";
-import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
+import { useClipboard } from "@mantine/hooks";
+import { IconArrowBarToDown, IconCheck, IconCopy, IconRestore } from "@tabler/icons-react";
 import type {
   ActivePowerSource,
   ArmingState,
@@ -24,6 +25,8 @@ import type {
   SteeringPositions,
   VelocityData,
 } from "@asteria/mission-control-client";
+import { useGroundStation } from "@asteria/mission-control-client";
+import { distance, point } from "@turf/turf";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 type Num = number | undefined;
@@ -46,6 +49,9 @@ const ARMING_LABEL: Record<ArmingState, string> = {
 };
 
 const RAD2DEG = 180 / Math.PI;
+
+// Below this horizontal distance (in meters) to Mission Control, the distance is highlighted in red.
+const MC_DISTANCE_WARNING = 250;
 
 function fmt(value: Num, decimals = 2): string {
   return value == null ? "--" : value.toFixed(decimals);
@@ -122,7 +128,6 @@ function SteeringBar({
   label,
   side,
   actual,
-  target,
 }: {
   label: string;
   side: "left" | "right";
@@ -141,9 +146,8 @@ function SteeringBar({
       : Math.max(0, Math.min(1, ((steps / 4096) + 2.273) / 4.95));
 
   const actualFrac = actual != null ? toFrac(actual, side) : 0.5;
-  const targetFrac = target != null ? toFrac(target, side) : null;
 
-  const indicatorH = 12; // percent
+  const indicatorH = 8; // percent
   // Map frac in [0, 1] to a top offset that keeps the whole indicator inside the bar:
   // frac = 1 -> top edge flush with the top, frac = 0 -> bottom edge flush with the bottom.
   const indicatorTop = (frac: number) => `${(1 - frac) * (100 - indicatorH)}%`;
@@ -180,27 +184,11 @@ function SteeringBar({
           }}
         />
 
-        {/* Target marker (outline) */}
-        {targetFrac != null && (
-          <Box
-            style={{
-              position: "absolute",
-              top: indicatorTop(targetFrac),
-              left: 2,
-              right: 2,
-              height: `${indicatorH}%`,
-              border: "2px solid #6c8ebf",
-              borderRadius: 2,
-              opacity: 0.8,
-            }}
-          />
-        )}
-
         {/* Actual position (solid) */}
         <Box
           style={{
             position: "absolute",
-            top: indicatorTop(actualFrac),
+            bottom: indicatorTop(actualFrac), // flipped to make 1 be pulling down
             left: 2,
             right: 2,
             height: `${indicatorH}%`,
@@ -250,9 +238,27 @@ function Section({
   );
 }
 
+/** Small button which copies `text` to the clipboard and briefly shows whether it worked. */
+function CopyButton({ text, label }: { text?: string; label: string }) {
+  const clipboard = useClipboard({ timeout: 1500 });
+  return (
+    <ActionIcon
+      size="sm"
+      variant="light"
+      color={clipboard.copied ? "teal" : clipboard.error ? "red" : undefined}
+      title={clipboard.copied ? "Copied" : clipboard.error ? `Copy failed: ${clipboard.error.message}` : label}
+      disabled={text == null}
+      onClick={() => text != null && clipboard.copy(text)}
+    >
+      {clipboard.copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+    </ActionIcon>
+  );
+}
+
 function Telemetry() {
   // AMSL altitude captured by "Zero ground"; altitude is shown as AGL while set.
   const [groundAmsl, setGroundAmsl] = useState<number>();
+  const { data: groundStation } = useGroundStation();
   const pos = content<PositionData>(useMavlinkMessage("SensorCarrier", "PositionData"));
   const vel = content<VelocityData>(useMavlinkMessage("SensorCarrier", "VelocityData"));
   const imu = content<ImuData>(useMavlinkMessage("SensorCarrier", "ImuData"));
@@ -263,9 +269,6 @@ function Telemetry() {
   const rail24v = content<RailStatus>(useMavlinkMessage("Backplane", "RailStatus24V"));
   const steeringActual = content<SteeringPositions>(
     useMavlinkMessage("RecoveryBoard", "SteeringActualPositions"),
-  );
-  const steeringTarget = content<SteeringPositions>(
-    useMavlinkMessage("RecoveryBoard", "SteeringTargetPositions"),
   );
 
   const fuelBoard = content<FuelControlBoardStatus>(useMavlinkMessage("FuelControlBoard", "BoardStatus"));
@@ -281,18 +284,43 @@ function Telemetry() {
 
   const altitude = pos?.locationHamsl == null ? undefined : pos.locationHamsl - (groundAmsl ?? 0);
 
+  // Horizontal distance from the ground station (Mission Control) to the rocket.
+  const downrange =
+    groundStation && pos
+      ? distance(
+          point([groundStation.longitude, groundStation.latitude]),
+          point([pos.locationLongitude, pos.locationLatitude]),
+          { units: "meters" },
+        )
+      : undefined;
+
   const rail = (r?: RailStatus) => (
     <Fields fields={[[fmt(r?.voltage), " V"], [fmt(r?.current), " A"], [fmt(r?.power), " W"]]} />
   );
 
   const location = (
-    <Flex gap="0.9em" justify="center" align="baseline" wrap="wrap">
-      <Fields fields={[coord(pos?.locationLatitude, "N", "S"), coord(pos?.locationLongitude, "E", "W")]} />
-      {pos?.horizontalAccuracy != null && (
-        <Text span c="dimmed" fz="sm">
-          ±{fmt(pos.horizontalAccuracy)} m
+    <Flex direction="column" align="center" gap={2}>
+      <Flex gap="0.9em" justify="center" align="center" wrap="wrap">
+        <Fields fields={[coord(pos?.locationLatitude, "N", "S"), coord(pos?.locationLongitude, "E", "W")]} />
+        {pos?.horizontalAccuracy != null && (
+          <Text span c="dimmed" fz="sm">
+            ±{fmt(pos.horizontalAccuracy)} m
+          </Text>
+        )}
+        <CopyButton
+          label="Copy position (lat, lon, alt AMSL)"
+          text={
+            pos &&
+            `${pos.locationLatitude.toFixed(6)}, ${pos.locationLongitude.toFixed(6)}, ${pos.locationHamsl.toFixed(1)}`
+          }
+        />
+      </Flex>
+      <Flex gap="0.9em" justify="center" align="center">
+        <Text span inherit c={downrange != null && downrange < MC_DISTANCE_WARNING ? "red" : undefined}>
+          <Val v={fmt(downrange, 0)} unit=" m downrange" />
         </Text>
-      )}
+        <CopyButton label="Copy downrange (m)" text={downrange?.toFixed(1)} />
+      </Flex>
     </Flex>
   );
 
@@ -303,12 +331,11 @@ function Telemetry() {
           label="L"
           side="left"
           actual={steeringActual?.leftPos}
-          target={steeringTarget?.leftPos}
         />
 
         <Flex direction="column" align="center" gap="lg" style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
           <Section
-            label={groundAmsl == null ? "Altitude AMSL" : "Altitude AGL"}
+            label={groundAmsl == null ? "Altitude/Position AMSL" : "Altitude/Position AGL"}
             main={
               <>
                 <Val v={fmt(altitude, 1)} unit=" m" />
@@ -410,7 +437,6 @@ function Telemetry() {
           label="R"
           side="right"
           actual={steeringActual?.rightPos}
-          target={steeringTarget?.rightPos}
         />
       </Flex>
     </Flex>
