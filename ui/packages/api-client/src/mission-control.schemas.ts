@@ -2877,6 +2877,17 @@ export interface Pss {
   diagram: string;
 }
 
+export interface RecoveryPoint {
+  /** Height above mean sea level in meters. */
+  altitude: number;
+  /** Latitude in degrees (WGS84). */
+  latitude: number;
+  /** Longitude in degrees (WGS84). */
+  longitude: number;
+  /** Name of the GNC configuration the point is taken from. */
+  name: string;
+}
+
 export type RemoteComputerKind =
   (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
 

@@ -20,6 +20,18 @@ pub struct RemoteComputerInfo {
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
+pub struct RecoveryPoint {
+    /// Name of the GNC configuration the point is taken from.
+    pub name: String,
+    /// Latitude in degrees (WGS84).
+    pub latitude: f64,
+    /// Longitude in degrees (WGS84).
+    pub longitude: f64,
+    /// Height above mean sea level in meters.
+    pub altitude: f64,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct TileServer {
     /// Description about the tile server.
     pub description: String,

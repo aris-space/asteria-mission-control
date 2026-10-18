@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   TileServer,
   useGroundStation,
+  useRecoveryPoint,
   useTileServers,
 } from "@asteria/mission-control-client";
 import {
@@ -32,6 +33,7 @@ import {
   IconMapPinUp,
   IconMapPinX,
   IconPolygon,
+  IconStarFilled,
 } from "@tabler/icons-react";
 import { useRemoteComputer } from "@asteria/hooks/RemoteComputerContext";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -77,6 +79,8 @@ function Map() {
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
   const { data: groundStation, isLoading: isGroundStationLoading } =
     useGroundStation();
+  // Final recovery position (IPI) of the GNC configuration.
+  const { data: recoveryPoint } = useRecoveryPoint();
 
   const mapRef = useRef<MapRef>(null);
 
@@ -413,6 +417,21 @@ function Map() {
                 color={theme.colors.red[7]}
                 style={{
                   filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))",
+                }}
+              />
+            </Marker>
+          )}
+
+          {recoveryPoint && (
+            <Marker
+              longitude={recoveryPoint.longitude}
+              latitude={recoveryPoint.latitude}
+            >
+              <IconStarFilled
+                size={28}
+                color={theme.colors.yellow[5]}
+                style={{
+                  filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6))",
                 }}
               />
             </Marker>

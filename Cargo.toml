@@ -7,6 +7,9 @@ edition = "2024"
 members = [".", "mavlink", "mavlink-log-replay"]
 
 [workspace.dependencies]
+# Must match the version used by the GNC crates in `remote-computers`, since they
+# inherit it from this workspace when built as path dependencies.
+nav-types = { git = "https://github.com/nordmoen/nav-types.git", rev = "0b69095" }
 arbitrary = { version = "1.4.1", features = ["derive"] }
 asteria-messages = { package = "messages", path = "data-definitions/messages", default-features = false, features = [
   "mavlink",
@@ -73,6 +76,7 @@ chrono = "0.4.42"
 clap.workspace = true
 env_logger.workspace = true
 futures = "0.3.31"
+gnc-configurations = { path = "remote-computers/flight-computer/asteria-gnc/gnc-configurations" }
 gix = { version = "0.81.0", default-features = false, features = [
   "parallel",
   "revision",
@@ -83,6 +87,7 @@ html_parser = "0.7.0"
 log.workspace = true
 mavio.workspace = true
 mavlink-lib.workspace = true
+nav-types.workspace = true
 quick-xml = { version = "0.38.4", features = ["serialize"] }
 schemars = "1.1.0"
 serde.workspace = true

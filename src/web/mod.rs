@@ -259,6 +259,26 @@ pub async fn ground_station(config: Data<Config>) -> actix_web::Result<Json<Grou
     Ok(Json(config.ground_station.clone()))
 }
 
+/// Get the final recovery position, i.e. the intended point of impact (IPI) of the
+/// `euroc_limit_cycle` GNC configuration.
+#[utoipa::path(responses((status = OK, body = RecoveryPoint)))]
+#[get("/recovery-point")]
+pub async fn recovery_point() -> actix_web::Result<Json<RecoveryPoint>> {
+    use gnc_configurations::{EUROC25_ZERO_POINT, euroc_limit_cycle};
+    use nav_types::{ECEF, NED, WGS84};
+
+    // The IPI is given as [north, east, altitude] in meters relative to the NED origin.
+    let ipi = euroc_limit_cycle::guidance().ipi;
+    let point = WGS84::from(ECEF::from(EUROC25_ZERO_POINT) + NED::new(ipi.x, ipi.y, -ipi.z));
+
+    Ok(Json(RecoveryPoint {
+        name: "euroc_limit_cycle".to_string(),
+        latitude: point.latitude_degrees(),
+        longitude: point.longitude_degrees(),
+        altitude: point.altitude(),
+    }))
+}
+
 /// Get the GNC polygon for the active remote computer.
 #[utoipa::path(responses((status = OK, body = Option<GncPolygon>)))]
 #[get("/gnc-polygon")]

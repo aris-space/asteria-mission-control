@@ -114,12 +114,6 @@ function quatToRpy(q?: OrientationData): [Num, Num, Num] {
   return [roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG];
 }
 
-/** Distance in meters, switching to kilometers from 1 km on. */
-function fmtDistance(meters: Num): [string, string] {
-  if (meters == null) return ["--", " m"];
-  return meters < 1000 ? [meters.toFixed(0), " m"] : [(meters / 1000).toFixed(2), " km"];
-}
-
 function coord(value: Num, pos: string, neg: string): [string, string] {
   if (value == null) return ["--", ""];
   return [`${Math.abs(value).toFixed(6)}°`, value >= 0 ? pos : neg];
@@ -320,7 +314,6 @@ function Telemetry() {
           { units: "meters" },
         )
       : undefined;
-  const [downrangeValue, downrangeUnit] = fmtDistance(downrange);
 
   const rail = (r?: RailStatus) => (
     <Fields fields={[[fmt(r?.voltage), " V"], [fmt(r?.current), " A"], [fmt(r?.power), " W"]]} />
@@ -344,12 +337,9 @@ function Telemetry() {
         />
       </Flex>
       <Flex gap="0.9em" justify="center" align="center">
-        <span>
-          <Dim>Downrange </Dim>
-          <Text span inherit c={downrange != null && downrange < MC_DISTANCE_WARNING ? "red" : undefined}>
-            <Val v={downrangeValue} unit={downrangeUnit} />
-          </Text>
-        </span>
+        <Text span inherit c={downrange != null && downrange < MC_DISTANCE_WARNING ? "red" : undefined}>
+          <Val v={fmt(downrange, 0)} unit=" m downrange" />
+        </Text>
         <CopyButton label="Copy downrange (m)" text={downrange?.toFixed(1)} />
       </Flex>
     </Flex>
