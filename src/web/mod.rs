@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::PssDiagrams;
-use crate::config::{Config, RemoteComputerKind, TilesConfig};
+use crate::config::{Config, GroundStationConfig, RemoteComputerKind, TilesConfig};
 use crate::parser::pss::Pss;
 use crate::parser::statemachine::StateMachine;
 use crate::remote::config::GncPolygon;
@@ -250,6 +250,13 @@ pub async fn tile_servers(config: Data<Config>) -> actix_web::Result<Json<BTreeM
         .collect::<BTreeMap<_, _>>();
 
     Ok(Json(servers))
+}
+
+/// Get the configured location of the ground station.
+#[utoipa::path(responses((status = OK, body = GroundStationConfig)))]
+#[get("/ground-station")]
+pub async fn ground_station(config: Data<Config>) -> actix_web::Result<Json<GroundStationConfig>> {
+    Ok(Json(config.ground_station.clone()))
 }
 
 /// Get the GNC polygon for the active remote computer.

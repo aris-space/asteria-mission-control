@@ -6,7 +6,8 @@
 
 import { useState, type ReactNode } from "react";
 import { ActionIcon, Box, Flex, SimpleGrid, Text } from "@mantine/core";
-import { IconArrowBarToDown, IconRestore } from "@tabler/icons-react";
+import { useClipboard } from "@mantine/hooks";
+import { IconArrowBarToDown, IconCheck, IconCopy, IconRestore } from "@tabler/icons-react";
 import type {
   ActivePowerSource,
   ArmingState,
@@ -24,6 +25,8 @@ import type {
   SteeringPositions,
   VelocityData,
 } from "@asteria/mission-control-client";
+import { useGroundStation } from "@asteria/mission-control-client";
+import { distance, point } from "@turf/turf";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 
 type Num = number | undefined;
@@ -46,6 +49,9 @@ const ARMING_LABEL: Record<ArmingState, string> = {
 };
 
 const RAD2DEG = 180 / Math.PI;
+
+// Below this horizontal distance (in meters) to Mission Control, the distance is highlighted in red.
+const MC_DISTANCE_WARNING = 250;
 
 function fmt(value: Num, decimals = 2): string {
   return value == null ? "--" : value.toFixed(decimals);
@@ -106,6 +112,12 @@ function quatToRpy(q?: OrientationData): [Num, Num, Num] {
   const pitch = Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x))));
   const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
   return [roll * RAD2DEG, pitch * RAD2DEG, yaw * RAD2DEG];
+}
+
+/** Distance in meters, switching to kilometers from 1 km on. */
+function fmtDistance(meters: Num): [string, string] {
+  if (meters == null) return ["--", " m"];
+  return meters < 1000 ? [meters.toFixed(0), " m"] : [(meters / 1000).toFixed(2), " km"];
 }
 
 function coord(value: Num, pos: string, neg: string): [string, string] {
@@ -250,9 +262,27 @@ function Section({
   );
 }
 
+/** Small button which copies `text` to the clipboard and briefly shows whether it worked. */
+function CopyButton({ text, label }: { text?: string; label: string }) {
+  const clipboard = useClipboard({ timeout: 1500 });
+  return (
+    <ActionIcon
+      size="sm"
+      variant="light"
+      color={clipboard.copied ? "teal" : clipboard.error ? "red" : undefined}
+      title={clipboard.copied ? "Copied" : clipboard.error ? `Copy failed: ${clipboard.error.message}` : label}
+      disabled={text == null}
+      onClick={() => text != null && clipboard.copy(text)}
+    >
+      {clipboard.copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+    </ActionIcon>
+  );
+}
+
 function Telemetry() {
   // AMSL altitude captured by "Zero ground"; altitude is shown as AGL while set.
   const [groundAmsl, setGroundAmsl] = useState<number>();
+  const { data: groundStation } = useGroundStation();
   const pos = content<PositionData>(useMavlinkMessage("SensorCarrier", "PositionData"));
   const vel = content<VelocityData>(useMavlinkMessage("SensorCarrier", "VelocityData"));
   const imu = content<ImuData>(useMavlinkMessage("SensorCarrier", "ImuData"));
@@ -281,18 +311,47 @@ function Telemetry() {
 
   const altitude = pos?.locationHamsl == null ? undefined : pos.locationHamsl - (groundAmsl ?? 0);
 
+  // Horizontal distance from the ground station (Mission Control) to the rocket.
+  const downrange =
+    groundStation && pos
+      ? distance(
+          point([groundStation.longitude, groundStation.latitude]),
+          point([pos.locationLongitude, pos.locationLatitude]),
+          { units: "meters" },
+        )
+      : undefined;
+  const [downrangeValue, downrangeUnit] = fmtDistance(downrange);
+
   const rail = (r?: RailStatus) => (
     <Fields fields={[[fmt(r?.voltage), " V"], [fmt(r?.current), " A"], [fmt(r?.power), " W"]]} />
   );
 
   const location = (
-    <Flex gap="0.9em" justify="center" align="baseline" wrap="wrap">
-      <Fields fields={[coord(pos?.locationLatitude, "N", "S"), coord(pos?.locationLongitude, "E", "W")]} />
-      {pos?.horizontalAccuracy != null && (
-        <Text span c="dimmed" fz="sm">
-          ±{fmt(pos.horizontalAccuracy)} m
-        </Text>
-      )}
+    <Flex direction="column" align="center" gap={2}>
+      <Flex gap="0.9em" justify="center" align="center" wrap="wrap">
+        <Fields fields={[coord(pos?.locationLatitude, "N", "S"), coord(pos?.locationLongitude, "E", "W")]} />
+        {pos?.horizontalAccuracy != null && (
+          <Text span c="dimmed" fz="sm">
+            ±{fmt(pos.horizontalAccuracy)} m
+          </Text>
+        )}
+        <CopyButton
+          label="Copy position (lat, lon, alt AMSL)"
+          text={
+            pos &&
+            `${pos.locationLatitude.toFixed(6)}, ${pos.locationLongitude.toFixed(6)}, ${pos.locationHamsl.toFixed(1)}`
+          }
+        />
+      </Flex>
+      <Flex gap="0.9em" justify="center" align="center">
+        <span>
+          <Dim>Downrange </Dim>
+          <Text span inherit c={downrange != null && downrange < MC_DISTANCE_WARNING ? "red" : undefined}>
+            <Val v={downrangeValue} unit={downrangeUnit} />
+          </Text>
+        </span>
+        <CopyButton label="Copy downrange (m)" text={downrange?.toFixed(1)} />
+      </Flex>
     </Flex>
   );
 
@@ -308,7 +367,7 @@ function Telemetry() {
 
         <Flex direction="column" align="center" gap="lg" style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
           <Section
-            label={groundAmsl == null ? "Altitude AMSL" : "Altitude AGL"}
+            label={groundAmsl == null ? "Altitude/Position AMSL" : "Altitude/Position AGL"}
             main={
               <>
                 <Val v={fmt(altitude, 1)} unit=" m" />

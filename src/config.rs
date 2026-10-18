@@ -35,6 +35,8 @@ pub struct Config {
     pub influx: InfluxConfig,
     /// Configuration related to the map displayed on the frontend.
     pub map: MapConfig,
+    /// Location of the ground station (i.e. the mission control itself).
+    pub ground_station: GroundStationConfig,
 }
 
 impl Config {
@@ -150,6 +152,38 @@ pub enum TileKind {
     },
 }
 
+#[derive(Debug, Deserialize, Serialize, JsonSchema, ToSchema, Clone, PartialEq)]
+pub struct GroundStationConfig {
+    /// A short, human-readable name of the ground station location.
+    pub name: String,
+    /// Latitude in degrees (WGS84). Range: -90.0° to +90.0°
+    #[serde(alias = "lat", deserialize_with = "deserialize_latitude")]
+    pub latitude: f64,
+    /// Longitude in degrees (WGS84). Range: -180.0° to +180.0°
+    #[serde(alias = "lon", alias = "lng", deserialize_with = "deserialize_longitude")]
+    pub longitude: f64,
+}
+
+/// Deserialize a finite [`f64`] which lies within `min..=max`.
+fn deserialize_in_range<'de, D>(deserializer: D, name: &str, min: f64, max: f64) -> Result<f64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = f64::deserialize(deserializer)?;
+    if !value.is_finite() || !(min..=max).contains(&value) {
+        return Err(serde::de::Error::custom(format!("{name} {value} is not within {min} to {max}")));
+    }
+    Ok(value)
+}
+
+fn deserialize_latitude<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+    deserialize_in_range(deserializer, "Latitude", -90.0, 90.0)
+}
+
+fn deserialize_longitude<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+    deserialize_in_range(deserializer, "Longitude", -180.0, 180.0)
+}
+
 /// Deserialize a [`PathBuf`] and ensure that it's an absolute path or a valid relative
 /// path to the config file.
 fn deserialize_relative_path<'de, D>(deserializer: D) -> Result<PathBuf, D::Error>
@@ -173,4 +207,61 @@ where
     };
 
     Ok(canonicalized_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug, Deserialize)]
+    struct Wrapper {
+        ground_station: GroundStationConfig,
+    }
+
+    #[test]
+    fn parse_ground_station() {
+        let config = toml::from_str::<Wrapper>(
+            r#"
+[ground_station]
+name = "Dübendorf"
+latitude = 47.405831
+longitude = 8.631848
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.ground_station,
+            GroundStationConfig { name: "Dübendorf".into(), latitude: 47.405831, longitude: 8.631848 }
+        );
+    }
+
+    #[test]
+    fn parse_ground_station_aliases() {
+        let config = toml::from_str::<Wrapper>(
+            r#"
+[ground_station]
+name = "Dübendorf"
+lat = 47.405831
+lon = 8.631848
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(config.ground_station.latitude, 47.405831);
+        assert_eq!(config.ground_station.longitude, 8.631848);
+    }
+
+    #[test]
+    fn reject_out_of_range_ground_station() {
+        for (lat, lon) in [("91.0", "8.0"), ("47.0", "-180.5"), ("nan", "8.0")] {
+            let config = format!("[ground_station]\nname = \"x\"\nlatitude = {lat}\nlongitude = {lon}\n");
+            assert!(toml::from_str::<Wrapper>(&config).is_err(), "should reject {config}");
+        }
+    }
+
+    #[test]
+    fn reject_missing_ground_station() {
+        assert!(toml::from_str::<Wrapper>("").is_err());
+    }
 }

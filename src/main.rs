@@ -191,6 +191,7 @@ fn apply_endpoints(cfg: &mut ServiceConfig) {
         .service(web::send_message)
         .service(web::abort)
         .service(web::tile_servers)
+        .service(web::ground_station)
         .service(web::polygon);
 }
 

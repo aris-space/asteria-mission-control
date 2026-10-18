@@ -1268,6 +1268,15 @@ export interface GncPolygon {
   originLng: number;
 }
 
+export interface GroundStationConfig {
+  /** Latitude in degrees (WGS84). Range: -90.0° to +90.0° */
+  latitude: number;
+  /** Longitude in degrees (WGS84). Range: -180.0° to +180.0° */
+  longitude: number;
+  /** A short, human-readable name of the ground station location. */
+  name: string;
+}
+
 /**
  * MAVLink enum `MAV_AUTOPILOT` for `minimal` dialect.
 

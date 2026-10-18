@@ -34,6 +34,11 @@ kind = "rfs computer"
 description = "Remote filling station computer connected via IP."
 mavlink = { protocol = "tcp", remote = "rfsc.local:5760" }
 
+[ground_station]
+name = "EuRoC"
+latitude = 39.394656
+longitude = -8.292035
+
 [pss]
 rocket_diagram_path = "./rocket-pss.svg"
 rfs_diagram_path = "./rfs-pss.svg"

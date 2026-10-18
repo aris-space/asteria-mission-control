@@ -1,22 +1,36 @@
 import { Protocol } from "pmtiles";
 import * as maplibregl from "maplibre-gl";
 import { layers, namedFlavor } from "@protomaps/basemaps";
-import MapContainer, { Layer, MapRef, Source } from "react-map-gl/maplibre";
+import MapContainer, {
+  Layer,
+  MapRef,
+  Marker,
+  Source,
+} from "react-map-gl/maplibre";
 import {
   ActionIcon,
   Affix,
   Alert,
   Card,
   Flex,
+  Loader,
+  Paper,
   Select,
+  Text,
   Tooltip,
   useMantineTheme,
 } from "@mantine/core";
 import { useMavlinkMessage } from "@asteria/hooks/MavlinkContext";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { TileServer, useTileServers } from "@asteria/mission-control-client";
+import {
+  TileServer,
+  useGroundStation,
+  useTileServers,
+} from "@asteria/mission-control-client";
 import {
   IconAlertTriangle,
+  IconBuildingBroadcastTower,
+  IconMapPinFilled,
   IconMapPinUp,
   IconMapPinX,
   IconPolygon,
@@ -54,6 +68,11 @@ const TILE_SERVER_NAME_STORAGE_KEY = "TILE_SERVER";
 
 type NamedTileServer = TileServer & { name: string };
 
+/** Format a coordinate in degrees with a hemisphere suffix, e.g. 47.405831° N. */
+function formatCoordinate(value: number, pos: string, neg: string): string {
+  return `${Math.abs(value).toFixed(6)}° ${value >= 0 ? pos : neg}`;
+}
+
 const protocol = new Protocol();
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
@@ -63,6 +82,8 @@ function Map() {
     useRemoteComputer();
   const { tileServer, tileServers, setTileServer } = useActiveTileServer();
   const positionMessage = useMavlinkMessage("SensorCarrier", "PositionData");
+  const { data: groundStation, isLoading: isGroundStationLoading } =
+    useGroundStation();
 
   const mapRef = useRef<MapRef>(null);
 
@@ -246,6 +267,22 @@ function Map() {
               {following ? <IconMapPinX /> : <IconMapPinUp />}
             </ActionIcon>
           </Tooltip>
+          <Tooltip label={"Center on ground station"}>
+            <ActionIcon
+              loading={isGroundStationLoading}
+              disabled={!groundStation}
+              onClick={() => {
+                if (!groundStation) return;
+                setFollowing(false);
+                mapRef.current?.flyTo({
+                  center: [groundStation.longitude, groundStation.latitude],
+                  duration: 500,
+                });
+              }}
+            >
+              <IconBuildingBroadcastTower />
+            </ActionIcon>
+          </Tooltip>
           <Tooltip label={"Fit view to GNC polygon"}>
             <ActionIcon
               loading={isGncPolygonLoading}
@@ -295,72 +332,112 @@ function Map() {
           />
         </Affix>
       )}
-      <MapContainer
-        ref={mapRef}
-        mapStyle={mapStyle}
-        initialViewState={{
-          longitude: 8.631848,
-          latitude: 47.405831,
-          zoom: 15,
-        }}
-        onDragStart={() => setFollowing(false)}
-        attributionControl={false}
-        style={{ width: "100%", height: "100%" }}
-      >
-        <Source
-          id="trace"
-          type="geojson"
-          data={{ type: "FeatureCollection", features: [] }}
+      {isGroundStationLoading ? (
+        <Flex h="100%" align="center" justify="center">
+          <Loader />
+        </Flex>
+      ) : (
+        <MapContainer
+          ref={mapRef}
+          mapStyle={mapStyle}
+          // `initialViewState` is only read on mount, which is why the map is
+          // only rendered once the ground station has been loaded.
+          initialViewState={
+            groundStation
+              ? {
+                  longitude: groundStation.longitude,
+                  latitude: groundStation.latitude,
+                  zoom: 15,
+                }
+              : { longitude: 0, latitude: 0, zoom: 1 }
+          }
+          onDragStart={() => setFollowing(false)}
+          attributionControl={false}
+          style={{ width: "100%", height: "100%" }}
         >
-          <Layer
-            id="trace-layer"
-            type="line"
-            source="trace"
-            paint={{
-              "line-width": 4,
-              "line-color": theme.colors.red[9],
-            }}
-          />
-        </Source>
-        {polygonFeatures && (
-          <Source id="gnc-polygon" type="geojson" data={polygonFeatures}>
+          <Source
+            id="trace"
+            type="geojson"
+            data={{ type: "FeatureCollection", features: [] }}
+          >
             <Layer
-              id="gnc-polygon-layer"
-              type="fill"
-              source="gnc-polygon"
-              paint={{
-                "fill-color": theme.colors.blue[9],
-                "fill-opacity": 0.1,
-              }}
-            />
-            <Layer
-              id="gnc-polygon-outline-layer"
+              id="trace-layer"
               type="line"
-              source="gnc-polygon"
+              source="trace"
               paint={{
-                "line-color": theme.colors.blue[9],
-                "line-width": 2,
+                "line-width": 4,
+                "line-color": theme.colors.red[9],
               }}
             />
           </Source>
-        )}
+          {polygonFeatures && (
+            <Source id="gnc-polygon" type="geojson" data={polygonFeatures}>
+              <Layer
+                id="gnc-polygon-layer"
+                type="fill"
+                source="gnc-polygon"
+                paint={{
+                  "fill-color": theme.colors.blue[9],
+                  "fill-opacity": 0.1,
+                }}
+              />
+              <Layer
+                id="gnc-polygon-outline-layer"
+                type="line"
+                source="gnc-polygon"
+                paint={{
+                  "line-color": theme.colors.blue[9],
+                  "line-width": 2,
+                }}
+              />
+            </Source>
+          )}
 
-        <Source
-          id="latest-point"
-          type="geojson"
-          data={{ type: "Point", coordinates: [] }}
-        >
-          <Layer
-            id="latest-layer"
-            type="circle"
-            source="latest-point"
-            paint={{
-              "circle-radius": 5,
-              "circle-color": theme.colors.red[9],
-            }}
-          />
-        </Source>
-      </MapContainer>
+          <Source
+            id="latest-point"
+            type="geojson"
+            data={{ type: "Point", coordinates: [] }}
+          >
+            <Layer
+              id="latest-layer"
+              type="circle"
+              source="latest-point"
+              paint={{
+                "circle-radius": 5,
+                "circle-color": theme.colors.red[9],
+              }}
+            />
+          </Source>
+
+          {groundStation && (
+            <Marker
+              longitude={groundStation.longitude}
+              latitude={groundStation.latitude}
+              anchor="bottom"
+            >
+              {/* The label sits above the pin so that the pin's tip stays on the exact position. */}
+              <Flex direction="column" align="center">
+                <Paper shadow="sm" radius="sm" px="xs" py={4} withBorder>
+                  <Text size="xs" fw={700} ta="center">
+                    Mission Control · {groundStation.name}
+                  </Text>
+                  <Text size="xs" ff="monospace" c="dimmed" ta="center">
+                    {formatCoordinate(groundStation.latitude, "N", "S")}{" "}
+                    {formatCoordinate(groundStation.longitude, "E", "W")}
+                  </Text>
+                </Paper>
+                <IconMapPinFilled
+                  size={36}
+                  color={theme.colors.red[7]}
+                  style={{
+                    filter: "drop-shadow(0 1px 1px rgba(0, 0, 0, 0.4))",
+                  }}
+                />
+              </Flex>
+            </Marker>
+          )}
+        </MapContainer>
+      )}
     </Card>
   );
 }

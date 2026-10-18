@@ -16,6 +16,7 @@ import type {
 
 import type {
   GncPolygon,
+  GroundStationConfig,
   Message,
   OptionalResultStateMachine,
   Pss,
@@ -646,6 +647,138 @@ export function usePolygon<
   queryKey: DataTag<QueryKey, TData, TError>;
 } {
   const queryOptions = getPolygonQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the configured location of the ground station.
+ */
+export const groundStation = (
+  options?: SecondParameter<typeof customAxiosInstance>,
+  signal?: AbortSignal,
+) => {
+  return customAxiosInstance<GroundStationConfig>(
+    { url: `/api/ground-station`, method: "GET", signal },
+    options,
+  );
+};
+
+export const getGroundStationQueryKey = () => {
+  return [`/api/ground-station`] as const;
+};
+
+export const getGroundStationQueryOptions = <
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof customAxiosInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGroundStationQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof groundStation>>> = ({
+    signal,
+  }) => groundStation(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof groundStation>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GroundStationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof groundStation>>
+>;
+export type GroundStationQueryError = ErrorType<unknown>;
+
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof groundStation>>,
+          TError,
+          Awaited<ReturnType<typeof groundStation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof groundStation>>,
+          TError,
+          Awaited<ReturnType<typeof groundStation>>
+        >,
+        "initialData"
+      >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get the configured location of the ground station.
+ */
+
+export function useGroundStation<
+  TData = Awaited<ReturnType<typeof groundStation>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof groundStation>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof customAxiosInstance>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getGroundStationQueryOptions(options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
