@@ -713,6 +713,7 @@ export const EventKind = {
   PING: "PING",
   MAVLINK_MESSAGE: "MAVLINK_MESSAGE",
   POLYGON: "POLYGON",
+  TELEMETRY_STATS: "TELEMETRY_STATS",
 } as const;
 
 export type ExtendedDatapointInformation = DatapointInformation & {
@@ -1266,6 +1267,15 @@ export interface GncPolygon {
   originLat: number;
   /** Longitude of the origin of the bounding polygon. */
   originLng: number;
+}
+
+export interface GroundStationConfig {
+  /** Latitude in degrees (WGS84). Range: -90.0° to +90.0° */
+  latitude: number;
+  /** Longitude in degrees (WGS84). Range: -180.0° to +180.0° */
+  longitude: number;
+  /** A short, human-readable name of the ground station location. */
+  name: string;
 }
 
 /**
@@ -2868,6 +2878,17 @@ export interface Pss {
   diagram: string;
 }
 
+export interface RecoveryPoint {
+  /** Height above mean sea level in meters. */
+  altitude: number;
+  /** Latitude in degrees (WGS84). */
+  latitude: number;
+  /** Longitude in degrees (WGS84). */
+  longitude: number;
+  /** Name of the GNC configuration the point is taken from. */
+  name: string;
+}
+
 export type RemoteComputerKind =
   (typeof RemoteComputerKind)[keyof typeof RemoteComputerKind];
 
@@ -2924,6 +2945,44 @@ export interface StateMachine {
   manualTransitions: StateMachineManualTransitions;
   /** Mapping of state names to diagram cell ids. */
   stateNodes: StateMachineStateNodes;
+}
+
+export interface TelemetryStats {
+  /**
+   * Total size of all incoming messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  incoming_bytes: number;
+  /**
+   * Amount of incoming messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  incoming_msgs: number;
+  /**
+   * Total size of all outgoing messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  outgoing_bytes: number;
+  /**
+   * Amount of outgoing messages on the MC during the sliding window.
+   * @minimum 0
+   */
+  outgoing_msgs: number;
+  /**
+   * Amount of messages sent from the RC during the sliding window.
+   * @minimum 0
+   */
+  rc_dowlink_msgs: number;
+  /**
+   * Amount of messages received by the RC during the sliding window.
+   * @minimum 0
+   */
+  rc_uplink_msgs: number;
+  /**
+   * The length of the sliding window in seconds.
+   * @minimum 0
+   */
+  window_length: number;
 }
 
 export type TileKind =

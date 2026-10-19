@@ -20,12 +20,44 @@ pub struct RemoteComputerInfo {
 }
 
 #[derive(Serialize, utoipa::ToSchema)]
+pub struct RecoveryPoint {
+    /// Name of the GNC configuration the point is taken from.
+    pub name: String,
+    /// Latitude in degrees (WGS84).
+    pub latitude: f64,
+    /// Longitude in degrees (WGS84).
+    pub longitude: f64,
+    /// Height above mean sea level in meters.
+    pub altitude: f64,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
 pub struct TileServer {
     /// Description about the tile server.
     pub description: String,
     /// The kind of tiles the server provides.
     #[serde(flatten)]
     pub tile_kind: TileKind,
+}
+
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct TelemetryStats {
+    /// Amount of incoming messages on the MC during the sliding window.
+    pub incoming_msgs: usize,
+    /// Total size of all incoming messages on the MC during the sliding window.
+    pub incoming_bytes: usize,
+    /// Amount of messages sent from the RC during the sliding window.
+    pub rc_dowlink_msgs: usize,
+
+    /// Amount of outgoing messages on the MC during the sliding window.
+    pub outgoing_msgs: usize,
+    /// Total size of all outgoing messages on the MC during the sliding window.
+    pub outgoing_bytes: usize,
+    /// Amount of messages received by the RC during the sliding window.
+    pub rc_uplink_msgs: usize,
+
+    /// The length of the sliding window in seconds.
+    pub window_length: usize,
 }
 
 #[derive(Serialize, Clone, utoipa::ToSchema, Default, PartialEq)]
