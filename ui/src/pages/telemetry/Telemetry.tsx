@@ -288,10 +288,10 @@ function Telemetry() {
   const downrange =
     groundStation && pos
       ? distance(
-          point([groundStation.longitude, groundStation.latitude]),
-          point([pos.locationLongitude, pos.locationLatitude]),
-          { units: "meters" },
-        )
+        point([groundStation.longitude, groundStation.latitude]),
+        point([pos.locationLongitude, pos.locationLatitude]),
+        { units: "meters" },
+      )
       : undefined;
 
   const rail = (r?: RailStatus) => (
@@ -300,6 +300,11 @@ function Telemetry() {
 
   const location = (
     <Flex direction="column" align="center" gap={2}>
+      <Flex gap="0.9em" justify="center" align="center">
+        <Text span inherit c={downrange != null && downrange < MC_DISTANCE_WARNING ? "red" : undefined}>
+          <Val v={fmt(downrange, 0)} unit=" m DR" />
+        </Text>
+      </Flex>
       <Flex gap="0.9em" justify="center" align="center" wrap="wrap">
         <Fields fields={[coord(pos?.locationLatitude, "N", "S"), coord(pos?.locationLongitude, "E", "W")]} />
         {pos?.horizontalAccuracy != null && (
@@ -315,12 +320,6 @@ function Telemetry() {
           }
         />
       </Flex>
-      <Flex gap="0.9em" justify="center" align="center">
-        <Text span inherit c={downrange != null && downrange < MC_DISTANCE_WARNING ? "red" : undefined}>
-          <Val v={fmt(downrange, 0)} unit=" m downrange" />
-        </Text>
-        <CopyButton label="Copy downrange (m)" text={downrange?.toFixed(1)} />
-      </Flex>
     </Flex>
   );
 
@@ -335,15 +334,14 @@ function Telemetry() {
 
         <Flex direction="column" align="center" gap="lg" style={{ flex: 1, minWidth: 0, textAlign: "center" }}>
           <Section
-            label={groundAmsl == null ? "Altitude/Position AMSL" : "Altitude/Position AGL"}
+            label="Location"
             main={
               <>
                 <Val v={fmt(altitude, 1)} unit=" m" />
-                {pos?.verticalAccuracy != null && (
-                  <Text span c="dimmed" fz="sm" ml={6}>
-                    ±{fmt(pos.verticalAccuracy)} m
-                  </Text>
-                )}
+                <Text span c="dimmed" fz="sm" ml={6}>
+                  {groundAmsl == null ? "AMSL " : "AGL "}
+                  ±{fmt(pos?.verticalAccuracy)} m
+                </Text>
               </>
             }
             detail={location}
