@@ -3,6 +3,27 @@
 This repository contains all custom code which runs on the mission control computers,
 and interfaces with the [remote computers](http://github.com/aris-space/asteria-remote-computers/) via MavLink.
 
+> [!NOTE]
+> This software was developed by the ASTERIA Software team specifically for our purposes at ARIS for EuRoC 2026.
+> No guarantees are given, and external contributions are unlikely to be accepted.
+> Additionally, this will very likely not be maintained beyond 2026, see other repositories.
+>
+> Point of contact: ASTERIA Software, e.g. cyrill.bucher@aris-space.ch
+
+## Overview
+
+The ASTERIA MC back-end is written in Rust and uses the actix-web web framework. At any time, there is at most one remote computer connection active on the back-end. A remote computer can be (de)activated on the back-end through the UI.
+
+Once a remote computer is activated, the back-end subscribes to its MAVLink source and forwards all received messages in JSON format to all connected clients using SSE. At the same time, it can receive encoded MAVLink messages from the front-end through HTTP and forward them to the remote computer accordingly. Because of this, the MC for the RFS and the one for the rocket are identical.
+
+The active remote computer periodically transmits the git hash identifying its current configuration file via a message. Once the back-end receives such a message, it looks up the configuration file by the hash and reads it. The relevant parts of the remote computer configuration are the state machine diagram path as well as the state machine transitions and its initial state. Using those values, the back-end can parse and validate the state machine diagram and push it to the UI, where it can be interacted with to send transition commands.
+
+The UI is written in TypeScript using the React frontend framework. It uses the Vite build tool and the Mantine UI library for things like text fields and dialog windows. The frontend has multiple pages available under different paths, which can then be opened in separate windows.
+
+We have a page for showing the state machine, a page for showing the interactable P&ID of the rocket and RFS respectively, a page for showing location and altitude as well as some other flight readings, and a map view. Additionally, a health page can show raw status message contents.
+
+The P&IDs of the rocket and RFS are also created in draw.io and contain markers for the textual ID of the datapoint. Based on type information from the message definition, it can then either show a sensor reading value with a unit, or a valve button which shows open/closed, normal state and whether it is currently actuatable.
+
 ## Usage
 
 To start a full installation, with frontend, backend and logging, run `just run` or `just run-sudo` if you need tty access for the radio link.
